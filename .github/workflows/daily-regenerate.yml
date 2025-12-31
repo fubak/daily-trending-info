@@ -1,6 +1,11 @@
 name: Daily Website Regeneration
 
 on:
+  # Run on push to main
+  push:
+    branches:
+      - main
+
   # Run daily at 6 AM UTC
   schedule:
     - cron: '0 6 * * *'
