@@ -691,15 +691,8 @@ Respond with ONLY a JSON object:
         if not trends:
             return "What's Trending"
 
-        # Get top trend
+        # Get top trend title - display full text, CSS handles wrapping
         top = trends[0].get('title', 'Trending Now')
-
-        # Truncate smartly
-        if len(top) > 50:
-            words = top.split()[:6]
-            top = ' '.join(words)
-            if len(top) > 50:
-                top = top[:47] + '...'
 
         return top
 
