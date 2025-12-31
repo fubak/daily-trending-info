@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Trend Collector - Aggregates trending topics from multiple sources.
+Trend Collector - Aggregates trending topics from multiple English sources.
 
-Sources:
-- Google Trends (daily trending searches)
-- News RSS: AP News, NPR, NYT, BBC, Guardian, Reuters, Al Jazeera, ABC, CBS, France24
+Sources (English only):
+- Google Trends (US daily trending searches)
+- News RSS: AP News, NPR, NYT, BBC, Guardian, Reuters, ABC, CBS (English editions)
 - Tech RSS: Verge, Ars Technica, Wired, TechCrunch, Engadget, MIT Tech Review, etc.
 - Hacker News API (top stories)
-- Reddit (20+ subreddits: news, worldnews, technology, science, sports, etc.)
-- GitHub Trending (daily trending repositories)
-- Wikipedia Current Events Portal
+- Reddit (English-focused subreddits)
+- GitHub Trending (English spoken language)
+- Wikipedia Current Events (English)
 """
 
 import os
@@ -25,6 +25,38 @@ from urllib.parse import quote_plus
 import requests
 import feedparser
 from bs4 import BeautifulSoup
+
+
+# Common non-English characters and patterns
+NON_ENGLISH_PATTERNS = [
+    r'[\u4e00-\u9fff]',  # Chinese
+    r'[\u3040-\u309f\u30a0-\u30ff]',  # Japanese
+    r'[\uac00-\ud7af]',  # Korean
+    r'[\u0600-\u06ff]',  # Arabic
+    r'[\u0400-\u04ff]',  # Cyrillic (Russian, etc.)
+    r'[\u0900-\u097f]',  # Hindi/Devanagari
+    r'[\u0e00-\u0e7f]',  # Thai
+    r'[\u0590-\u05ff]',  # Hebrew
+    r'[\u1100-\u11ff]',  # Korean Jamo
+]
+
+
+def is_english_text(text: str) -> bool:
+    """Check if text appears to be primarily English."""
+    if not text:
+        return False
+
+    # Check for non-English character patterns
+    for pattern in NON_ENGLISH_PATTERNS:
+        if re.search(pattern, text):
+            return False
+
+    # Check that most characters are ASCII/Latin
+    ascii_chars = sum(1 for c in text if ord(c) < 128 or c in 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýÿ')
+    if len(text) > 0 and ascii_chars / len(text) < 0.7:
+        return False
+
+    return True
 
 
 @dataclass
@@ -144,14 +176,16 @@ class TrendCollector:
             feed = feedparser.parse(response.content)
 
             for entry in feed.entries[:20]:
-                trend = Trend(
-                    title=entry.get('title', '').strip(),
-                    source='google_trends',
-                    url=entry.get('link'),
-                    description=entry.get('summary', '').strip() if entry.get('summary') else None,
-                    score=2.0  # Google Trends gets higher base score
-                )
-                if trend.title:
+                title = entry.get('title', '').strip()
+                # Only include English content
+                if title and is_english_text(title):
+                    trend = Trend(
+                        title=title,
+                        source='google_trends',
+                        url=entry.get('link'),
+                        description=entry.get('summary', '').strip() if entry.get('summary') else None,
+                        score=2.0  # Google Trends gets higher base score
+                    )
                     trends.append(trend)
 
         except Exception as e:
@@ -163,6 +197,7 @@ class TrendCollector:
         """Collect trends from major news RSS feeds."""
         trends = []
 
+        # English-only news sources
         feeds = [
             ('AP News', 'https://rsshub.app/apnews/topics/apf-topnews'),
             ('NPR', 'https://feeds.npr.org/1001/rss.xml'),
@@ -174,8 +209,8 @@ class TrendCollector:
             ('Reuters', 'https://www.reutersagency.com/feed/?taxonomy=best-sectors&post_type=best'),
             ('ABC News', 'https://abcnews.go.com/abcnews/topstories'),
             ('CBS News', 'https://www.cbsnews.com/latest/rss/main'),
-            ('Al Jazeera', 'https://www.aljazeera.com/xml/rss/all.xml'),
-            ('France24', 'https://www.france24.com/en/rss'),
+            ('USA Today', 'https://rssfeeds.usatoday.com/usatoday-NewsTopStories'),
+            ('Washington Post', 'https://feeds.washingtonpost.com/rss/national'),
         ]
 
         for name, url in feeds:
@@ -194,7 +229,8 @@ class TrendCollector:
                                    ' - ABC News', ' | Reuters', ' - NPR', ' | The Guardian']:
                         title = title.replace(suffix, '')
 
-                    if title and len(title) > 10:
+                    # Only include English content
+                    if title and len(title) > 10 and is_english_text(title):
                         trend = Trend(
                             title=title,
                             source=f'news_{name.lower().replace(" ", "_")}',
@@ -244,7 +280,8 @@ class TrendCollector:
                     title = title.replace(' | Ars Technica', '')
                     title = title.replace(' - The Verge', '')
 
-                    if title and len(title) > 10:
+                    # Only include English content
+                    if title and len(title) > 10 and is_english_text(title):
                         trend = Trend(
                             title=title,
                             source=f'tech_{name.lower().replace(" ", "_")}',
@@ -284,7 +321,7 @@ class TrendCollector:
                     )
                     story = story_response.json()
 
-                    if story and story.get('title'):
+                    if story and story.get('title') and is_english_text(story['title']):
                         score = story.get('score', 0)
                         normalized_score = min(score / 100, 3.0)  # Cap at 3x
 
@@ -353,7 +390,8 @@ class TrendCollector:
                     post_data = post.get('data', {})
                     title = post_data.get('title', '').strip()
 
-                    if title and not post_data.get('stickied') and len(title) > 15:
+                    # Only include English content, non-stickied posts
+                    if title and not post_data.get('stickied') and len(title) > 15 and is_english_text(title):
                         ups = post_data.get('ups', 0)
                         normalized_score = min(ups / 1000, 2.0)
 
@@ -374,12 +412,12 @@ class TrendCollector:
         return trends
 
     def _collect_github_trending(self) -> List[Trend]:
-        """Collect trending repositories from GitHub."""
+        """Collect trending repositories from GitHub (English descriptions)."""
         trends = []
 
         try:
-            # GitHub trending page (scraping since no official API for trending)
-            url = "https://github.com/trending?since=daily"
+            # GitHub trending page with English spoken language filter
+            url = "https://github.com/trending?since=daily&spoken_language_code=en"
             response = self.session.get(url, timeout=15)
             response.raise_for_status()
 
@@ -413,14 +451,16 @@ class TrendCollector:
                 if description:
                     title += f": {description[:80]}"
 
-                trend = Trend(
-                    title=title[:120],
-                    source='github_trending',
-                    url=f"https://github.com{name_elem.get('href', '')}",
-                    description=description,
-                    score=1.3 + min(stars / 500, 1.5)
-                )
-                trends.append(trend)
+                # Only include repos with English descriptions (or no description)
+                if not description or is_english_text(description):
+                    trend = Trend(
+                        title=title[:120],
+                        source='github_trending',
+                        url=f"https://github.com{name_elem.get('href', '')}",
+                        description=description,
+                        score=1.3 + min(stars / 500, 1.5)
+                    )
+                    trends.append(trend)
 
         except Exception as e:
             print(f"    GitHub Trending error: {e}")
@@ -449,7 +489,8 @@ class TrendCollector:
                 text = re.sub(r'\s+', ' ', text)
                 text = re.sub(r'\[.*?\]', '', text)  # Remove citations
 
-                if text and len(text) > 20 and len(text) < 200:
+                # Verify content is English
+                if text and len(text) > 20 and len(text) < 200 and is_english_text(text):
                     # Get the first link if available
                     link = item.select_one('a')
                     url = None
