@@ -82,6 +82,9 @@ jobs:
             data/
           key: website-build-${{ github.run_number }}
 
+      - name: Add CNAME for custom domain
+        run: echo "dailytrending.info" > public/CNAME
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
