@@ -6,26 +6,40 @@ on:
       - 'claude/**'
 
 jobs:
-  auto-merge:
+  create-pr:
     runs-on: ubuntu-latest
     # Only run for trusted users
     if: github.actor == 'fubak'
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Configure git
+      - name: Create and merge PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Check if PR already exists
+          EXISTING_PR=$(gh pr list --head "${{ github.ref_name }}" --base main --json number -q '.[0].number' 2>/dev/null || echo "")
 
-      - name: Merge to main
-        run: |
-          git checkout main
-          git merge origin/${{ github.ref_name }} --no-edit
-          git push origin main
+          if [ -z "$EXISTING_PR" ]; then
+            # Create new PR
+            PR_URL=$(gh pr create \
+              --base main \
+              --head "${{ github.ref_name }}" \
+              --title "Auto-merge: ${{ github.ref_name }}" \
+              --body "Automated PR from Claude Code session.
+
+              Triggered by push to \`${{ github.ref_name }}\`")
+            echo "Created PR: $PR_URL"
+          else
+            echo "PR #$EXISTING_PR already exists"
+            PR_URL="$EXISTING_PR"
+          fi
+
+          # Enable auto-merge (squash)
+          gh pr merge "${{ github.ref_name }}" --auto --squash --delete-branch
