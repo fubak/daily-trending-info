@@ -34,6 +34,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # Prevent hanging indefinitely
 
     steps:
       - name: Checkout repository

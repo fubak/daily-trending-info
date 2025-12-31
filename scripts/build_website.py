@@ -450,6 +450,27 @@ class WebsiteBuilder:
       gtag('js', new Date());
       gtag('config', 'G-XZNXRW8S7L');
     </script>
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+    <style>
+      .ad-container {{
+        display: flex;
+        justify-content: center;
+        padding: 1rem 0;
+        min-height: 90px;
+      }}
+      .ad-container.ad-horizontal {{
+        margin: 2rem auto;
+        max-width: var(--max-width);
+      }}
+      .ad-container.ad-sidebar {{
+        margin: 1rem 0;
+      }}
+      @media print {{
+        .ad-container {{ display: none !important; }}
+      }}
+    </style>
 </head>
 <body class="{' '.join(body_classes)}">
     {self._build_nav()}
@@ -458,9 +479,14 @@ class WebsiteBuilder:
         {self._build_hero()}
         {self._build_breaking_ticker()}
 
+        {self._build_ad_unit(ad_format="horizontal")}
+
         <main id="main-content" role="main">
             {self._build_word_cloud()}
             {self._build_top_stories()}
+
+            {self._build_ad_unit(ad_format="horizontal")}
+
             {self._build_category_sections()}
             {self._build_stats_bar()}
         </main>
@@ -489,7 +515,14 @@ class WebsiteBuilder:
         hero_image = self.ctx.images[0] if self.ctx.images else None
         hero_bg = ""
         if hero_image:
-            hero_bg = f"url('{hero_image.get('url_large', hero_image.get('url_medium', ''))}') center/cover"
+            # Validate and sanitize URL for CSS injection prevention
+            img_url = hero_image.get('url_large', hero_image.get('url_medium', ''))
+            if img_url and img_url.startswith(('https://', 'http://')):
+                # Escape quotes and parentheses that could break CSS
+                safe_url = img_url.replace("'", "%27").replace('"', "%22").replace("(", "%28").replace(")", "%29")
+                hero_bg = f"url('{safe_url}') center/cover"
+            else:
+                hero_bg = FallbackImageGenerator.get_gradient_css()
         else:
             hero_bg = FallbackImageGenerator.get_gradient_css()
 
@@ -1885,7 +1918,98 @@ class WebsiteBuilder:
                 transition-duration: 0.01ms !important;
             }}
         }}
+
+        /* ===== PRINT STYLES ===== */
+        @media print {{
+            /* Force light mode colors for printing */
+            body {{
+                background: white !important;
+                color: black !important;
+            }}
+
+            .nav, .theme-toggle, .breaking-ticker, .footer-actions {{
+                display: none !important;
+            }}
+
+            .story-card, .compact-card, .section {{
+                background: white !important;
+                color: black !important;
+                border: 1px solid #ccc !important;
+                box-shadow: none !important;
+                break-inside: avoid;
+            }}
+
+            .story-title, .section-title, .headline-xl, .headline-lg {{
+                color: black !important;
+            }}
+
+            .story-source, .text-muted {{
+                color: #666 !important;
+            }}
+
+            .word-cloud {{
+                display: none !important;
+            }}
+
+            a {{
+                color: black !important;
+                text-decoration: underline !important;
+            }}
+
+            /* Show URLs after links */
+            a[href]::after {{
+                content: " (" attr(href) ")";
+                font-size: 0.8em;
+                color: #666;
+            }}
+
+            a[href^="#"]::after,
+            a[href^="javascript"]::after {{
+                content: "" !important;
+            }}
+        }}
     </style>"""
+
+    def _build_ad_unit(self, slot_id: str = "", ad_format: str = "auto") -> str:
+        """Build an AdSense ad unit placeholder.
+
+        Args:
+            slot_id: The ad slot ID (e.g., "1234567890") - leave empty for auto ads
+            ad_format: Ad format (auto, horizontal, rectangle, vertical)
+        """
+        # Format-specific styles
+        format_styles = {
+            "horizontal": "display:block; min-height:90px;",
+            "rectangle": "display:block; min-height:250px;",
+            "vertical": "display:block; min-height:600px;",
+            "auto": "display:block;",
+        }
+
+        style = format_styles.get(ad_format, format_styles["auto"])
+        container_class = f"ad-container ad-{ad_format}"
+
+        # If no slot_id provided, return a placeholder for auto ads
+        if not slot_id:
+            return f"""
+        <div class="{container_class}">
+            <ins class="adsbygoogle"
+                 style="{style}"
+                 data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+                 data-ad-format="{ad_format}"
+                 data-full-width-responsive="true"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({{}});</script>
+        </div>"""
+
+        return f"""
+        <div class="{container_class}">
+            <ins class="adsbygoogle"
+                 style="{style}"
+                 data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+                 data-ad-slot="{slot_id}"
+                 data-ad-format="{ad_format}"
+                 data-full-width-responsive="true"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({{}});</script>
+        </div>"""
 
     def _build_nav(self) -> str:
         """Build the navigation bar."""
