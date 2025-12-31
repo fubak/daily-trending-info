@@ -8,8 +8,6 @@ on:
 jobs:
   create-pr:
     runs-on: ubuntu-latest
-    # Only run for trusted users
-    if: github.actor == 'fubak'
     permissions:
       contents: write
       pull-requests: write
