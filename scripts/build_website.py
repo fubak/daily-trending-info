@@ -68,9 +68,9 @@ class WebsiteBuilder:
         date_seed = datetime.now().strftime("%Y-%m-%d")
         self.rng = random.Random(date_seed)
 
-        # Select layout and hero style for today
-        self.layout = self.rng.choice(LAYOUT_TEMPLATES)
-        self.hero_style = self.rng.choice(HERO_STYLES)
+        # Use layout and hero style from design spec if available, otherwise random
+        self.layout = self.design.get('layout_style') or self.rng.choice(LAYOUT_TEMPLATES)
+        self.hero_style = self.design.get('hero_style') or self.rng.choice(HERO_STYLES)
 
         # Group trends by category
         self.grouped_trends = self._group_trends()
@@ -140,31 +140,288 @@ class WebsiteBuilder:
         sorted_freq = sorted(freq.items(), key=lambda x: x[1], reverse=True)
         return sorted_freq[:50]
 
+    def _get_top_topic(self) -> str:
+        """Get the main topic for SEO title."""
+        # Try to get from top trend
+        if self.ctx.trends:
+            top_trend = self.ctx.trends[0]
+            title = top_trend.get('title', '')
+            # Truncate to reasonable length for title
+            if len(title) > 60:
+                words = title.split()[:8]
+                title = ' '.join(words)
+                if len(title) > 60:
+                    title = title[:57] + '...'
+            return title
+
+        # Fall back to top keywords
+        if self.keyword_freq:
+            top_kws = [kw.title() for kw, _ in self.keyword_freq[:3]]
+            return ', '.join(top_kws) + ' Trends'
+
+        return "Today's Top Trends"
+
+    def _build_meta_description(self) -> str:
+        """Build SEO-friendly meta description."""
+        date_str = datetime.now().strftime("%B %d, %Y")
+
+        # Get category counts
+        categories = list(self.grouped_trends.keys())[:4]
+        category_str = ', '.join(categories) if categories else 'News, Technology, Science'
+
+        # Get top keywords
+        top_kws = [kw.title() for kw, _ in self.keyword_freq[:5]]
+        kw_str = ', '.join(top_kws) if top_kws else 'trending topics'
+
+        total_stories = len(self.ctx.trends)
+        total_sources = len(set(t.get('source', '').split('_')[0] for t in self.ctx.trends))
+
+        description = (
+            f"Daily trending topics for {date_str}. "
+            f"Discover {total_stories}+ stories from {total_sources} sources covering {category_str}. "
+            f"Top trends: {kw_str}. Updated daily with the latest news and viral content."
+        )
+
+        # Truncate to optimal length (150-160 chars)
+        if len(description) > 160:
+            description = description[:157] + '...'
+
+        return description
+
+    def _build_og_image(self) -> str:
+        """Build Open Graph image meta tag."""
+        if self.ctx.images:
+            img = self.ctx.images[0]
+            url = img.get('url_large') or img.get('url_medium', '')
+            if url:
+                return f'<meta property="og:image" content="{html.escape(url)}">'
+        return '<meta property="og:image" content="https://dailytrending.info/og-image.png">'
+
+    def _build_twitter_image(self) -> str:
+        """Build Twitter Card image meta tag."""
+        if self.ctx.images:
+            img = self.ctx.images[0]
+            url = img.get('url_large') or img.get('url_medium', '')
+            if url:
+                return f'<meta name="twitter:image" content="{html.escape(url)}">'
+        return '<meta name="twitter:image" content="https://dailytrending.info/og-image.png">'
+
+    def _build_structured_data(self) -> str:
+        """Build JSON-LD structured data for LLMs and search engines."""
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        iso_date = datetime.now().isoformat()
+
+        # Get top stories for article list
+        top_stories = []
+        for i, trend in enumerate(self.ctx.trends[:10]):
+            story = {
+                "@type": "Article",
+                "position": i + 1,
+                "name": trend.get('title', 'Untitled'),
+                "url": trend.get('url', ''),
+                "description": trend.get('description', '')[:200] if trend.get('description') else '',
+            }
+            top_stories.append(story)
+
+        # Get category list
+        categories = [{"@type": "Thing", "name": cat} for cat in self.grouped_trends.keys()]
+
+        # Build main structured data
+        structured_data = {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "WebSite",
+                    "@id": "https://dailytrending.info/#website",
+                    "url": "https://dailytrending.info/",
+                    "name": "DailyTrending.info",
+                    "description": "Daily aggregated trending topics from news, technology, social media, and more",
+                    "publisher": {
+                        "@type": "Organization",
+                        "name": "DailyTrending.info",
+                        "url": "https://dailytrending.info/"
+                    },
+                    "inLanguage": "en-US"
+                },
+                {
+                    "@type": "WebPage",
+                    "@id": "https://dailytrending.info/#webpage",
+                    "url": "https://dailytrending.info/",
+                    "name": f"DailyTrending.info - {self._get_top_topic()}",
+                    "isPartOf": {"@id": "https://dailytrending.info/#website"},
+                    "datePublished": date_str,
+                    "dateModified": iso_date,
+                    "description": self._build_meta_description(),
+                    "breadcrumb": {
+                        "@type": "BreadcrumbList",
+                        "itemListElement": [
+                            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://dailytrending.info/"}
+                        ]
+                    },
+                    "inLanguage": "en-US",
+                    "potentialAction": {
+                        "@type": "ReadAction",
+                        "target": "https://dailytrending.info/"
+                    }
+                },
+                {
+                    "@type": "ItemList",
+                    "name": "Today's Trending Topics",
+                    "description": f"Top {len(top_stories)} trending stories for {date_str}",
+                    "numberOfItems": len(top_stories),
+                    "itemListElement": top_stories
+                },
+                {
+                    "@type": "CollectionPage",
+                    "name": "Trending Categories",
+                    "hasPart": categories,
+                    "about": {
+                        "@type": "Thing",
+                        "name": "Trending Topics",
+                        "description": "Aggregated trending content from multiple sources"
+                    }
+                }
+            ]
+        }
+
+        # Add FAQ schema for common questions (helps with LLM understanding)
+        faq_items = []
+        if self.keyword_freq:
+            top_kws = [kw.title() for kw, _ in self.keyword_freq[:3]]
+            faq_items.append({
+                "@type": "Question",
+                "name": "What are today's top trending topics?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": f"Today's top trending topics include: {', '.join(top_kws)}. We aggregate trends from {len(self.grouped_trends)} categories including news, technology, science, and entertainment."
+                }
+            })
+
+        total_stories = len(self.ctx.trends)
+        total_sources = len(set(t.get('source', '').split('_')[0] for t in self.ctx.trends))
+        faq_items.append({
+            "@type": "Question",
+            "name": "How many trending stories are featured today?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": f"Today we feature {total_stories} trending stories from {total_sources} different sources across {len(self.grouped_trends)} categories."
+            }
+        })
+
+        faq_items.append({
+            "@type": "Question",
+            "name": "How often is DailyTrending.info updated?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "DailyTrending.info is automatically regenerated every day at 6 AM UTC with fresh trending content from news outlets, social media, and technology sources."
+            }
+        })
+
+        if faq_items:
+            structured_data["@graph"].append({
+                "@type": "FAQPage",
+                "mainEntity": faq_items
+            })
+
+        return f'<script type="application/ld+json">\n{json.dumps(structured_data, indent=2)}\n    </script>'
+
     def build(self) -> str:
         """Build the complete HTML page."""
+        # Get design system classes
+        card_style = self.design.get('card_style', 'bordered')
+        hover_effect = self.design.get('hover_effect', 'lift')
+        text_transform = self.design.get('text_transform_headings', 'none')
+        animation_level = self.design.get('animation_level', 'subtle')
+        is_dark = self.design.get('is_dark_mode', True)
+
+        # Build body classes
+        body_classes = [
+            f"layout-{self.layout}",
+            f"hero-{self.hero_style}",
+            f"card-style-{card_style}",
+            f"hover-{hover_effect}",
+            f"animation-{animation_level}",
+            "dark-mode" if is_dark else "light-mode",
+        ]
+
+        if text_transform != 'none':
+            body_classes.append(f"text-transform-{text_transform}")
+
+        # Generate SEO-friendly title
+        top_topic = self._get_top_topic()
+        page_title = f"DailyTrending.info - {top_topic}"
+        meta_description = self._build_meta_description()
+
+        # Get top keywords for meta tags
+        top_keywords = [kw for kw, _ in self.keyword_freq[:15]]
+        keywords_str = ", ".join(top_keywords) if top_keywords else "trending, news, technology, world events"
+
         return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="en" itemscope itemtype="https://schema.org/WebPage">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Today's trending topics - {self.design.get('subheadline', 'What the world is talking about')}">
+
+    <!-- Primary Meta Tags -->
+    <title>{html.escape(page_title)}</title>
+    <meta name="title" content="{html.escape(page_title)}">
+    <meta name="description" content="{html.escape(meta_description)}">
+    <meta name="keywords" content="{html.escape(keywords_str)}">
+    <meta name="author" content="DailyTrending.info">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://dailytrending.info/">
+
+    <!-- Theme Color -->
     <meta name="theme-color" content="{self.design.get('color_bg', '#0a0a0a')}">
-    <title>{html.escape(self.design.get('headline', "Today's Trends"))} | Trend Watch</title>
+    <meta name="color-scheme" content="{'dark' if is_dark else 'light'}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://dailytrending.info/">
+    <meta property="og:title" content="{html.escape(page_title)}">
+    <meta property="og:description" content="{html.escape(meta_description)}">
+    <meta property="og:site_name" content="DailyTrending.info">
+    <meta property="og:locale" content="en_US">
+    {self._build_og_image()}
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://dailytrending.info/">
+    <meta name="twitter:title" content="{html.escape(page_title)}">
+    <meta name="twitter:description" content="{html.escape(meta_description)}">
+    {self._build_twitter_image()}
+
+    <!-- Additional SEO -->
+    <meta name="generator" content="DailyTrending.info Autonomous Generator">
+    <meta name="date" content="{datetime.now().strftime('%Y-%m-%d')}">
+    <meta name="last-modified" content="{datetime.now().isoformat()}">
+
+    <!-- Structured Data for LLMs and Search Engines -->
+    {self._build_structured_data()}
+
+    <!-- Feeds -->
+    <link rel="alternate" type="application/rss+xml" title="DailyTrending.info RSS" href="https://dailytrending.info/feed.xml">
 
     {self._build_fonts()}
     {self._build_styles()}
 </head>
-<body class="layout-{self.layout} hero-{self.hero_style}">
+<body class="{' '.join(body_classes)}">
     {self._build_nav()}
-    {self._build_hero()}
-    {self._build_breaking_ticker()}
 
-    <main>
-        {self._build_word_cloud()}
-        {self._build_top_stories()}
-        {self._build_category_sections()}
-        {self._build_stats_bar()}
-    </main>
+    <article itemscope itemtype="https://schema.org/Article">
+        {self._build_hero()}
+        {self._build_breaking_ticker()}
+
+        <main id="main-content" role="main">
+            {self._build_word_cloud()}
+            {self._build_top_stories()}
+            {self._build_category_sections()}
+            {self._build_stats_bar()}
+        </main>
+    </article>
 
     {self._build_footer()}
     {self._build_scripts()}
@@ -193,6 +450,35 @@ class WebsiteBuilder:
         else:
             hero_bg = FallbackImageGenerator.get_gradient_css()
 
+        # Extract design system properties with fallbacks
+        card_style = d.get('card_style', 'bordered')
+        card_radius = d.get('card_radius', '1rem')
+        card_padding = d.get('card_padding', '1.5rem')
+        hover_effect = d.get('hover_effect', 'lift')
+        animation_level = d.get('animation_level', 'subtle')
+        text_transform = d.get('text_transform_headings', 'none')
+        is_dark = d.get('is_dark_mode', True)
+        use_gradients = d.get('use_gradients', True)
+        use_blur = d.get('use_blur', False)
+        spacing = d.get('spacing', 'comfortable')
+
+        # Map spacing to section gaps
+        spacing_map = {
+            'compact': '2rem',
+            'comfortable': '3rem',
+            'spacious': '4rem'
+        }
+        section_gap = spacing_map.get(spacing, '3rem')
+
+        # Animation duration based on level
+        animation_map = {
+            'none': '0s',
+            'subtle': '0.3s',
+            'moderate': '0.4s',
+            'playful': '0.5s'
+        }
+        anim_duration = animation_map.get(animation_level, '0.3s')
+
         return f"""
     <style>
         /* ===== CSS CUSTOM PROPERTIES ===== */
@@ -208,13 +494,21 @@ class WebsiteBuilder:
             --font-primary: '{d.get('font_primary', 'Space Grotesk')}', system-ui, sans-serif;
             --font-secondary: '{d.get('font_secondary', 'Inter')}', system-ui, sans-serif;
 
-            --radius-sm: 0.5rem;
-            --radius: 1rem;
-            --radius-lg: 1.5rem;
-            --radius-xl: 2rem;
+            /* Dynamic radius from design spec */
+            --radius-sm: calc({card_radius} * 0.5);
+            --radius: {card_radius};
+            --radius-lg: calc({card_radius} * 1.5);
+            --radius-xl: calc({card_radius} * 2);
 
-            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --max-width: 1400px;
+            /* Dynamic spacing */
+            --card-padding: {card_padding};
+            --section-gap: {section_gap};
+
+            /* Animation speed */
+            --transition: {anim_duration} cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-fast: calc({anim_duration} * 0.5) cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: calc({anim_duration} * 1.5) cubic-bezier(0.4, 0, 0.2, 1);
+            --max-width: {d.get('max_width', '1400px')};
 
             --hero-bg: {hero_bg};
         }}
@@ -277,6 +571,43 @@ class WebsiteBuilder:
             color: var(--color-muted);
         }}
 
+        /* Text transform variants */
+        .text-transform-uppercase .headline-xl,
+        .text-transform-uppercase .headline-lg,
+        .text-transform-uppercase .headline-md,
+        .text-transform-uppercase .section-title,
+        .text-transform-uppercase .story-title {{
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }}
+
+        .text-transform-capitalize .headline-xl,
+        .text-transform-capitalize .headline-lg,
+        .text-transform-capitalize .headline-md,
+        .text-transform-capitalize .section-title,
+        .text-transform-capitalize .story-title {{
+            text-transform: capitalize;
+        }}
+
+        /* Animation level variants */
+        .animation-none *, .animation-none *::before, .animation-none *::after {{
+            animation: none !important;
+            transition: none !important;
+        }}
+
+        .animation-playful .story-card {{
+            transition-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }}
+
+        .animation-playful .word-cloud-item:hover {{
+            animation: bounce 0.5s ease;
+        }}
+
+        @keyframes bounce {{
+            0%, 100% {{ transform: scale(1); }}
+            50% {{ transform: scale(1.2); }}
+        }}
+
         /* ===== NAVIGATION ===== */
         .nav {{
             position: fixed;
@@ -332,9 +663,30 @@ class WebsiteBuilder:
             color: var(--color-text);
         }}
 
+        .nav-actions {{
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }}
+
         .nav-date {{
             font-size: 0.85rem;
             color: var(--color-muted);
+        }}
+
+        .nav-github {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            color: var(--color-muted);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition);
+        }}
+
+        .nav-github:hover {{
+            color: var(--color-text);
+            background: var(--color-card-bg);
         }}
 
         /* ===== HERO SECTION ===== */
@@ -549,7 +901,7 @@ class WebsiteBuilder:
 
         /* ===== SECTION HEADERS ===== */
         .section {{
-            margin-bottom: 4rem;
+            margin-bottom: var(--section-gap);
         }}
 
         .section-header {{
@@ -655,17 +1007,68 @@ class WebsiteBuilder:
         .story-card {{
             position: relative;
             background: var(--color-card-bg);
-            border: 1px solid var(--color-border);
             border-radius: var(--radius);
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            transition: transform var(--transition), box-shadow var(--transition);
+            transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
         }}
 
-        .story-card:hover {{
+        /* Card style variants */
+        .card-style-bordered .story-card {{
+            border: 1px solid var(--color-border);
+        }}
+
+        .card-style-shadow .story-card {{
+            border: none;
+            box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+        }}
+
+        .card-style-glass .story-card {{
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }}
+
+        .card-style-minimal .story-card {{
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--color-border);
+            border-radius: 0;
+        }}
+
+        .card-style-accent .story-card {{
+            border: none;
+            border-left: 4px solid var(--color-accent);
+        }}
+
+        .card-style-outline .story-card {{
+            background: transparent;
+            border: 2px solid var(--color-border);
+        }}
+
+        /* Hover effect variants */
+        .hover-lift .story-card:hover {{
             transform: translateY(-4px);
             box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.4);
+        }}
+
+        .hover-glow .story-card:hover {{
+            box-shadow: 0 0 30px -5px var(--color-accent);
+        }}
+
+        .hover-scale .story-card:hover {{
+            transform: scale(1.02);
+        }}
+
+        .hover-border .story-card:hover {{
+            border-color: var(--color-accent);
+        }}
+
+        .hover-none .story-card:hover {{
+            transform: none;
+            box-shadow: none;
         }}
 
         .story-card.has-image {{
@@ -687,7 +1090,7 @@ class WebsiteBuilder:
 
         .story-content {{
             position: relative;
-            padding: 1.5rem;
+            padding: var(--card-padding);
             display: flex;
             flex-direction: column;
             height: 100%;
@@ -761,16 +1164,65 @@ class WebsiteBuilder:
         .compact-card {{
             display: flex;
             gap: 1rem;
-            padding: 1rem;
+            padding: var(--card-padding);
             background: var(--color-card-bg);
-            border: 1px solid var(--color-border);
             border-radius: var(--radius-sm);
             transition: all var(--transition);
         }}
 
-        .compact-card:hover {{
+        /* Apply card styles to compact cards */
+        .card-style-bordered .compact-card {{
+            border: 1px solid var(--color-border);
+        }}
+
+        .card-style-shadow .compact-card {{
+            box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.15);
+        }}
+
+        .card-style-glass .compact-card {{
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+        }}
+
+        .card-style-minimal .compact-card {{
+            background: transparent;
+            border-bottom: 1px solid var(--color-border);
+            border-radius: 0;
+            padding-left: 0;
+            padding-right: 0;
+        }}
+
+        .card-style-accent .compact-card {{
+            border-left: 3px solid var(--color-accent);
+            padding-left: calc(var(--card-padding) - 3px);
+        }}
+
+        .card-style-outline .compact-card {{
+            background: transparent;
+            border: 1px solid var(--color-border);
+        }}
+
+        /* Apply hover effects to compact cards */
+        .hover-lift .compact-card:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.3);
+        }}
+
+        .hover-glow .compact-card:hover {{
+            box-shadow: 0 0 20px -5px var(--color-accent);
+        }}
+
+        .hover-scale .compact-card:hover {{
+            transform: scale(1.01);
+        }}
+
+        .hover-border .compact-card:hover {{
             border-color: var(--color-accent);
-            background: rgba(99, 102, 241, 0.05);
+        }}
+
+        .hover-none .compact-card:hover {{
+            transform: none;
         }}
 
         .compact-card-number {{
@@ -916,6 +1368,44 @@ class WebsiteBuilder:
             background: rgba(99, 102, 241, 0.1);
         }}
 
+        .footer-actions {{
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }}
+
+        .github-btn {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--color-card-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            color: var(--color-text);
+            font-size: 0.9rem;
+            transition: all var(--transition);
+        }}
+
+        .github-btn:hover {{
+            border-color: var(--color-accent);
+            background: rgba(99, 102, 241, 0.1);
+        }}
+
+        .footer-github {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            color: var(--color-muted);
+            font-size: 0.9rem;
+            transition: color var(--transition);
+        }}
+
+        .footer-github:hover {{
+            color: var(--color-accent);
+        }}
+
         /* ===== ANIMATIONS ===== */
         @keyframes ticker {{
             0% {{ transform: translateX(0); }}
@@ -1036,14 +1526,21 @@ class WebsiteBuilder:
         )
 
         return f"""
-    <nav class="nav" id="nav">
-        <div class="nav-logo">
-            <span>Trend Watch</span>
-        </div>
+    <nav class="nav" id="nav" role="navigation" aria-label="Main navigation">
+        <a href="/" class="nav-logo" aria-label="DailyTrending.info Home">
+            <span>DailyTrending.info</span>
+        </a>
         <ul class="nav-links">
 {links}
         </ul>
-        <div class="nav-date">{self.ctx.generated_at}</div>
+        <div class="nav-actions">
+            <span class="nav-date">{self.ctx.generated_at}</span>
+            <a href="https://github.com/fubak/randosite" class="nav-github" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+            </a>
+        </div>
     </nav>"""
 
     def _build_hero(self) -> str:
@@ -1296,18 +1793,25 @@ class WebsiteBuilder:
         )
 
         return f"""
-    <footer>
+    <footer role="contentinfo">
         <div class="footer-content">
             <div>
-                <div class="footer-brand">Trend Watch</div>
+                <div class="footer-brand">DailyTrending.info</div>
                 <p class="footer-description">
                     An autonomous trend aggregation website that regenerates daily
                     with fresh content from multiple sources worldwide.
                 </p>
                 <p class="footer-description">
-                    Design: {html.escape(self.design.get('theme_name', 'Auto-generated'))} |
+                    Style: {html.escape(self.design.get('personality', 'modern').title())} |
+                    Theme: {html.escape(self.design.get('theme_name', 'Auto-generated'))} |
                     Layout: {self.layout.title()}
                 </p>
+                <a href="https://github.com/fubak/randosite" class="footer-github" target="_blank" rel="noopener noreferrer">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    View Source on GitHub
+                </a>
             </div>
             <div>
                 <h4 class="footer-section-title">Categories</h4>
@@ -1324,14 +1828,22 @@ class WebsiteBuilder:
         </div>
         <div class="footer-bottom">
             <span>Generated on {self.ctx.generated_at}</span>
-            <a href="./archive/" class="archive-btn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 3h18v18H3z"></path>
-                    <path d="M21 9H3"></path>
-                    <path d="M9 21V9"></path>
-                </svg>
-                View Archive
-            </a>
+            <div class="footer-actions">
+                <a href="./archive/" class="archive-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3h18v18H3z"></path>
+                        <path d="M21 9H3"></path>
+                        <path d="M9 21V9"></path>
+                    </svg>
+                    View Archive
+                </a>
+                <a href="https://github.com/fubak/randosite" class="github-btn" target="_blank" rel="noopener noreferrer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    GitHub
+                </a>
+            </div>
         </div>
     </footer>"""
 
@@ -1386,8 +1898,11 @@ class WebsiteBuilder:
             f.write(html_content)
 
         print(f"Website saved to {filepath}")
-        print(f"  Layout: {self.layout}")
-        print(f"  Hero style: {self.hero_style}")
+        print(f"  Personality: {self.design.get('personality', 'modern')}")
+        print(f"  Layout: {self.layout} / Hero: {self.hero_style}")
+        print(f"  Card style: {self.design.get('card_style', 'bordered')}")
+        print(f"  Hover effect: {self.design.get('hover_effect', 'lift')}")
+        print(f"  Animation: {self.design.get('animation_level', 'subtle')}")
         print(f"  Categories: {len(self.grouped_trends)}")
         return filepath
 
@@ -1407,6 +1922,7 @@ def main():
 
     sample_design = {
         "theme_name": "Midnight Indigo",
+        "personality": "tech",
         "font_primary": "Space Grotesk",
         "font_secondary": "Inter",
         "color_bg": "#0a0a0a",
@@ -1417,7 +1933,18 @@ def main():
         "color_card_bg": "#18181b",
         "color_border": "#27272a",
         "headline": "Today's Pulse",
-        "subheadline": "What the world is talking about"
+        "subheadline": "What the world is talking about",
+        "card_style": "glass",
+        "card_radius": "1rem",
+        "card_padding": "1.5rem",
+        "hover_effect": "glow",
+        "animation_level": "moderate",
+        "text_transform_headings": "none",
+        "is_dark_mode": True,
+        "use_gradients": True,
+        "spacing": "comfortable",
+        "layout_style": "magazine",
+        "hero_style": "gradient"
     }
 
     ctx = BuildContext(
