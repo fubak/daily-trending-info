@@ -1,5 +1,7 @@
 # DailyTrending.info
 
+[![Daily Regeneration](https://github.com/fubak/daily-trending-info/actions/workflows/daily-regenerate.yml/badge.svg)](https://github.com/fubak/daily-trending-info/actions/workflows/daily-regenerate.yml)
+
 A fully autonomous trend aggregation website that regenerates daily with unique designs, English-only content from 7+ sources, and SEO-optimized pages.
 
 **Live Site:** [https://dailytrending.info](https://dailytrending.info)
