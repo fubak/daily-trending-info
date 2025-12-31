@@ -1,0 +1,14 @@
+# Trend Website Generator Dependencies
+
+# HTTP requests
+requests>=2.31.0
+
+# RSS/Feed parsing
+feedparser>=6.0.10
+
+# HTML parsing
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# Environment variables (optional, for local development)
+python-dotenv>=1.0.0

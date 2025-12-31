@@ -1,0 +1,147 @@
+name: Daily Website Regeneration
+
+on:
+  # Run daily at 6 AM UTC
+  schedule:
+    - cron: '0 6 * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      skip_archive:
+        description: 'Skip archiving previous website'
+        required: false
+        default: 'false'
+        type: boolean
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  issues: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Restore previous build (for archiving)
+        uses: actions/cache@v4
+        with:
+          path: |
+            public/
+            data/
+          key: website-build-${{ github.run_number }}
+          restore-keys: |
+            website-build-
+
+      - name: Run website generation pipeline
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+        run: |
+          cd scripts
+          if [ "${{ github.event.inputs.skip_archive }}" = "true" ]; then
+            python main.py --no-archive
+          else
+            python main.py
+          fi
+
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            public/
+            data/
+          key: website-build-${{ github.run_number }}
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './public'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  notify-on-failure:
+    runs-on: ubuntu-latest
+    needs: [build, deploy]
+    if: failure()
+
+    steps:
+      - name: Create issue on failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Daily regeneration failed - ${new Date().toISOString().split('T')[0]}`;
+            const body = `The daily website regeneration workflow failed.
+
+            **Run:** [${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+            **Time:** ${new Date().toISOString()}
+
+            Please check the workflow logs for details.`;
+
+            // Check if similar issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'pipeline-failure'
+            });
+
+            const existingIssue = issues.data.find(issue =>
+              issue.title.includes('Daily regeneration failed')
+            );
+
+            if (!existingIssue) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['pipeline-failure', 'automated']
+              });
+            } else {
+              // Add comment to existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `Pipeline failed again at ${new Date().toISOString()}\n\n[Run #${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+              });
+            }
