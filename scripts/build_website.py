@@ -47,13 +47,20 @@ LAYOUT_TEMPLATES = [
     "mosaic",      # Asymmetric grid, varied card sizes
 ]
 
-# Hero style variants
+# Hero style variants - creative designs that change each generation
 HERO_STYLES = [
-    "full",        # Full viewport with overlay
-    "split",       # Split screen with content
-    "minimal",     # Small hero, content-focused
-    "gradient",    # Animated gradient background
-    "ticker",      # Breaking news style
+    "cinematic",      # Dark overlay with dramatic gradient, image visible
+    "glassmorphism",  # Frosted glass effect with visible background
+    "neon",           # Neon glow effects with dark background
+    "duotone",        # Two-tone color overlay on image
+    "particles",      # Animated floating particles
+    "waves",          # Animated wave pattern
+    "geometric",      # Animated geometric shapes
+    "spotlight",      # Spotlight/lens flare effect
+    "glitch",         # Glitch art effect
+    "aurora",         # Northern lights gradient animation
+    "mesh",           # Gradient mesh background
+    "retro",          # Retro/synthwave style
 ]
 
 
@@ -990,27 +997,38 @@ class WebsiteBuilder:
             overflow: hidden;
         }}
 
+        /* Background image layer - now more visible */
         .hero::before {{
             content: '';
             position: absolute;
             inset: 0;
             background: var(--hero-bg);
-            opacity: 0.1;
-            z-index: -1;
+            opacity: 0.4;
+            z-index: 0;
+            filter: saturate(1.2);
         }}
 
+        /* Overlay for text readability */
         .hero::after {{
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(180deg, var(--color-bg) 0%, transparent 30%, transparent 70%, var(--color-bg) 100%);
-            z-index: -1;
+            background: linear-gradient(
+                180deg,
+                rgba(var(--color-bg-rgb, 10, 10, 26), 0.7) 0%,
+                rgba(var(--color-bg-rgb, 10, 10, 26), 0.4) 40%,
+                rgba(var(--color-bg-rgb, 10, 10, 26), 0.5) 60%,
+                rgba(var(--color-bg-rgb, 10, 10, 26), 0.9) 100%
+            );
+            z-index: 1;
         }}
 
         .hero-content {{
             max-width: var(--max-width);
             margin: 0 auto;
             width: 100%;
+            position: relative;
+            z-index: 2;
         }}
 
         .hero-eyebrow {{
@@ -1026,18 +1044,29 @@ class WebsiteBuilder:
             letter-spacing: 0.1em;
             border-radius: var(--radius-sm);
             margin-bottom: 1.5rem;
+            animation: fadeInUp 0.6s ease-out;
         }}
 
+        .hero-eyebrow span {{
+            animation: pulse 2s ease-in-out infinite;
+        }}
+
+        /* Fixed: headline now wraps properly and displays full text */
         .hero h1 {{
             margin-bottom: 1.5rem;
-            max-width: 900px;
+            max-width: 100%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            animation: fadeInUp 0.8s ease-out 0.1s both;
         }}
 
         .hero-subtitle {{
             font-size: clamp(1.1rem, 2vw, 1.35rem);
             color: var(--color-muted);
-            max-width: 600px;
+            max-width: 700px;
             margin-bottom: 2rem;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
         }}
 
         .hero-meta {{
@@ -1046,6 +1075,7 @@ class WebsiteBuilder:
             gap: 1.5rem;
             font-size: 0.9rem;
             color: var(--color-muted);
+            animation: fadeInUp 0.8s ease-out 0.3s both;
         }}
 
         .hero-meta span {{
@@ -1055,33 +1085,297 @@ class WebsiteBuilder:
         }}
 
         /* ===== HERO STYLE VARIANTS ===== */
-        .hero-split .hero {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4rem;
-            align-items: center;
+
+        /* CINEMATIC - Dramatic movie-poster style */
+        .hero-cinematic .hero::after {{
+            background: linear-gradient(
+                180deg,
+                rgba(0, 0, 0, 0.3) 0%,
+                rgba(0, 0, 0, 0.1) 30%,
+                rgba(0, 0, 0, 0.2) 70%,
+                rgba(0, 0, 0, 0.95) 100%
+            );
         }}
 
-        .hero-minimal .hero {{
-            min-height: 60vh;
-            text-align: center;
+        .hero-cinematic .hero::before {{
+            opacity: 0.6;
+            animation: cinematicZoom 20s ease-in-out infinite;
         }}
 
-        .hero-minimal .hero-content {{
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        /* GLASSMORPHISM - Frosted glass effect */
+        .hero-glassmorphism .hero-content {{
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 3rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }}
 
-        .hero-gradient .hero::before {{
-            background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-secondary) 50%, var(--color-bg) 100%);
-            opacity: 0.15;
-            animation: gradientShift 10s ease infinite;
+        .hero-glassmorphism .hero::before {{
+            opacity: 0.5;
         }}
 
-        .hero-ticker .hero {{
-            min-height: auto;
-            padding: 8rem 2rem 2rem;
+        .hero-glassmorphism .hero::after {{
+            background: transparent;
+        }}
+
+        /* NEON - Cyberpunk neon glow */
+        .hero-neon .hero {{
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 100%);
+        }}
+
+        .hero-neon .hero::before {{
+            opacity: 0.3;
+            mix-blend-mode: screen;
+        }}
+
+        .hero-neon .hero-content {{
+            text-shadow: 0 0 10px var(--color-accent), 0 0 20px var(--color-accent), 0 0 40px var(--color-accent);
+        }}
+
+        .hero-neon .hero h1 {{
+            animation: neonFlicker 3s ease-in-out infinite, fadeInUp 0.8s ease-out 0.1s both;
+        }}
+
+        .hero-neon .hero-eyebrow {{
+            box-shadow: 0 0 10px var(--color-accent), 0 0 20px var(--color-accent);
+        }}
+
+        /* DUOTONE - Two-tone color overlay */
+        .hero-duotone .hero::before {{
+            opacity: 0.7;
+            filter: grayscale(100%);
+        }}
+
+        .hero-duotone .hero::after {{
+            background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-secondary) 100%);
+            mix-blend-mode: multiply;
+            opacity: 0.6;
+        }}
+
+        /* PARTICLES - Floating particles animation */
+        .hero-particles .hero {{
+            background: radial-gradient(ellipse at bottom, #1a1a3e 0%, #0a0a1a 100%);
+        }}
+
+        .hero-particles .hero::before {{
+            opacity: 0.3;
+        }}
+
+        .hero-particles .hero .hero-particles-container {{
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            overflow: hidden;
+        }}
+
+        .hero-particles .hero .particle {{
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--color-accent);
+            border-radius: 50%;
+            animation: floatParticle 15s infinite ease-in-out;
+            opacity: 0.6;
+        }}
+
+        /* WAVES - Animated wave background */
+        .hero-waves .hero::after {{
+            background: transparent;
+        }}
+
+        .hero-waves .hero .wave-container {{
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            overflow: hidden;
+            z-index: 1;
+        }}
+
+        .hero-waves .hero .wave {{
+            position: absolute;
+            bottom: 0;
+            left: -50%;
+            width: 200%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,60 C300,120 600,0 900,60 C1200,120 1200,60 1200,60 L1200,120 L0,120 Z' fill='rgba(26,26,60,0.8)'/%3E%3C/svg%3E") repeat-x;
+            background-size: 50% 100%;
+            animation: waveMove 10s linear infinite;
+        }}
+
+        .hero-waves .hero .wave:nth-child(2) {{
+            animation-delay: -5s;
+            opacity: 0.5;
+        }}
+
+        /* GEOMETRIC - Animated geometric shapes */
+        .hero-geometric .hero {{
+            background: linear-gradient(135deg, #0a0a2e 0%, #1a0a3e 50%, #0a1a2e 100%);
+        }}
+
+        .hero-geometric .hero::before {{
+            opacity: 0.25;
+        }}
+
+        .hero-geometric .hero .geo-shapes {{
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            overflow: hidden;
+        }}
+
+        .hero-geometric .hero .geo-shape {{
+            position: absolute;
+            border: 2px solid var(--color-accent);
+            opacity: 0.3;
+            animation: geoFloat 20s infinite ease-in-out;
+        }}
+
+        .hero-geometric .hero .geo-shape.circle {{
+            border-radius: 50%;
+        }}
+
+        /* SPOTLIGHT - Lens flare/spotlight effect */
+        .hero-spotlight .hero::after {{
+            background: radial-gradient(ellipse at 30% 20%, transparent 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.9) 100%);
+        }}
+
+        .hero-spotlight .hero::before {{
+            opacity: 0.5;
+        }}
+
+        .hero-spotlight .hero .spotlight {{
+            position: absolute;
+            top: 10%;
+            left: 20%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, var(--color-accent) 0%, transparent 70%);
+            opacity: 0.3;
+            filter: blur(40px);
+            animation: spotlightMove 15s ease-in-out infinite;
+            z-index: 1;
+        }}
+
+        /* GLITCH - Glitch art effect */
+        .hero-glitch .hero h1 {{
+            animation: glitchText 3s infinite, fadeInUp 0.8s ease-out 0.1s both;
+        }}
+
+        .hero-glitch .hero::before {{
+            animation: glitchBg 5s infinite;
+            opacity: 0.5;
+        }}
+
+        /* AURORA - Northern lights effect */
+        .hero-aurora .hero {{
+            background: linear-gradient(180deg, #0a0a1a 0%, #0a1a2e 100%);
+        }}
+
+        .hero-aurora .hero::before {{
+            opacity: 0.3;
+        }}
+
+        .hero-aurora .hero .aurora {{
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background: linear-gradient(
+                180deg,
+                transparent 0%,
+                rgba(0, 255, 150, 0.1) 20%,
+                rgba(0, 200, 255, 0.15) 40%,
+                rgba(150, 0, 255, 0.1) 60%,
+                transparent 100%
+            );
+            animation: auroraShift 8s ease-in-out infinite;
+            filter: blur(60px);
+        }}
+
+        /* MESH - Gradient mesh background */
+        .hero-mesh .hero {{
+            background:
+                radial-gradient(at 40% 20%, var(--color-accent) 0%, transparent 50%),
+                radial-gradient(at 80% 0%, var(--color-accent-secondary) 0%, transparent 50%),
+                radial-gradient(at 0% 50%, rgba(100, 0, 255, 0.5) 0%, transparent 50%),
+                radial-gradient(at 80% 50%, rgba(0, 200, 255, 0.3) 0%, transparent 50%),
+                radial-gradient(at 0% 100%, var(--color-accent) 0%, transparent 50%),
+                var(--color-bg);
+            animation: meshShift 20s ease-in-out infinite;
+        }}
+
+        .hero-mesh .hero::before {{
+            opacity: 0.2;
+        }}
+
+        .hero-mesh .hero::after {{
+            background: rgba(var(--color-bg-rgb, 10, 10, 26), 0.3);
+        }}
+
+        /* RETRO - Synthwave/retrowave style */
+        .hero-retro .hero {{
+            background: linear-gradient(180deg, #0a0010 0%, #1a0030 50%, #2a0050 100%);
+        }}
+
+        .hero-retro .hero::before {{
+            opacity: 0.4;
+        }}
+
+        .hero-retro .hero .retro-grid {{
+            position: absolute;
+            bottom: 0;
+            left: -50%;
+            right: -50%;
+            height: 60%;
+            background:
+                linear-gradient(transparent 0%, transparent 49%, rgba(255, 0, 128, 0.5) 50%, transparent 51%, transparent 100%),
+                linear-gradient(90deg, transparent 0%, transparent 49%, rgba(255, 0, 128, 0.3) 50%, transparent 51%, transparent 100%);
+            background-size: 60px 60px;
+            transform: perspective(500px) rotateX(60deg);
+            transform-origin: center top;
+            animation: retroGrid 2s linear infinite;
+            z-index: 1;
+        }}
+
+        .hero-retro .hero .retro-sun {{
+            position: absolute;
+            bottom: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(180deg, #ff6b00 0%, #ff0066 50%, #9900ff 100%);
+            border-radius: 50%;
+            clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);
+            z-index: 1;
+        }}
+
+        /* Light mode adjustments for hero styles */
+        body.light-mode .hero::after {{
+            background: linear-gradient(
+                180deg,
+                rgba(255, 255, 255, 0.7) 0%,
+                rgba(255, 255, 255, 0.3) 40%,
+                rgba(255, 255, 255, 0.4) 60%,
+                rgba(255, 255, 255, 0.95) 100%
+            );
+        }}
+
+        body.light-mode .hero-glassmorphism .hero-content {{
+            background: rgba(255, 255, 255, 0.6);
+            border-color: rgba(0, 0, 0, 0.1);
+        }}
+
+        body.light-mode .hero-neon .hero {{
+            background: linear-gradient(135deg, #f0f0ff 0%, #e0e0ff 100%);
+        }}
+
+        body.light-mode .hero-neon .hero-content {{
+            text-shadow: none;
         }}
 
         /* ===== BREAKING NEWS TICKER ===== */
@@ -1831,6 +2125,81 @@ class WebsiteBuilder:
             to {{ opacity: 1; transform: translateY(0); }}
         }}
 
+        /* Hero animation keyframes */
+        @keyframes cinematicZoom {{
+            0%, 100% {{ transform: scale(1); }}
+            50% {{ transform: scale(1.1); }}
+        }}
+
+        @keyframes neonFlicker {{
+            0%, 100% {{ opacity: 1; }}
+            92% {{ opacity: 1; }}
+            93% {{ opacity: 0.8; }}
+            94% {{ opacity: 1; }}
+            96% {{ opacity: 0.9; }}
+            97% {{ opacity: 1; }}
+        }}
+
+        @keyframes floatParticle {{
+            0%, 100% {{ transform: translateY(100vh) rotate(0deg); opacity: 0; }}
+            10% {{ opacity: 0.6; }}
+            90% {{ opacity: 0.6; }}
+            100% {{ transform: translateY(-100vh) rotate(720deg); opacity: 0; }}
+        }}
+
+        @keyframes waveMove {{
+            0% {{ transform: translateX(0); }}
+            100% {{ transform: translateX(50%); }}
+        }}
+
+        @keyframes geoFloat {{
+            0%, 100% {{ transform: translateY(0) rotate(0deg); }}
+            25% {{ transform: translateY(-20px) rotate(5deg); }}
+            50% {{ transform: translateY(0) rotate(0deg); }}
+            75% {{ transform: translateY(20px) rotate(-5deg); }}
+        }}
+
+        @keyframes spotlightMove {{
+            0%, 100% {{ transform: translate(0, 0); opacity: 0.3; }}
+            25% {{ transform: translate(100px, 50px); opacity: 0.5; }}
+            50% {{ transform: translate(50px, 100px); opacity: 0.3; }}
+            75% {{ transform: translate(-50px, 50px); opacity: 0.4; }}
+        }}
+
+        @keyframes glitchText {{
+            0%, 100% {{ transform: translate(0); }}
+            2% {{ transform: translate(-2px, 2px); }}
+            4% {{ transform: translate(2px, -2px); }}
+            6% {{ transform: translate(0); }}
+            92% {{ transform: translate(0); }}
+            94% {{ transform: translate(3px, 0); }}
+            96% {{ transform: translate(-3px, 0); }}
+            98% {{ transform: translate(0); }}
+        }}
+
+        @keyframes glitchBg {{
+            0%, 100% {{ transform: translate(0); filter: saturate(1.2); }}
+            5% {{ transform: translate(-5px, 0); filter: saturate(2) hue-rotate(20deg); }}
+            10% {{ transform: translate(5px, 0); filter: saturate(1.2); }}
+            90% {{ transform: translate(0); filter: saturate(1.2); }}
+            95% {{ transform: translate(3px, -3px); filter: saturate(2) hue-rotate(-20deg); }}
+        }}
+
+        @keyframes auroraShift {{
+            0%, 100% {{ transform: translateX(-20%) skewX(-5deg); opacity: 0.5; }}
+            50% {{ transform: translateX(20%) skewX(5deg); opacity: 0.8; }}
+        }}
+
+        @keyframes meshShift {{
+            0%, 100% {{ background-position: 0% 0%, 100% 0%, 0% 50%, 100% 50%, 0% 100%; }}
+            50% {{ background-position: 100% 100%, 0% 100%, 100% 50%, 0% 50%, 100% 0%; }}
+        }}
+
+        @keyframes retroGrid {{
+            0% {{ background-position: 0 0; }}
+            100% {{ background-position: 0 60px; }}
+        }}
+
         .animate-in {{
             animation: fadeInUp 0.6s ease-out forwards;
             opacity: 0;
@@ -2064,15 +2433,19 @@ class WebsiteBuilder:
     </nav>"""
 
     def _build_hero(self) -> str:
-        """Build the hero section."""
+        """Build the hero section with creative animated designs."""
         headline = html.escape(self.design.get('headline', "Today's Trends"))
         subheadline = html.escape(self.design.get('subheadline', 'What the world is talking about'))
 
         total_trends = len(self.ctx.trends)
         total_sources = len(set(t.get('source', '').split('_')[0] for t in self.ctx.trends))
 
+        # Build extra elements based on hero style
+        extra_elements = self._build_hero_extras()
+
         return f"""
     <header class="hero">
+        {extra_elements}
         <div class="hero-content">
             <div class="hero-eyebrow">
                 <span>Live</span> Trending Now
@@ -2097,14 +2470,62 @@ class WebsiteBuilder:
                 </span>
                 <span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
-                    Layout: {self.layout.title()}
+                    Style: {self.hero_style.title()}
                 </span>
             </div>
         </div>
     </header>"""
+
+    def _build_hero_extras(self) -> str:
+        """Build extra HTML elements for animated hero styles."""
+        if self.hero_style == "particles":
+            # Generate random particles
+            particles = []
+            for i in range(30):
+                left = self.rng.randint(0, 100)
+                delay = self.rng.uniform(0, 15)
+                size = self.rng.randint(2, 6)
+                particles.append(
+                    f'<div class="particle" style="left:{left}%;animation-delay:{delay:.1f}s;width:{size}px;height:{size}px;"></div>'
+                )
+            return f'<div class="hero-particles-container">{"".join(particles)}</div>'
+
+        elif self.hero_style == "waves":
+            return '''<div class="wave-container">
+                <div class="wave"></div>
+                <div class="wave"></div>
+            </div>'''
+
+        elif self.hero_style == "geometric":
+            # Generate random geometric shapes
+            shapes = []
+            shape_types = ["circle", "square", "triangle"]
+            for i in range(8):
+                shape = self.rng.choice(shape_types)
+                left = self.rng.randint(5, 95)
+                top = self.rng.randint(5, 95)
+                size = self.rng.randint(50, 150)
+                delay = self.rng.uniform(0, 10)
+                rotation = self.rng.randint(0, 360)
+                shape_class = "circle" if shape == "circle" else ""
+                shapes.append(
+                    f'<div class="geo-shape {shape_class}" style="left:{left}%;top:{top}%;width:{size}px;height:{size}px;animation-delay:{delay:.1f}s;transform:rotate({rotation}deg);"></div>'
+                )
+            return f'<div class="geo-shapes">{"".join(shapes)}</div>'
+
+        elif self.hero_style == "spotlight":
+            return '<div class="spotlight"></div>'
+
+        elif self.hero_style == "aurora":
+            return '<div class="aurora"></div>'
+
+        elif self.hero_style == "retro":
+            return '''<div class="retro-grid"></div>
+            <div class="retro-sun"></div>'''
+
+        return ""
 
     def _build_breaking_ticker(self) -> str:
         """Build the breaking news ticker."""
