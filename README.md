@@ -1,6 +1,7 @@
 # DailyTrending.info
 
 [![Daily Regeneration](https://github.com/fubak/daily-trending-info/actions/workflows/daily-regenerate.yml/badge.svg)](https://github.com/fubak/daily-trending-info/actions/workflows/daily-regenerate.yml)
+[![Auto-merge](https://github.com/fubak/daily-trending-info/actions/workflows/auto-merge-claude.yml/badge.svg)](https://github.com/fubak/daily-trending-info/actions/workflows/auto-merge-claude.yml)
 
 A fully autonomous trend aggregation website that regenerates daily with unique designs, English-only content from 7+ sources, and SEO-optimized pages.
 
@@ -16,26 +17,26 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 
 ### Design System
 - **9 Design Personalities**: Brutalist, Editorial, Minimal, Corporate, Playful, Tech, News, Magazine, Dashboard
-- **20+ Color Schemes**: From Midnight Indigo to Sunset Coral, with dark/light variants
+- **20+ Color Schemes**: From Midnight Indigo to Sunset Coral
 - **6 Layout Templates**: Newspaper, Magazine, Dashboard, Minimal, Bold, Mosaic
 - **~2.7 Million Combinations**: Unique design generated daily
 
 ### User Experience
-- **Dark/Light Mode Toggle**: Persistent preference with localStorage
+- **Dark/Light Mode Toggle**: Persistent user preference with localStorage
 - **Responsive Design**: Mobile-first with CSS Grid layouts
 - **Breaking News Ticker**: Animated headline carousel
 - **Smooth Animations**: Configurable animation levels (none, subtle, moderate, playful)
 
-### SEO & LLM Optimization
+### SEO & Analytics
 - **Dynamic Titles**: `DailyTrending.info - [Top Story]`
 - **Open Graph & Twitter Cards**: Rich social media previews
 - **Schema.org JSON-LD**: Structured data for search engines and AI
-- **FAQ Schema**: Common questions answered in markup
+- **Google Analytics**: Built-in tracking support
 - **Semantic HTML**: Proper heading hierarchy and ARIA labels
 
 ### Automation
-- **Daily Regeneration**: GitHub Actions runs at 6 AM UTC
-- **Auto-merge Workflow**: Claude branches automatically merge to main
+- **Daily Regeneration**: GitHub Actions runs at 6 AM UTC and on every push to main
+- **Auto-merge PRs**: Claude branches automatically create and merge PRs
 - **30-Day Archive**: Browse previous designs
 - **Zero Cost**: Runs entirely on free-tier services
 
@@ -62,13 +63,24 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
    - `PEXELS_API_KEY`
    - `UNSPLASH_ACCESS_KEY` (optional)
 
-### 3. Configure Custom Domain (Optional)
+### 3. Configure Repository Settings
 
-1. Add a `CNAME` file to `public/` with your domain
-2. Configure DNS: CNAME record pointing to `username.github.io`
-3. Enable HTTPS in GitHub Pages settings
+**For Auto-merge to work:**
+1. **Settings > General > Pull Requests**: Enable "Allow auto-merge"
+2. **Settings > Actions > General**: Set workflow permissions to "Read and write"
 
-### 4. Trigger First Build
+**For Branch Protection (optional):**
+1. **Settings > Branches > Add rule** for `main`
+2. Require pull requests before merging
+3. The auto-merge workflow will create PRs automatically
+
+### 4. Configure Custom Domain (Optional)
+
+The CNAME file is automatically created during deployment. Just:
+1. Configure DNS: CNAME record pointing to `username.github.io`
+2. Enable HTTPS in GitHub Pages settings
+
+### 5. Trigger First Build
 
 1. Go to **Actions** tab
 2. Click **Daily Website Regeneration**
@@ -80,19 +92,19 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 ```
 daily-trending-info/
 ├── .github/workflows/
-│   ├── daily-regenerate.yml      # Daily build automation
-│   └── auto-merge-claude.yml     # Auto-merge Claude branches
+│   ├── daily-regenerate.yml      # Daily build + deploy to Pages
+│   └── auto-merge-claude.yml     # Auto-merge Claude branches via PR
 ├── scripts/
 │   ├── collect_trends.py         # 7-source trend aggregator
 │   ├── fetch_images.py           # Pexels + Unsplash integration
 │   ├── generate_design.py        # Design system with 9 personalities
-│   ├── build_website.py          # HTML/CSS/JS builder
-│   ├── archive_manager.py        # Archive system
+│   ├── build_website.py          # HTML/CSS/JS builder with theming
+│   ├── archive_manager.py        # 30-day archive system
 │   └── main.py                   # Pipeline orchestrator
-├── public/                       # Generated website
-│   └── CNAME                     # Custom domain config
+├── public/                       # Generated website (created by workflow)
 ├── data/                         # Pipeline data (gitignored)
 ├── requirements.txt
+├── CNAME                         # Custom domain
 └── README.md
 ```
 
@@ -101,11 +113,11 @@ daily-trending-info/
 | Source | Content | Update Frequency |
 |--------|---------|------------------|
 | Google Trends | US daily trending searches | Real-time |
-| News RSS | AP, BBC, NYT, NPR, Guardian, Reuters, etc. | Hourly |
-| Tech RSS | Verge, Ars Technica, Wired, TechCrunch, etc. | Hourly |
+| News RSS | AP, BBC, NYT, NPR, Guardian, Reuters, USA Today, Washington Post | Hourly |
+| Tech RSS | Verge, Ars Technica, Wired, TechCrunch, Engadget | Hourly |
 | Hacker News | Top 30 stories by score | Real-time |
-| Reddit | 15+ subreddits (news, tech, science, etc.) | Real-time |
-| GitHub Trending | Daily trending repos (English) | Daily |
+| Reddit | 15+ subreddits (news, tech, science, worldnews, etc.) | Real-time |
+| GitHub Trending | Daily trending repos (English only) | Daily |
 | Wikipedia | Current events portal | Daily |
 
 ## Design Personalities
@@ -117,7 +129,7 @@ daily-trending-info/
 | Minimal | Clean lines, lots of whitespace |
 | Corporate | Professional, trustworthy blues and grays |
 | Playful | Vibrant colors, rounded corners, fun animations |
-| Tech | Dark mode, neon accents, monospace fonts |
+| Tech | Dark mode default, neon accents, monospace fonts |
 | News | Breaking news style, red accents, urgent feel |
 | Magazine | Large images, editorial layouts |
 | Dashboard | Data-dense, stats-focused, grid layouts |
@@ -167,6 +179,32 @@ In `scripts/main.py`:
 self.archive_manager.cleanup_old(keep_days=90)  # Keep 90 days
 ```
 
+### Google Analytics
+
+The site includes Google Analytics (G-XZNXRW8S7L). To use your own:
+1. Edit `scripts/build_website.py`
+2. Replace the GA tracking ID in the `<head>` section
+
+## Troubleshooting
+
+### Workflow doesn't trigger on merge
+- Ensure "Allow auto-merge" is enabled in repository settings
+- Check Actions tab for any failed workflow runs
+- The daily-regenerate workflow should trigger on push to main
+
+### Site shows README instead of generated content
+- Ensure GitHub Pages source is set to "GitHub Actions" (not branch)
+- Run the Daily Website Regeneration workflow manually
+
+### Dark mode not working
+- Clear localStorage: `localStorage.removeItem('theme')` in browser console
+- The site defaults to dark mode; light mode is toggled via the moon/sun button
+
+### No images displayed
+- Verify Pexels/Unsplash API keys are set correctly
+- Check API quotas haven't been exceeded
+- Site will use gradient fallbacks automatically
+
 ## API Rate Limits
 
 | Service | Free Limit | Daily Usage | Safety Margin |
@@ -186,3 +224,4 @@ MIT License - Feel free to use and modify.
 - Trend data from various public APIs and RSS feeds
 - Images from [Pexels](https://pexels.com) and [Unsplash](https://unsplash.com)
 - AI design generation via [Groq](https://groq.com) and [OpenRouter](https://openrouter.ai)
+- Built with [Claude Code](https://claude.ai)
