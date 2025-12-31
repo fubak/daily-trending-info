@@ -407,6 +407,15 @@ class WebsiteBuilder:
 
     {self._build_fonts()}
     {self._build_styles()}
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XZNXRW8S7L"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){{dataLayer.push(arguments);}}
+      gtag('js', new Date());
+      gtag('config', 'G-XZNXRW8S7L');
+    </script>
 </head>
 <body class="{' '.join(body_classes)}">
     {self._build_nav()}
