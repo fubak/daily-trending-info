@@ -3,22 +3,24 @@
 [![Daily Regeneration](https://github.com/fubak/daily-trending-info/actions/workflows/daily-regenerate.yml/badge.svg)](https://github.com/fubak/daily-trending-info/actions/workflows/daily-regenerate.yml)
 [![Auto-merge](https://github.com/fubak/daily-trending-info/actions/workflows/auto-merge-claude.yml/badge.svg)](https://github.com/fubak/daily-trending-info/actions/workflows/auto-merge-claude.yml)
 
-A fully autonomous trend aggregation website that regenerates daily with unique designs, English-only content from 7+ sources, and SEO-optimized pages.
+A fully autonomous trend aggregation website that regenerates daily with unique designs, English-only content from 12+ sources, and SEO-optimized pages.
 
 **Live Site:** [https://dailytrending.info](https://dailytrending.info)
 
 ## Features
 
 ### Content Aggregation
-- **7 English-Only Sources**: Google Trends, News RSS (12 outlets), Tech RSS (8 sites), Hacker News, Reddit (15+ subreddits), GitHub Trending, Wikipedia Current Events
+- **12 English-Only Sources**: Google Trends, News RSS (12 outlets), Tech RSS (10 sites), Hacker News, Lobsters, Reddit RSS (13 subreddits), Product Hunt, Dev.to, Slashdot, Ars Technica Features, GitHub Trending, Wikipedia Current Events
 - **Smart Filtering**: Automatic non-English content detection and filtering
 - **Keyword Extraction**: AI-powered keyword analysis with word cloud visualization
 - **Source Categorization**: Stories grouped by World News, Technology, Science, Entertainment, etc.
+- **Minimum Content Gate**: Requires 5+ trends before deployment to prevent broken sites
 
 ### Design System
 - **9 Design Personalities**: Brutalist, Editorial, Minimal, Corporate, Playful, Tech, News, Magazine, Dashboard
 - **20+ Color Schemes**: From Midnight Indigo to Sunset Coral
 - **6 Layout Templates**: Newspaper, Magazine, Dashboard, Minimal, Bold, Mosaic
+- **5 Background Patterns**: Dots, Grid, Lines, Cross, Noise (applied per personality)
 - **~2.7 Million Combinations**: Unique design generated daily
 
 ### User Experience
@@ -37,6 +39,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 ### Automation
 - **Daily Regeneration**: GitHub Actions runs at 6 AM UTC and on every push to main
 - **Auto-merge PRs**: Claude branches automatically create and merge PRs
+- **Persistent Image Cache**: 7-day cache reduces API calls and provides fallback
 - **30-Day Archive**: Browse previous designs
 - **Zero Cost**: Runs entirely on free-tier services
 
@@ -68,11 +71,13 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 **For Auto-merge to work:**
 1. **Settings > General > Pull Requests**: Enable "Allow auto-merge"
 2. **Settings > Actions > General**: Set workflow permissions to "Read and write"
+3. **Create a Personal Access Token (PAT)** with `contents`, `actions`, `pull-requests`, and `administration` permissions
+4. **Settings > Secrets > Actions**: Add `PAT_TOKEN` secret with your PAT
 
 **For Branch Protection (optional):**
 1. **Settings > Branches > Add rule** for `main`
 2. Require pull requests before merging
-3. The auto-merge workflow will create PRs automatically
+3. The auto-merge workflow uses `--admin` to bypass protection and merge PRs
 
 ### 4. Configure Custom Domain (Optional)
 
@@ -95,14 +100,16 @@ daily-trending-info/
 │   ├── daily-regenerate.yml      # Daily build + deploy to Pages
 │   └── auto-merge-claude.yml     # Auto-merge Claude branches via PR
 ├── scripts/
-│   ├── collect_trends.py         # 7-source trend aggregator
-│   ├── fetch_images.py           # Pexels + Unsplash integration
+│   ├── collect_trends.py         # 12-source trend aggregator
+│   ├── fetch_images.py           # Pexels + Unsplash with persistent cache
 │   ├── generate_design.py        # Design system with 9 personalities
 │   ├── build_website.py          # HTML/CSS/JS builder with theming
 │   ├── archive_manager.py        # 30-day archive system
-│   └── main.py                   # Pipeline orchestrator
+│   └── main.py                   # Pipeline orchestrator with quality gates
 ├── public/                       # Generated website (created by workflow)
-├── data/                         # Pipeline data (gitignored)
+├── data/
+│   ├── image_cache/              # Persistent image cache (7-day TTL)
+│   └── *.json                    # Pipeline data
 ├── requirements.txt
 ├── CNAME                         # Custom domain
 └── README.md
@@ -114,9 +121,14 @@ daily-trending-info/
 |--------|---------|------------------|
 | Google Trends | US daily trending searches | Real-time |
 | News RSS | AP, BBC, NYT, NPR, Guardian, Reuters, USA Today, Washington Post | Hourly |
-| Tech RSS | Verge, Ars Technica, Wired, TechCrunch, Engadget | Hourly |
-| Hacker News | Top 30 stories by score | Real-time |
-| Reddit | 15+ subreddits (news, tech, science, worldnews, etc.) | Real-time |
+| Tech RSS | Verge, Ars Technica, Wired, TechCrunch, Engadget, MIT Tech Review, Gizmodo, CNET, Mashable, VentureBeat | Hourly |
+| Hacker News | Top 25 stories by score | Real-time |
+| Lobsters | High-quality tech discussions | Real-time |
+| Reddit RSS | 13 subreddits (news, tech, science, worldnews, etc.) | Real-time |
+| Product Hunt | New products and startups | Daily |
+| Dev.to | Developer articles and tutorials | Daily |
+| Slashdot | Classic tech news aggregator | Hourly |
+| Ars Features | Long-form tech journalism | Daily |
 | GitHub Trending | Daily trending repos (English only) | Daily |
 | Wikipedia | Current events portal | Daily |
 
@@ -203,7 +215,15 @@ The site includes Google Analytics (G-XZNXRW8S7L). To use your own:
 ### No images displayed
 - Verify Pexels/Unsplash API keys are set correctly
 - Check API quotas haven't been exceeded
-- Site will use gradient fallbacks automatically
+- Site uses persistent image cache (7-day TTL) to reduce API calls
+- Cached images are used as fallback when APIs fail
+- Gradient fallbacks are used when no images are available
+
+### Build fails with "Insufficient content"
+- The minimum content gate requires 5+ trends before deployment
+- This prevents broken/empty sites from being deployed
+- Check if data sources are accessible (some may be temporarily blocked)
+- Most sources have fallbacks, so this error is rare
 
 ## API Rate Limits
 
