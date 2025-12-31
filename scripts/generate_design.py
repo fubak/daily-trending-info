@@ -441,12 +441,13 @@ class DesignGenerator:
         self.session = requests.Session()
 
     def generate(self, trends: List[Dict], keywords: List[str]) -> DesignSpec:
-        """Generate a unique design based on trends and date."""
+        """Generate a unique design based on trends and timestamp."""
         print("Generating design specification...")
 
-        # Use date as seed for reproducible daily designs
-        date_seed = datetime.now().strftime("%Y-%m-%d")
-        rng = random.Random(date_seed)
+        # Use timestamp as seed for unique designs on each generation
+        # This ensures each run produces a different design
+        timestamp_seed = datetime.now().isoformat()
+        rng = random.Random(timestamp_seed)
 
         # Try AI generation for colors/theme
         ai_enhancements = self._try_ai_generation(trends, keywords)

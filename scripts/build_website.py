@@ -64,9 +64,9 @@ class WebsiteBuilder:
         self.ctx = context
         self.design = context.design
 
-        # Use date as seed for consistent daily randomization
-        date_seed = datetime.now().strftime("%Y-%m-%d")
-        self.rng = random.Random(date_seed)
+        # Use timestamp as seed for unique randomization on each generation
+        timestamp_seed = datetime.now().isoformat()
+        self.rng = random.Random(timestamp_seed)
 
         # Use layout and hero style from design spec if available, otherwise random
         self.layout = self.design.get('layout_style') or self.rng.choice(LAYOUT_TEMPLATES)
@@ -77,6 +77,19 @@ class WebsiteBuilder:
 
         # Calculate keyword frequencies for word cloud
         self.keyword_freq = self._calculate_keyword_freq()
+
+        # Pre-compute sorted categories for consistent ordering across nav/sections/footer
+        self._sorted_categories = self._get_sorted_categories()
+
+    def _get_sorted_categories(self) -> list:
+        """Get categories sorted by trend count for consistent ordering."""
+        sorted_cats = sorted(
+            self.grouped_trends.items(),
+            key=lambda x: len(x[1]),
+            reverse=True
+        )
+        # Filter to categories with 2+ trends
+        return [(cat, trends) for cat, trends in sorted_cats if len(trends) >= 2][:8]
 
     def _group_trends(self) -> Dict[str, List[Dict]]:
         """Group trends by their source category."""
@@ -1876,12 +1889,21 @@ class WebsiteBuilder:
 
     def _build_nav(self) -> str:
         """Build the navigation bar."""
-        categories = list(self.grouped_trends.keys())[:5]
+        # Build links in same order as sections appear on page
+        links_list = []
 
-        links = '\n'.join(
-            f'                <li><a href="#{cat.lower().replace(" ", "-")}">{cat}</a></li>'
-            for cat in categories
-        )
+        # First: What's Trending (word cloud)
+        links_list.append('<li><a href="#whats-trending">Trending</a></li>')
+
+        # Second: Top Stories
+        links_list.append('<li><a href="#top-stories">Top Stories</a></li>')
+
+        # Then: Category sections (sorted by trend count, same as _build_category_sections)
+        for category, _ in self._sorted_categories[:4]:
+            section_id = category.lower().replace(' ', '-')
+            links_list.append(f'<li><a href="#{section_id}">{category}</a></li>')
+
+        links = '\n                '.join(links_list)
 
         return f"""
     <nav class="nav" id="nav" role="navigation" aria-label="Main navigation">
@@ -2018,7 +2040,7 @@ class WebsiteBuilder:
         self.rng.shuffle(words_html)
 
         return f"""
-    <section class="word-cloud-section section">
+    <section class="word-cloud-section section" id="whats-trending">
         <div class="section-header">
             <h2 class="section-title">What's Trending</h2>
             <span class="section-count">{len(self.keyword_freq)} keywords</span>
@@ -2062,7 +2084,7 @@ class WebsiteBuilder:
             </article>''')
 
         return f"""
-    <section class="section">
+    <section class="section" id="top-stories">
         <div class="section-header">
             <h2 class="section-title">Top Stories</h2>
             <span class="section-count">{len(top)} featured</span>
@@ -2076,14 +2098,8 @@ class WebsiteBuilder:
         """Build sections for each category."""
         sections_html = []
 
-        # Sort categories by number of trends
-        sorted_categories = sorted(
-            self.grouped_trends.items(),
-            key=lambda x: len(x[1]),
-            reverse=True
-        )
-
-        for category, trends in sorted_categories[:8]:
+        # Use pre-computed sorted categories for consistent ordering with nav
+        for category, trends in self._sorted_categories:
             if len(trends) < 2:
                 continue
 
@@ -2159,12 +2175,15 @@ class WebsiteBuilder:
 
         credits_html = '\n                '.join(credits) if credits else '<li>Gradient backgrounds</li>'
 
-        # Source links
-        sources = list(self.grouped_trends.keys())[:6]
-        source_links = '\n                '.join(
-            f'<li><a href="#{s.lower().replace(" ", "-")}">{s}</a></li>'
-            for s in sources
-        )
+        # Source links - match nav order (Trending, Top Stories, then categories)
+        source_links_list = [
+            '<li><a href="#whats-trending">What\'s Trending</a></li>',
+            '<li><a href="#top-stories">Top Stories</a></li>'
+        ]
+        for category, _ in self._sorted_categories[:4]:
+            section_id = category.lower().replace(' ', '-')
+            source_links_list.append(f'<li><a href="#{section_id}">{category}</a></li>')
+        source_links = '\n                '.join(source_links_list)
 
         return f"""
     <footer role="contentinfo">
