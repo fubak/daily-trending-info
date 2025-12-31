@@ -1,0 +1,95 @@
+name: Update README Changelog
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'  # Prevent infinite loops when README is updated
+
+jobs:
+  update-changelog:
+    runs-on: ubuntu-latest
+    # Skip if the commit message indicates this is a README update
+    if: "!contains(github.event.head_commit.message, '[skip changelog]') && !contains(github.event.head_commit.message, 'Update README changelog')"
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history to get commit info
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Update README changelog
+        run: |
+          # Get commit info
+          COMMIT_DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+
+          # Extract first line of commit message (the title)
+          COMMIT_TITLE=$(echo "$COMMIT_MSG" | head -n 1)
+
+          # Escape special characters for sed
+          COMMIT_TITLE_ESCAPED=$(echo "$COMMIT_TITLE" | sed 's/[&/\]/\\&/g' | sed 's/|/\\|/g')
+
+          # Create the new changelog entry
+          NEW_ENTRY="| $COMMIT_DATE | [$COMMIT_TITLE_ESCAPED](https://github.com/${{ github.repository }}/commit/$COMMIT_SHA) |"
+
+          # Read current README
+          README_CONTENT=$(cat README.md)
+
+          # Check if changelog section exists
+          if grep -q "<!-- CHANGELOG_START -->" README.md; then
+            # Extract existing entries (excluding the header row and placeholder)
+            EXISTING_ENTRIES=$(sed -n '/<!-- CHANGELOG_START -->/,/<!-- CHANGELOG_END -->/p' README.md | \
+              grep -v "CHANGELOG_START\|CHANGELOG_END\|Date.*Change\|------\|No changes recorded" | \
+              head -9)  # Keep only last 9 entries (we'll add 1 new = 10 total)
+
+            # Build new changelog section
+            NEW_CHANGELOG="<!-- CHANGELOG_START -->
+          | Date | Change |
+          |------|--------|
+          $NEW_ENTRY"
+
+            # Add existing entries if any
+            if [ -n "$EXISTING_ENTRIES" ]; then
+              NEW_CHANGELOG="$NEW_CHANGELOG
+          $EXISTING_ENTRIES"
+            fi
+
+            NEW_CHANGELOG="$NEW_CHANGELOG
+          <!-- CHANGELOG_END -->"
+
+            # Replace the changelog section in README
+            # Using awk for multi-line replacement
+            awk -v new_content="$NEW_CHANGELOG" '
+              /<!-- CHANGELOG_START -->/ { print new_content; skip=1; next }
+              /<!-- CHANGELOG_END -->/ { skip=0; next }
+              !skip { print }
+            ' README.md > README.tmp && mv README.tmp README.md
+
+            echo "Updated README changelog with: $COMMIT_TITLE"
+          else
+            echo "No changelog section found in README.md"
+            exit 0
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check if README was modified
+          if git diff --quiet README.md; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git add README.md
+          git commit -m "Update README changelog [skip changelog]"
+          git push

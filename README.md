@@ -7,6 +7,14 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 
 **Live Site:** [https://dailytrending.info](https://dailytrending.info)
 
+## Recent Changes
+
+<!-- CHANGELOG_START -->
+| Date | Change |
+|------|--------|
+| *No changes recorded yet* | Run the update-readme workflow to populate |
+<!-- CHANGELOG_END -->
+
 ## Features
 
 ### Content Aggregation
@@ -20,8 +28,9 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 - **9 Design Personalities**: Brutalist, Editorial, Minimal, Corporate, Playful, Tech, News, Magazine, Dashboard
 - **20+ Color Schemes**: From Midnight Indigo to Sunset Coral
 - **6 Layout Templates**: Newspaper, Magazine, Dashboard, Minimal, Bold, Mosaic
+- **12 Animated Hero Styles**: Cinematic, Glassmorphism, Neon, Duotone, Particles, Waves, Geometric, Spotlight, Glitch, Aurora, Mesh, Retro
 - **5 Background Patterns**: Dots, Grid, Lines, Cross, Noise (applied per personality)
-- **~2.7 Million Combinations**: Unique design generated daily
+- **~32 Million Combinations**: Unique design generated each build
 
 ### User Experience
 - **Dark/Light Mode Toggle**: Persistent user preference with localStorage
@@ -98,7 +107,8 @@ The CNAME file is automatically created during deployment. Just:
 daily-trending-info/
 ├── .github/workflows/
 │   ├── daily-regenerate.yml      # Daily build + deploy to Pages
-│   └── auto-merge-claude.yml     # Auto-merge Claude branches via PR
+│   ├── auto-merge-claude.yml     # Auto-merge Claude branches via PR
+│   └── update-readme.yml         # Auto-update README changelog on push
 ├── scripts/
 │   ├── collect_trends.py         # 12-source trend aggregator
 │   ├── fetch_images.py           # Pexels + Unsplash with persistent cache
@@ -145,6 +155,25 @@ daily-trending-info/
 | News | Breaking news style, red accents, urgent feel |
 | Magazine | Large images, editorial layouts |
 | Dashboard | Data-dense, stats-focused, grid layouts |
+
+## Hero Styles
+
+Each page generation randomly selects one of 12 animated hero styles:
+
+| Style | Effect |
+|-------|--------|
+| Cinematic | Movie-poster with slow zoom animation on background |
+| Glassmorphism | Frosted glass effect with backdrop blur |
+| Neon | Cyberpunk glow with flickering text animation |
+| Duotone | Two-tone color overlay on grayscale background |
+| Particles | 30 floating animated particles rising upward |
+| Waves | Animated wave pattern at the bottom |
+| Geometric | Floating geometric shapes (circles, squares) |
+| Spotlight | Moving lens flare/spotlight effect |
+| Glitch | Glitch art effect with text distortion |
+| Aurora | Northern lights gradient animation |
+| Mesh | Gradient mesh background with shifting colors |
+| Retro | Synthwave grid with horizon sun
 
 ## Local Development
 
