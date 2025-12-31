@@ -7,7 +7,12 @@ Sources (English only):
 - News RSS: AP News, NPR, NYT, BBC, Guardian, Reuters, ABC, CBS (English editions)
 - Tech RSS: Verge, Ars Technica, Wired, TechCrunch, Engadget, MIT Tech Review, etc.
 - Hacker News API (top stories)
-- Reddit (English-focused subreddits)
+- Lobsters (tech community, high-quality discussions)
+- Reddit RSS (news, technology, science, etc. - uses RSS feeds for reliability)
+- Product Hunt (new tech products and startups)
+- Dev.to (developer community articles)
+- Slashdot (classic tech news)
+- Ars Technica Features (long-form tech journalism)
 - GitHub Trending (English spoken language)
 - Wikipedia Current Events (English)
 """
@@ -134,7 +139,12 @@ class TrendCollector:
             ("News RSS Feeds", self._collect_news_rss),
             ("Tech RSS Feeds", self._collect_tech_rss),
             ("Hacker News", self._collect_hackernews),
+            ("Lobsters", self._collect_lobsters),
             ("Reddit", self._collect_reddit),
+            ("Product Hunt", self._collect_product_hunt),
+            ("Dev.to", self._collect_devto),
+            ("Slashdot", self._collect_slashdot),
+            ("Ars Features", self._collect_ars_frontpage),
             ("GitHub Trending", self._collect_github_trending),
             ("Wikipedia Current Events", self._collect_wikipedia_current),
         ]
@@ -342,72 +352,57 @@ class TrendCollector:
         return trends
 
     def _collect_reddit(self) -> List[Trend]:
-        """Collect trending posts from Reddit."""
+        """Collect trending posts from Reddit using RSS feeds (more reliable than JSON API)."""
         trends = []
 
-        # Diverse mix of subreddits for different topics
-        subreddits = [
+        # Use RSS feeds instead of JSON API - much more reliable
+        subreddit_feeds = [
             # News & World
-            ('news', 8),
-            ('worldnews', 8),
-            ('politics', 5),
-            ('UpliftingNews', 4),
+            ('news', 'https://www.reddit.com/r/news/.rss'),
+            ('worldnews', 'https://www.reddit.com/r/worldnews/.rss'),
+            ('politics', 'https://www.reddit.com/r/politics/.rss'),
             # Tech & Science
-            ('technology', 6),
-            ('science', 6),
-            ('futurology', 4),
-            ('programming', 4),
-            ('gadgets', 4),
-            # Business & Finance
-            ('business', 4),
-            ('economics', 4),
-            # Entertainment & Culture
-            ('movies', 4),
-            ('television', 4),
-            ('music', 4),
-            ('books', 3),
-            # Sports
-            ('sports', 4),
-            ('nba', 3),
-            ('soccer', 3),
-            # General Interest
-            ('todayilearned', 4),
-            ('Documentaries', 3),
-            ('space', 4),
+            ('technology', 'https://www.reddit.com/r/technology/.rss'),
+            ('science', 'https://www.reddit.com/r/science/.rss'),
+            ('programming', 'https://www.reddit.com/r/programming/.rss'),
+            ('futurology', 'https://www.reddit.com/r/futurology/.rss'),
+            # Business
+            ('business', 'https://www.reddit.com/r/business/.rss'),
+            ('economics', 'https://www.reddit.com/r/economics/.rss'),
+            # Entertainment
+            ('movies', 'https://www.reddit.com/r/movies/.rss'),
+            ('television', 'https://www.reddit.com/r/television/.rss'),
+            # General
+            ('todayilearned', 'https://www.reddit.com/r/todayilearned/.rss'),
+            ('space', 'https://www.reddit.com/r/space/.rss'),
         ]
 
-        for subreddit, limit in subreddits:
+        for subreddit, url in subreddit_feeds:
             try:
-                url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit={limit}"
-
                 response = self.session.get(url, timeout=10)
                 response.raise_for_status()
 
-                data = response.json()
-                posts = data.get('data', {}).get('children', [])
+                feed = feedparser.parse(response.content)
 
-                for post in posts:
-                    post_data = post.get('data', {})
-                    title = post_data.get('title', '').strip()
+                for entry in feed.entries[:6]:
+                    title = entry.get('title', '').strip()
 
-                    # Only include English content, non-stickied posts
-                    if title and not post_data.get('stickied') and len(title) > 15 and is_english_text(title):
-                        ups = post_data.get('ups', 0)
-                        normalized_score = min(ups / 1000, 2.0)
-
+                    # Only include English content
+                    if title and len(title) > 15 and is_english_text(title):
                         trend = Trend(
                             title=title,
                             source=f'reddit_{subreddit}',
-                            url=f"https://reddit.com{post_data.get('permalink', '')}",
-                            score=1.2 + normalized_score
+                            url=entry.get('link'),
+                            description=self._clean_html(entry.get('summary', '')),
+                            score=1.5
                         )
                         trends.append(trend)
 
             except Exception as e:
-                print(f"      Reddit r/{subreddit} error: {e}")
+                print(f"      Reddit r/{subreddit} RSS error: {e}")
                 continue
 
-            time.sleep(0.2)
+            time.sleep(0.15)
 
         return trends
 
@@ -507,6 +502,158 @@ class TrendCollector:
 
         except Exception as e:
             print(f"    Wikipedia Current Events error: {e}")
+
+        return trends
+
+    def _collect_lobsters(self) -> List[Trend]:
+        """Collect trending posts from Lobsters (tech community)."""
+        trends = []
+
+        try:
+            url = "https://lobste.rs/hottest.rss"
+            response = self.session.get(url, timeout=10)
+            response.raise_for_status()
+
+            feed = feedparser.parse(response.content)
+
+            for entry in feed.entries[:15]:
+                title = entry.get('title', '').strip()
+
+                if title and len(title) > 10 and is_english_text(title):
+                    trend = Trend(
+                        title=title,
+                        source='lobsters',
+                        url=entry.get('link'),
+                        description=self._clean_html(entry.get('summary', '')),
+                        score=1.6  # Good quality tech content
+                    )
+                    trends.append(trend)
+
+        except Exception as e:
+            print(f"    Lobsters error: {e}")
+
+        return trends
+
+    def _collect_product_hunt(self) -> List[Trend]:
+        """Collect trending products from Product Hunt."""
+        trends = []
+
+        try:
+            # Product Hunt RSS feed
+            url = "https://www.producthunt.com/feed"
+            response = self.session.get(url, timeout=10)
+            response.raise_for_status()
+
+            feed = feedparser.parse(response.content)
+
+            for entry in feed.entries[:10]:
+                title = entry.get('title', '').strip()
+
+                if title and len(title) > 5 and is_english_text(title):
+                    trend = Trend(
+                        title=title,
+                        source='product_hunt',
+                        url=entry.get('link'),
+                        description=self._clean_html(entry.get('summary', '')),
+                        score=1.4
+                    )
+                    trends.append(trend)
+
+        except Exception as e:
+            print(f"    Product Hunt error: {e}")
+
+        return trends
+
+    def _collect_devto(self) -> List[Trend]:
+        """Collect trending posts from Dev.to."""
+        trends = []
+
+        try:
+            # Dev.to top articles API
+            url = "https://dev.to/api/articles?top=1&per_page=15"
+            response = self.session.get(url, timeout=10)
+            response.raise_for_status()
+
+            articles = response.json()
+
+            for article in articles:
+                title = article.get('title', '').strip()
+
+                if title and len(title) > 10 and is_english_text(title):
+                    # Include reaction count in score
+                    reactions = article.get('public_reactions_count', 0)
+                    score_boost = min(reactions / 100, 1.0)
+
+                    trend = Trend(
+                        title=title,
+                        source='devto',
+                        url=article.get('url'),
+                        description=article.get('description', ''),
+                        score=1.3 + score_boost
+                    )
+                    trends.append(trend)
+
+        except Exception as e:
+            print(f"    Dev.to error: {e}")
+
+        return trends
+
+    def _collect_slashdot(self) -> List[Trend]:
+        """Collect stories from Slashdot."""
+        trends = []
+
+        try:
+            url = "https://rss.slashdot.org/Slashdot/slashdotMain"
+            response = self.session.get(url, timeout=10)
+            response.raise_for_status()
+
+            feed = feedparser.parse(response.content)
+
+            for entry in feed.entries[:12]:
+                title = entry.get('title', '').strip()
+
+                if title and len(title) > 10 and is_english_text(title):
+                    trend = Trend(
+                        title=title,
+                        source='slashdot',
+                        url=entry.get('link'),
+                        description=self._clean_html(entry.get('summary', '')),
+                        score=1.4
+                    )
+                    trends.append(trend)
+
+        except Exception as e:
+            print(f"    Slashdot error: {e}")
+
+        return trends
+
+    def _collect_ars_frontpage(self) -> List[Trend]:
+        """Collect front page stories from Ars Technica (high quality tech journalism)."""
+        trends = []
+
+        try:
+            url = "https://feeds.arstechnica.com/arstechnica/features"
+            response = self.session.get(url, timeout=10)
+            response.raise_for_status()
+
+            feed = feedparser.parse(response.content)
+
+            for entry in feed.entries[:8]:
+                title = entry.get('title', '').strip()
+                title = title.replace(' | Ars Technica', '')
+
+                if title and len(title) > 10 and is_english_text(title):
+                    trend = Trend(
+                        title=title,
+                        source='ars_features',
+                        url=entry.get('link'),
+                        description=self._clean_html(entry.get('summary', '')),
+                        score=1.7  # High quality long-form content
+                    )
+                    trends.append(trend)
+
+        except Exception as e:
+            print(f"    Ars Features error: {e}")
 
         return trends
 
