@@ -696,21 +696,55 @@ class TrendCollector:
         self.trends = unique_trends
 
     def _calculate_scores(self):
-        """Recalculate trend scores based on various factors."""
-        # Boost trends that appear in multiple sources
-        keyword_counts = {}
+        """Recalculate trend scores based on various factors including global keyword frequency."""
+        from collections import Counter
+
+        # Count each keyword once per story (using sets) to find "meta-trends"
+        # A word appearing in 3+ different stories is a global trend
+        story_word_counts = Counter()
 
         for trend in self.trends:
-            for keyword in trend.keywords:
-                keyword_counts[keyword] = keyword_counts.get(keyword, 0) + 1
+            # Use set to count each word only once per story
+            unique_keywords = set(trend.keywords)
+            story_word_counts.update(unique_keywords)
+
+        # Identify global keywords (appearing in 3+ distinct stories)
+        global_keywords = {
+            word for word, count in story_word_counts.items()
+            if count >= 3
+        }
+
+        if global_keywords:
+            print(f"  Found {len(global_keywords)} global keywords: {', '.join(list(global_keywords)[:10])}...")
+
+        # Store for later use (image fetching, word cloud)
+        self.global_keywords = global_keywords
 
         for trend in self.trends:
-            # Boost for common keywords (trending across sources)
+            # Count how many global keywords this trend contains
+            global_keyword_matches = sum(1 for kw in trend.keywords if kw in global_keywords)
+
+            # Apply tiered boost based on global keyword matches
+            # 1 match = 15% boost, 2 matches = 35% boost, 3+ matches = 60% boost
+            if global_keyword_matches >= 3:
+                trend.score *= 1.6
+            elif global_keyword_matches == 2:
+                trend.score *= 1.35
+            elif global_keyword_matches == 1:
+                trend.score *= 1.15
+
+            # Additional small boost for keywords appearing in multiple stories
             keyword_boost = sum(
-                0.2 for kw in trend.keywords
-                if keyword_counts.get(kw, 0) > 1
+                0.1 for kw in trend.keywords
+                if story_word_counts.get(kw, 0) > 1
             )
             trend.score += keyword_boost
+
+    def get_global_keywords(self) -> List[str]:
+        """Get keywords that appear across multiple stories (meta-trends)."""
+        if hasattr(self, 'global_keywords'):
+            return list(self.global_keywords)
+        return []
 
     def get_top_trends(self, limit: int = 10) -> List[Trend]:
         """Get top N trends by score."""

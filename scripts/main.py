@@ -57,6 +57,7 @@ class Pipeline:
         self.images = []
         self.design = None
         self.keywords = []
+        self.global_keywords = []
 
     def run(self, archive: bool = True, dry_run: bool = False) -> bool:
         """
@@ -139,9 +140,11 @@ class Pipeline:
 
         self.trends = self.trend_collector.collect_all()
         self.keywords = self.trend_collector.get_all_keywords()
+        self.global_keywords = self.trend_collector.get_global_keywords()
 
         print(f"  Collected {len(self.trends)} unique trends")
         print(f"  Extracted {len(self.keywords)} keywords")
+        print(f"  Identified {len(self.global_keywords)} global meta-trends")
 
         # Quality gate: Ensure minimum content before proceeding
         MIN_TRENDS = 5
@@ -156,8 +159,23 @@ class Pipeline:
         """Fetch images based on trending keywords."""
         print("\n[3/6] Fetching images...")
 
-        # Use top keywords for image search
-        search_keywords = self.keywords[:8]
+        # Prioritize global keywords (meta-trends) for image search
+        # These are words appearing in 3+ stories, more likely to be relevant
+        search_keywords = []
+
+        # Add global keywords first (up to 4)
+        if self.global_keywords:
+            search_keywords.extend(self.global_keywords[:4])
+            print(f"  Using {len(search_keywords)} global keywords for images")
+
+        # Fill remaining slots with top regular keywords
+        remaining_slots = 8 - len(search_keywords)
+        if remaining_slots > 0:
+            for kw in self.keywords:
+                if kw not in search_keywords:
+                    search_keywords.append(kw)
+                    if len(search_keywords) >= 8:
+                        break
 
         if search_keywords:
             self.images = self.image_fetcher.fetch_for_keywords(
