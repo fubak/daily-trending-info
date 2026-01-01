@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-01 22:56 UTC | [fix: Rename toast animation to prevent conflict with main fadeInUp](https://github.com/fubak/daily-trending-info/commit/592ab2d22fc36d683a4851faef827c45f547b61e) |
 | 2026-01-01 22:45 UTC | [fix: Adjust card layout for badges and actions](https://github.com/fubak/daily-trending-info/commit/4a23762eac46ca916c8ded00ce5ef0e9ca23d77e) |
 | 2026-01-01 21:38 UTC | [fix: Handle None values in editorial generator to prevent TypeError](https://github.com/fubak/daily-trending-info/commit/9bdf4061c4fb30a663d1e7c9bddfd849bf9baa1f) |
 | 2026-01-01 21:32 UTC | [feat: Add editorial articles, velocity indicators, sharing, and accessibility](https://github.com/fubak/daily-trending-info/commit/f1a169a4aa2b089fe8647ae20abfb3b4433049da) |
