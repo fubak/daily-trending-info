@@ -320,6 +320,12 @@ class Pipeline:
         # Convert data to proper format
         trends_data = [asdict(t) if hasattr(t, '__dataclass_fields__') else t for t in self.trends]
         logger.info(f"Converted {len(trends_data)} trends to dict format")
+
+        # Log sample trend for debugging
+        if trends_data:
+            sample = trends_data[0]
+            logger.info(f"Sample trend: title='{sample.get('title', '')[:50]}', source='{sample.get('source', '')}'")
+
         images_data = [asdict(i) if hasattr(i, '__dataclass_fields__') else i for i in self.images]
         design_data = asdict(self.design) if hasattr(self.design, '__dataclass_fields__') else self.design
 
@@ -331,6 +337,10 @@ class Pipeline:
                 'grokipedia_article': asdict(self.enriched_content.grokipedia_article) if self.enriched_content.grokipedia_article else None,
                 'story_summaries': [asdict(s) for s in self.enriched_content.story_summaries] if self.enriched_content.story_summaries else []
             }
+            # Log enriched content status
+            if enriched_data.get('grokipedia_article'):
+                article = enriched_data['grokipedia_article']
+                logger.info(f"Grokipedia article: '{article.get('title', '')}' ({len(article.get('summary', ''))} chars)")
 
         # Build context
         context = BuildContext(
