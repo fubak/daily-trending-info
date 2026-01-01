@@ -143,6 +143,13 @@ const observer = new IntersectionObserver((entries) => {
 document.querySelectorAll('.story-card, .compact-card, .stat, .section, .enriched-card, .word-cloud').forEach(el => {
     if (!prefersReducedMotion) {
         el.style.opacity = '0';
+        // Fallback: ensure elements become visible after 1 second if animation doesn't trigger
+        setTimeout(() => {
+            if (el.style.opacity === '0') {
+                el.style.opacity = '1';
+                el.style.transition = 'opacity 0.3s ease-out';
+            }
+        }, 1000);
     }
     observer.observe(el);
 });

@@ -1670,27 +1670,32 @@ class WebsiteBuilder:
         /* ===== TOP STORIES GRID ===== */
         .top-stories {{
             display: grid;
-            gap: 1.5rem;
-            margin-bottom: 4rem;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
         }}
 
-        /* Layout variants for top stories */
+        /* Ensure all cards have consistent compact height */
+        .top-stories .story-card {{
+            min-height: 140px;
+            max-height: 160px;
+        }}
+
+        /* Layout variants for top stories - all optimized for horizontal display */
         .layout-newspaper .top-stories {{
-            grid-template-columns: 2fr 1fr 1fr;
-            grid-template-rows: auto auto;
+            grid-template-columns: repeat(4, 1fr);
         }}
 
         .layout-newspaper .top-stories .story-card:first-child {{
-            grid-row: span 2;
+            grid-row: span 1;
         }}
 
         .layout-magazine .top-stories {{
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 200px 150px;
+            grid-template-columns: repeat(4, 1fr);
         }}
 
         .layout-magazine .top-stories .story-card:first-child {{
-            grid-column: span 2;
+            grid-column: span 1;
         }}
 
         .layout-dashboard .top-stories {{
@@ -1698,38 +1703,27 @@ class WebsiteBuilder:
         }}
 
         .layout-minimal .top-stories {{
-            grid-template-columns: 1fr;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
+            grid-template-columns: repeat(4, 1fr);
         }}
 
         .layout-bold .top-stories {{
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(4, 1fr);
         }}
 
         .layout-bold .top-stories .story-card:first-child {{
-            padding: 1.5rem;
+            padding: 1rem;
         }}
 
         .layout-mosaic .top-stories {{
-            grid-template-columns: repeat(6, 1fr);
-            grid-auto-rows: 100px;
+            grid-template-columns: repeat(4, 1fr);
         }}
 
-        .layout-mosaic .top-stories .story-card:nth-child(1) {{
-            grid-column: span 3;
-            grid-row: span 2;
-        }}
-
-        .layout-mosaic .top-stories .story-card:nth-child(2) {{
-            grid-column: span 3;
-            grid-row: span 2;
-        }}
-
+        .layout-mosaic .top-stories .story-card:nth-child(1),
+        .layout-mosaic .top-stories .story-card:nth-child(2),
         .layout-mosaic .top-stories .story-card:nth-child(3),
         .layout-mosaic .top-stories .story-card:nth-child(4) {{
-            grid-column: span 3;
+            grid-column: span 1;
+            grid-row: span 1;
         }}
 
         /* ===== STORY CARDS ===== */
@@ -1900,7 +1894,7 @@ class WebsiteBuilder:
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 100%);
+            background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 100%);
         }}
 
         /* Improve text legibility on image backgrounds */
@@ -2905,8 +2899,15 @@ class WebsiteBuilder:
             .layout-newspaper .top-stories,
             .layout-magazine .top-stories,
             .layout-dashboard .top-stories,
-            .layout-mosaic .top-stories {{
-                grid-template-columns: 1fr;
+            .layout-mosaic .top-stories,
+            .layout-bold .top-stories,
+            .layout-minimal .top-stories {{
+                grid-template-columns: repeat(2, 1fr);
+            }}
+
+            .top-stories .story-card {{
+                min-height: 120px;
+                max-height: 140px;
             }}
 
             .top-stories .story-card:first-child {{
