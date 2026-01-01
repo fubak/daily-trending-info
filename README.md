@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-01 22:45 UTC | [fix: Adjust card layout for badges and actions](https://github.com/fubak/daily-trending-info/commit/4a23762eac46ca916c8ded00ce5ef0e9ca23d77e) |
 | 2026-01-01 21:38 UTC | [fix: Handle None values in editorial generator to prevent TypeError](https://github.com/fubak/daily-trending-info/commit/9bdf4061c4fb30a663d1e7c9bddfd849bf9baa1f) |
 | 2026-01-01 21:32 UTC | [feat: Add editorial articles, velocity indicators, sharing, and accessibility](https://github.com/fubak/daily-trending-info/commit/f1a169a4aa2b089fe8647ae20abfb3b4433049da) |
 | 2026-01-01 20:10 UTC | [fix: Optimize Top Stories layout and fix animation visibility](https://github.com/fubak/daily-trending-info/commit/6bb41c8056af87a5de5f9ac91f908d4124d4ebd2) |
