@@ -1069,6 +1069,54 @@ class WebsiteBuilder:
             animation: fadeInUp 0.8s ease-out 0.2s both;
         }}
 
+        .hero-actions {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+            animation: fadeInUp 0.8s ease-out 0.25s both;
+        }}
+
+        .hero-cta {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.9rem 1.4rem;
+            background: var(--color-accent);
+            color: #0b0b0f;
+            font-weight: 700;
+            border-radius: var(--radius);
+            border: 1px solid transparent;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+            transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+        }}
+
+        .hero-cta:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.45);
+            background: var(--color-accent-secondary, var(--color-accent));
+        }}
+
+        .hero-secondary {{
+            color: var(--color-muted);
+            font-size: 0.95rem;
+        }}
+
+        .hero-capsule {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            color: var(--color-text);
+            max-width: 760px;
+            backdrop-filter: blur(12px);
+            animation: fadeInUp 0.8s ease-out 0.3s both;
+        }}
+
         .hero-meta {{
             display: flex;
             flex-wrap: wrap;
@@ -2439,6 +2487,15 @@ class WebsiteBuilder:
 
         total_trends = len(self.ctx.trends)
         total_sources = len(set(t.get('source', '').split('_')[0] for t in self.ctx.trends))
+        cta_label = html.escape(self.design.get('cta_primary') or "See today's pulse")
+        cta_secondary = ""
+        cta_options = self.design.get('cta_options') or []
+        if len(cta_options) > 1:
+            cta_secondary = html.escape(cta_options[1])
+        capsule = html.escape(self._get_story_capsule() or "")
+
+        # Build extra elements based on hero style
+        extra_elements = self._build_hero_extras()
 
         # Build extra elements based on hero style
         extra_elements = self._build_hero_extras()
@@ -2452,6 +2509,13 @@ class WebsiteBuilder:
             </div>
             <h1 class="headline-xl">{headline}</h1>
             <p class="hero-subtitle">{subheadline}</p>
+            <div class="hero-actions">
+                <a href="#top-stories" class="hero-cta">
+                    {cta_label}
+                </a>
+                {f'<div class="hero-secondary">{cta_secondary}</div>' if cta_secondary else ''}
+            </div>
+            {f'<div class="hero-capsule">⚡ {capsule}</div>' if capsule else ''}
             <div class="hero-meta">
                 <span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2525,6 +2589,23 @@ class WebsiteBuilder:
             return '''<div class="retro-grid"></div>
             <div class="retro-sun"></div>'''
 
+        return ""
+
+    def _get_story_capsule(self) -> str:
+        """Return a short story capsule from AI or fallbacks."""
+        capsules = self.design.get('story_capsules') or []
+        for capsule in capsules:
+            if capsule:
+                return capsule
+
+        # Fallback to top trend descriptions or titles
+        for trend in self.ctx.trends[:5]:
+            desc = trend.get('description') or trend.get('title')
+            if desc:
+                clean = desc.strip()
+                if len(clean) > 90:
+                    clean = clean[:87] + "..."
+                return clean
         return ""
 
     def _build_breaking_ticker(self) -> str:

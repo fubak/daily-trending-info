@@ -12,7 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
-| *No changes recorded yet* | Run the update-readme workflow to populate |
+| 2025-12-31 22:37 UTC | [Enhance Groq design generation and surface AI CTA copy (#17)](https://github.com/fubak/daily-trending-info/commit/aae4ffc85223d450649b4534b4bbdc7aacddf6c1) |
 <!-- CHANGELOG_END -->
 
 ## Features

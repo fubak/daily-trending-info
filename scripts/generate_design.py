@@ -20,7 +20,8 @@ import re
 import hashlib
 from typing import Dict, Optional, List, Any, Tuple
 from dataclasses import dataclass, asdict, field
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
 
 import requests
 
@@ -72,6 +73,9 @@ class DesignSpec:
     # Content
     headline: str = "Today's Trends"
     subheadline: str = "What the world is talking about"
+    story_capsules: List[str] = field(default_factory=list)
+    cta_options: List[str] = field(default_factory=list)
+    cta_primary: str = ""
 
     # Meta
     generated_at: str = ""
@@ -82,6 +86,8 @@ class DesignSpec:
             self.generated_at = datetime.now().isoformat()
         if not self.design_seed:
             self.design_seed = datetime.now().strftime("%Y-%m-%d")
+        if not self.cta_primary and self.cta_options:
+            self.cta_primary = self.cta_options[0]
 
 
 # ============================================================================
@@ -439,6 +445,7 @@ class DesignGenerator:
         self.openrouter_key = openrouter_key or os.getenv('OPENROUTER_API_KEY')
         self.google_key = google_key or os.getenv('GOOGLE_AI_API_KEY')
         self.session = requests.Session()
+        self.history_path = Path(__file__).parent.parent / "data" / "design_history.json"
 
     def generate(self, trends: List[Dict], keywords: List[str]) -> DesignSpec:
         """Generate a unique design based on trends and timestamp."""
@@ -470,6 +477,9 @@ class DesignGenerator:
         ai_data: Optional[Dict] = None
     ) -> DesignSpec:
         """Generate design by combining multiple style dimensions."""
+
+        # Prepare history for repeat-avoidance
+        recent_themes = self._load_recent_themes(days=7)
 
         # 1. Select personality
         personality_name = rng.choice(list(PERSONALITIES.keys()))
@@ -504,23 +514,33 @@ class DesignGenerator:
         layout_style = rng.choice(LAYOUT_PATTERNS)
         hero_style = rng.choice(HERO_PATTERNS)
 
-        # 6. Generate headline and subheadline
-        if ai_data and ai_data.get('headline'):
-            headline = ai_data['headline']
-            subheadline = ai_data.get('subheadline', 'What the world is talking about')
+        # 6. Select AI variant if available (multi-variant support)
+        selected_variant = None
+        story_capsules: List[str] = []
+        cta_options: List[str] = []
+
+        if ai_data:
+            variants = ai_data.get('variants') or []
+            if variants:
+                selected_variant = self._select_ai_variant(variants, keywords, recent_themes)
+            story_capsules = ai_data.get('story_capsules') or []
+            cta_options = ai_data.get('ctas') or []
+
+        # 7. Generate headline and subheadline
+        if selected_variant:
+            headline = selected_variant.get('headline') or self._create_headline(trends, rng)
+            subheadline = selected_variant.get('subheadline') or self._create_subheadline(keywords, rng)
+            # Override scheme with AI colors/theme
+            if selected_variant.get('color_accent'):
+                scheme = {**scheme}
+                scheme['accent'] = selected_variant['color_accent']
+            if selected_variant.get('color_accent_secondary'):
+                scheme['accent_secondary'] = selected_variant['color_accent_secondary']
+            if selected_variant.get('theme_name'):
+                scheme['name'] = selected_variant['theme_name']
         else:
             headline = self._create_headline(trends, rng)
             subheadline = self._create_subheadline(keywords, rng)
-
-        # 7. Override with AI-generated colors if available
-        if ai_data:
-            if ai_data.get('color_accent'):
-                scheme = {**scheme}  # Copy
-                scheme['accent'] = ai_data['color_accent']
-            if ai_data.get('color_accent_secondary'):
-                scheme['accent_secondary'] = ai_data['color_accent_secondary']
-            if ai_data.get('theme_name'):
-                scheme['name'] = ai_data['theme_name']
 
         # Map spacing to padding values
         padding_map = {
@@ -584,30 +604,58 @@ class DesignGenerator:
             # Content
             headline=headline,
             subheadline=subheadline,
+            story_capsules=story_capsules[:8],
+            cta_options=cta_options[:3],
+            cta_primary=(cta_options[0] if cta_options else ""),
 
             # Meta
             design_seed=datetime.now().strftime("%Y-%m-%d"),
         )
+
+    def _select_ai_variant(self, variants: List[Dict], keywords: List[str], recent_themes: List[str]) -> Optional[Dict]:
+        """Choose an AI variant deterministically while avoiding recent repeats."""
+        if not variants:
+            return None
+
+        # Deterministic index based on date + top keyword
+        seed_basis = datetime.now().strftime("%Y-%m-%d") + (keywords[0] if keywords else "")
+        idx = int(hashlib.sha256(seed_basis.encode()).hexdigest(), 16) % len(variants)
+
+        # Try to avoid recent theme reuse
+        for offset in range(len(variants)):
+            candidate = variants[(idx + offset) % len(variants)]
+            theme_name = (candidate.get('theme_name') or "").lower()
+            if theme_name and theme_name not in recent_themes:
+                self._store_theme(theme_name)
+                return candidate
+
+        # Fallback to deterministic choice
+        chosen = variants[idx]
+        theme_name = (chosen.get('theme_name') or "").lower()
+        if theme_name:
+            self._store_theme(theme_name)
+        return chosen
 
     def _try_ai_generation(self, trends: List[Dict], keywords: List[str]) -> Optional[Dict]:
         """Try to get AI-generated design elements."""
         trend_titles = [t.get('title', '') for t in trends[:8]]
         keyword_str = ', '.join(keywords[:12])
 
-        prompt = f"""Based on today's trending topics, suggest creative design elements.
+        prompt = f"""Based on today's trending topics, produce multiple design options and microcopy.
 
 Trending topics:
 {chr(10).join(f'- {t}' for t in trend_titles)}
 
 Keywords: {keyword_str}
 
-Respond with ONLY a JSON object:
+Respond with ONLY a JSON object using this schema:
 {{
-  "theme_name": "creative 2-3 word theme name inspired by trends",
-  "headline": "catchy 3-5 word headline",
-  "subheadline": "engaging subtitle under 10 words",
-  "color_accent": "hex color that reflects today's mood",
-  "color_accent_secondary": "complementary hex color"
+  "variants": [
+    {{"theme_name": "2-3 word theme", "headline": "3-5 words", "subheadline": "<=10 words", "color_accent": "#RRGGBB", "color_accent_secondary": "#RRGGBB", "cta": "short CTA label"}},
+    {{"theme_name": "..."}}
+  ],
+  "story_capsules": ["50-80 char summary of a top story", "..."],
+  "ctas": ["CTA text 1", "CTA text 2"]
 }}"""
 
         providers = [
@@ -648,8 +696,8 @@ Respond with ONLY a JSON object:
             json={
                 "model": "llama-3.1-8b-instant",
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 300,
-                "temperature": 0.8
+                "max_tokens": 450,
+                "temperature": 0.75
             },
             timeout=30
         )
@@ -669,8 +717,8 @@ Respond with ONLY a JSON object:
             json={
                 "model": "meta-llama/llama-3.1-8b-instruct:free",
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 300,
-                "temperature": 0.8
+                "max_tokens": 450,
+                "temperature": 0.75
             },
             timeout=30
         )
@@ -679,9 +727,25 @@ Respond with ONLY a JSON object:
 
     def _parse_ai_response(self, response: str) -> Optional[Dict]:
         try:
-            json_match = re.search(r'\{[^{}]*\}', response, re.DOTALL)
-            if json_match:
-                return json.loads(json_match.group())
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            payload = json_match.group() if json_match else response
+            data = json.loads(payload)
+
+            # Normalize single-variant responses
+            if data and 'variants' not in data:
+                data = {
+                    "variants": [
+                        {
+                            "theme_name": data.get("theme_name"),
+                            "headline": data.get("headline"),
+                            "subheadline": data.get("subheadline"),
+                            "color_accent": data.get("color_accent"),
+                            "color_accent_secondary": data.get("color_accent_secondary"),
+                            "cta": data.get("cta") or data.get("cta_primary"),
+                        }
+                    ]
+                }
+            return data
         except (json.JSONDecodeError, Exception) as e:
             print(f"    Parse error: {e}")
         return None
@@ -725,6 +789,38 @@ Respond with ONLY a JSON object:
         with open(filepath, 'w') as f:
             json.dump(asdict(spec), f, indent=2)
         print(f"Saved design spec to {filepath}")
+
+    def _load_recent_themes(self, days: int = 7) -> List[str]:
+        """Load theme history and return recent theme names."""
+        if not self.history_path.exists():
+            return []
+        try:
+            with open(self.history_path) as f:
+                data = json.load(f)
+            cutoff = datetime.now() - timedelta(days=days)
+            recent = [
+                entry.get('theme', '').lower()
+                for entry in data
+                if entry.get('timestamp') and datetime.fromisoformat(entry['timestamp']) > cutoff
+            ]
+            return [r for r in recent if r]
+        except Exception:
+            return []
+
+    def _store_theme(self, theme: str):
+        """Persist the chosen theme to avoid repeats."""
+        try:
+            self.history_path.parent.mkdir(parents=True, exist_ok=True)
+            history = []
+            if self.history_path.exists():
+                with open(self.history_path) as f:
+                    history = json.load(f)
+            history.append({"theme": theme, "timestamp": datetime.now().isoformat()})
+            history = history[-30:]  # keep compact
+            with open(self.history_path, 'w') as f:
+                json.dump(history, f, indent=2)
+        except Exception:
+            pass
 
 
 def calculate_combinations():
