@@ -79,6 +79,14 @@ class DesignSpec:
     use_pulse_animation: bool = False
     use_float_animation: bool = False
 
+    # New design dimensions
+    image_treatment: str = "none"  # none, grayscale, sepia, saturate, contrast, vignette
+    typography_scale: Dict[str, str] = field(default_factory=dict)  # headline sizes per personality
+    section_divider: str = "none"  # none, line, thick_line, gradient_line, dots, fade, wave
+    card_aspect_ratio: str = "auto"  # auto, landscape, portrait, square, wide, classic
+    content_sentiment: str = "neutral"  # breaking, positive, negative, entertainment, neutral
+    contrast_validated: bool = True  # Whether colors pass WCAG AA
+
     # Content
     headline: str = "Today's Trends"
     subheadline: str = "What the world is talking about"
@@ -514,6 +522,303 @@ SPECIAL_MODES = [
     "glassmorphism", # Frosted glass everywhere
 ]
 
+# ============================================================================
+# PERSONALITY-HERO STYLE ALIGNMENT
+# Each personality has compatible hero styles for visual consistency
+# ============================================================================
+
+# Valid hero styles that have CSS implementations in build_website.py
+HERO_STYLES_WITH_CSS = [
+    "cinematic", "glassmorphism", "neon", "duotone", "particles",
+    "waves", "geometric", "spotlight", "glitch", "aurora", "mesh", "retro"
+]
+
+PERSONALITY_HERO_ALIGNMENT = {
+    "brutalist": ["cinematic", "glitch", "geometric", "spotlight"],
+    "editorial": ["cinematic", "duotone", "spotlight"],
+    "minimal": ["mesh", "aurora", "glassmorphism"],
+    "corporate": ["mesh", "cinematic", "spotlight"],
+    "playful": ["particles", "waves", "aurora", "geometric", "neon", "retro"],
+    "tech": ["neon", "glitch", "particles", "mesh", "geometric"],
+    "news": ["cinematic", "spotlight"],
+    "magazine": ["cinematic", "duotone", "glassmorphism", "spotlight"],
+    "dashboard": ["mesh", "glassmorphism", "geometric"],
+}
+
+# ============================================================================
+# IMAGE TREATMENTS - Filters applied to card images
+# ============================================================================
+
+IMAGE_TREATMENTS = {
+    "none": {},
+    "grayscale": {"filter": "grayscale(100%)"},
+    "sepia": {"filter": "sepia(30%)"},
+    "saturate": {"filter": "saturate(1.3)"},
+    "contrast": {"filter": "contrast(1.1)"},
+    "vignette": {"box-shadow": "inset 0 0 100px rgba(0,0,0,0.5)"},
+    "blur_edges": {"mask-image": "radial-gradient(ellipse, black 50%, transparent 100%)"},
+    "duotone_warm": {"filter": "sepia(20%) saturate(1.2) hue-rotate(-10deg)"},
+    "duotone_cool": {"filter": "saturate(0.8) hue-rotate(20deg)"},
+}
+
+PERSONALITY_IMAGE_TREATMENTS = {
+    "brutalist": ["none", "grayscale", "contrast"],
+    "editorial": ["none", "sepia", "grayscale"],
+    "minimal": ["none", "grayscale"],
+    "corporate": ["none", "saturate"],
+    "playful": ["saturate", "duotone_warm", "none"],
+    "tech": ["none", "contrast", "duotone_cool"],
+    "news": ["none", "contrast"],
+    "magazine": ["none", "saturate", "sepia", "vignette"],
+    "dashboard": ["none", "grayscale"],
+}
+
+# ============================================================================
+# TYPOGRAPHY SCALES - Different heading size ratios per personality
+# ============================================================================
+
+TYPOGRAPHY_SCALES = {
+    "brutalist": {
+        "scale_ratio": 1.5,        # Dramatic jumps
+        "base_size": "1rem",
+        "headline_xl": "clamp(3rem, 10vw, 6rem)",
+        "headline_lg": "clamp(2rem, 5vw, 3.5rem)",
+        "headline_md": "clamp(1.5rem, 3vw, 2rem)",
+        "letter_spacing_headings": "0.05em",
+    },
+    "editorial": {
+        "scale_ratio": 1.25,       # Classic proportions
+        "base_size": "1.1rem",
+        "headline_xl": "clamp(2.5rem, 7vw, 4.5rem)",
+        "headline_lg": "clamp(1.75rem, 4vw, 2.75rem)",
+        "headline_md": "clamp(1.25rem, 2.5vw, 1.75rem)",
+        "letter_spacing_headings": "0",
+    },
+    "minimal": {
+        "scale_ratio": 1.2,        # Subtle differences
+        "base_size": "1rem",
+        "headline_xl": "clamp(2rem, 6vw, 4rem)",
+        "headline_lg": "clamp(1.5rem, 3.5vw, 2.5rem)",
+        "headline_md": "clamp(1.2rem, 2vw, 1.5rem)",
+        "letter_spacing_headings": "-0.01em",
+    },
+    "corporate": {
+        "scale_ratio": 1.25,
+        "base_size": "1rem",
+        "headline_xl": "clamp(2.5rem, 7vw, 4.5rem)",
+        "headline_lg": "clamp(1.75rem, 4vw, 2.75rem)",
+        "headline_md": "clamp(1.25rem, 2.5vw, 1.75rem)",
+        "letter_spacing_headings": "0",
+    },
+    "playful": {
+        "scale_ratio": 1.4,        # Fun, bouncy
+        "base_size": "1rem",
+        "headline_xl": "clamp(2.75rem, 9vw, 5.5rem)",
+        "headline_lg": "clamp(1.75rem, 4.5vw, 3rem)",
+        "headline_md": "clamp(1.25rem, 2.5vw, 1.75rem)",
+        "letter_spacing_headings": "0",
+    },
+    "tech": {
+        "scale_ratio": 1.3,
+        "base_size": "0.95rem",
+        "headline_xl": "clamp(2.5rem, 8vw, 5rem)",
+        "headline_lg": "clamp(1.75rem, 4vw, 3rem)",
+        "headline_md": "clamp(1.25rem, 2.5vw, 1.75rem)",
+        "letter_spacing_headings": "0.02em",
+    },
+    "news": {
+        "scale_ratio": 1.35,       # Authority
+        "base_size": "1rem",
+        "headline_xl": "clamp(2.5rem, 8vw, 5rem)",
+        "headline_lg": "clamp(1.75rem, 4vw, 3rem)",
+        "headline_md": "clamp(1.25rem, 2.5vw, 1.75rem)",
+        "letter_spacing_headings": "0",
+    },
+    "magazine": {
+        "scale_ratio": 1.3,
+        "base_size": "1.05rem",
+        "headline_xl": "clamp(2.5rem, 8vw, 5rem)",
+        "headline_lg": "clamp(1.75rem, 4.5vw, 3rem)",
+        "headline_md": "clamp(1.25rem, 2.5vw, 1.75rem)",
+        "letter_spacing_headings": "-0.01em",
+    },
+    "dashboard": {
+        "scale_ratio": 1.15,       # Compact, data-dense
+        "base_size": "0.9rem",
+        "headline_xl": "clamp(2rem, 6vw, 3.5rem)",
+        "headline_lg": "clamp(1.5rem, 3.5vw, 2.25rem)",
+        "headline_md": "clamp(1.1rem, 2vw, 1.5rem)",
+        "letter_spacing_headings": "0.02em",
+    },
+}
+
+# ============================================================================
+# SECTION DIVIDERS - Visual separators between content sections
+# ============================================================================
+
+SECTION_DIVIDERS = {
+    "none": "",
+    "line": "border-top: 1px solid var(--color-border);",
+    "thick_line": "border-top: 3px solid var(--color-accent);",
+    "gradient_line": "background: linear-gradient(90deg, transparent, var(--color-accent), transparent); height: 2px;",
+    "dots": "background: radial-gradient(circle, var(--color-accent) 2px, transparent 2px); background-size: 20px 20px; height: 10px;",
+    "fade": "background: linear-gradient(180deg, var(--color-bg), var(--color-card-bg)); height: 40px;",
+    "wave": "mask-image: url(\"data:image/svg+xml,%3Csvg viewBox='0 0 1200 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 20 Q300 0 600 20 T1200 20 V40 H0 Z' fill='black'/%3E%3C/svg%3E\"); background: var(--color-accent); height: 40px; opacity: 0.3;",
+}
+
+PERSONALITY_SECTION_DIVIDERS = {
+    "brutalist": ["thick_line", "none"],
+    "editorial": ["line", "none"],
+    "minimal": ["none", "fade"],
+    "corporate": ["line", "gradient_line"],
+    "playful": ["dots", "wave", "gradient_line"],
+    "tech": ["gradient_line", "line"],
+    "news": ["thick_line", "line"],
+    "magazine": ["fade", "line", "none"],
+    "dashboard": ["line", "none"],
+}
+
+# ============================================================================
+# CARD ASPECT RATIOS - Variation in card proportions
+# ============================================================================
+
+CARD_ASPECT_RATIOS = {
+    "auto": "auto",           # Natural content flow
+    "landscape": "16/9",      # Wide cards
+    "portrait": "3/4",        # Tall cards
+    "square": "1/1",          # Equal dimensions
+    "wide": "21/9",           # Ultra-wide
+    "classic": "4/3",         # Traditional
+}
+
+PERSONALITY_CARD_RATIOS = {
+    "brutalist": ["auto", "square"],
+    "editorial": ["auto", "classic", "landscape"],
+    "minimal": ["auto"],
+    "corporate": ["auto", "landscape"],
+    "playful": ["square", "auto", "landscape"],
+    "tech": ["landscape", "auto", "wide"],
+    "news": ["auto", "landscape"],
+    "magazine": ["landscape", "portrait", "auto"],
+    "dashboard": ["auto", "square"],
+}
+
+
+# ============================================================================
+# WCAG CONTRAST RATIO VALIDATION
+# Ensures text is readable against backgrounds (WCAG AA requires 4.5:1 for normal text)
+# ============================================================================
+
+def hex_to_rgb(hex_color: str) -> tuple:
+    """Convert hex color to RGB tuple."""
+    hex_color = hex_color.lstrip('#')
+    if len(hex_color) == 3:
+        hex_color = ''.join([c*2 for c in hex_color])
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+
+def get_relative_luminance(rgb: tuple) -> float:
+    """Calculate relative luminance per WCAG 2.1 specification."""
+    def channel_luminance(c):
+        c = c / 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+    r, g, b = rgb
+    return 0.2126 * channel_luminance(r) + 0.7152 * channel_luminance(g) + 0.0722 * channel_luminance(b)
+
+
+def calculate_contrast_ratio(color1: str, color2: str) -> float:
+    """Calculate WCAG contrast ratio between two hex colors."""
+    try:
+        lum1 = get_relative_luminance(hex_to_rgb(color1))
+        lum2 = get_relative_luminance(hex_to_rgb(color2))
+        lighter = max(lum1, lum2)
+        darker = min(lum1, lum2)
+        return (lighter + 0.05) / (darker + 0.05)
+    except (ValueError, TypeError):
+        return 1.0  # Return lowest ratio if calculation fails
+
+
+def validate_color_contrast(text_color: str, bg_color: str, min_ratio: float = 4.5) -> bool:
+    """Check if text color has sufficient contrast against background (WCAG AA)."""
+    ratio = calculate_contrast_ratio(text_color, bg_color)
+    return ratio >= min_ratio
+
+
+def adjust_color_for_contrast(text_color: str, bg_color: str, min_ratio: float = 4.5) -> str:
+    """Adjust text color to meet minimum contrast ratio if needed."""
+    if validate_color_contrast(text_color, bg_color, min_ratio):
+        return text_color
+
+    # Determine if background is light or dark
+    bg_lum = get_relative_luminance(hex_to_rgb(bg_color))
+
+    # Use white or black based on background luminance
+    if bg_lum > 0.5:
+        return "#1a1a1a"  # Dark text for light backgrounds
+    else:
+        return "#ffffff"  # Light text for dark backgrounds
+
+
+# ============================================================================
+# CONTENT-AWARE ANIMATION INTENSITY
+# Adjusts animation level based on news sentiment and urgency
+# ============================================================================
+
+SENTIMENT_ANIMATION_MAP = {
+    "breaking": "moderate",    # Breaking news: moderate activity
+    "urgent": "moderate",      # Urgent news: attention-grabbing
+    "positive": "playful",     # Good news: celebratory
+    "negative": "subtle",      # Serious news: restrained
+    "neutral": "subtle",       # Normal: balanced
+    "tech": "moderate",        # Tech news: modern feel
+    "entertainment": "playful", # Entertainment: fun
+}
+
+def analyze_content_sentiment(trends: list, keywords: list) -> str:
+    """Analyze content to determine appropriate animation intensity."""
+    # Keywords that suggest different sentiments
+    breaking_words = ["breaking", "just in", "urgent", "developing", "alert"]
+    positive_words = ["success", "breakthrough", "wins", "celebrates", "achieves", "record"]
+    negative_words = ["crisis", "disaster", "death", "crash", "fails", "warning", "threat"]
+    entertainment_words = ["movie", "music", "celebrity", "game", "sports", "entertainment"]
+
+    # Count occurrences
+    text = " ".join([t.get("title", "") + " " + t.get("description", "") for t in trends]).lower()
+    text += " " + " ".join(keywords).lower()
+
+    breaking_count = sum(1 for w in breaking_words if w in text)
+    positive_count = sum(1 for w in positive_words if w in text)
+    negative_count = sum(1 for w in negative_words if w in text)
+    entertainment_count = sum(1 for w in entertainment_words if w in text)
+
+    # Determine dominant sentiment
+    if breaking_count >= 2:
+        return "breaking"
+    if entertainment_count >= 3:
+        return "entertainment"
+    if positive_count > negative_count and positive_count >= 2:
+        return "positive"
+    if negative_count > positive_count and negative_count >= 2:
+        return "negative"
+
+    return "neutral"
+
+
+def get_content_aware_animation(trends: list, keywords: list, base_animation: str) -> str:
+    """Get animation level adjusted for content sentiment."""
+    sentiment = analyze_content_sentiment(trends, keywords)
+    suggested = SENTIMENT_ANIMATION_MAP.get(sentiment, "subtle")
+
+    # Balance between personality preference and content sentiment
+    animation_levels = ["none", "subtle", "moderate", "playful", "energetic"]
+    base_idx = animation_levels.index(base_animation) if base_animation in animation_levels else 1
+    suggested_idx = animation_levels.index(suggested) if suggested in animation_levels else 1
+
+    # Average the two, rounding toward the suggested
+    final_idx = (base_idx + suggested_idx + 1) // 2
+    return animation_levels[min(final_idx, len(animation_levels) - 1)]
+
 
 class DesignGenerator:
     """Generates unique design specifications using combinatorial approach."""
@@ -593,15 +898,49 @@ class DesignGenerator:
         hover_effect = rng.choice(personality["hover_effects"])
         text_transform = rng.choice(personality["text_transform"])
 
-        # 5. Select layout and hero patterns
+        # 5. Select layout and hero patterns (personality-aligned)
         layout_style = rng.choice(LAYOUT_PATTERNS)
-        hero_style = rng.choice(HERO_PATTERNS)
+
+        # Select hero style aligned with personality for visual consistency
+        # Use only hero styles that have CSS implementations
+        personality_heroes = PERSONALITY_HERO_ALIGNMENT.get(personality_name, HERO_STYLES_WITH_CSS)
+        # Filter to only include valid hero styles with CSS
+        valid_heroes = [h for h in personality_heroes if h in HERO_STYLES_WITH_CSS]
+        hero_style = rng.choice(valid_heroes) if valid_heroes else rng.choice(HERO_STYLES_WITH_CSS)
 
         # 5b. Select creative flourishes based on personality
         bg_pattern = self._select_background_pattern(personality_name, rng)
         accent_style = self._select_accent_style(personality_name, rng)
         special_mode = self._select_special_mode(personality_name, scheme, rng)
         animation_preset = ANIMATION_PRESETS.get(animation, ANIMATION_PRESETS["subtle"])
+
+        # 5c. Select new design dimensions
+        # Image treatment based on personality
+        image_treatments = PERSONALITY_IMAGE_TREATMENTS.get(personality_name, ["none"])
+        image_treatment = rng.choice(image_treatments)
+
+        # Typography scale based on personality
+        typography_scale = TYPOGRAPHY_SCALES.get(personality_name, TYPOGRAPHY_SCALES["editorial"])
+
+        # Section divider based on personality
+        section_dividers = PERSONALITY_SECTION_DIVIDERS.get(personality_name, ["line"])
+        section_divider = rng.choice(section_dividers)
+
+        # Card aspect ratio based on personality
+        card_ratios = PERSONALITY_CARD_RATIOS.get(personality_name, ["auto"])
+        card_aspect_ratio = rng.choice(card_ratios)
+
+        # 5d. Content-aware animation adjustment
+        content_sentiment = analyze_content_sentiment(trends, keywords)
+        animation = get_content_aware_animation(trends, keywords, animation)
+
+        # 5e. WCAG contrast validation
+        contrast_validated = validate_color_contrast(scheme["text"], scheme["bg"])
+        # Adjust text color if contrast is insufficient
+        if not contrast_validated:
+            scheme = {**scheme}  # Make a copy
+            scheme["text"] = adjust_color_for_contrast(scheme["text"], scheme["bg"])
+            contrast_validated = True
 
         # 6. Select AI variant if available (multi-variant support)
         selected_variant = None
@@ -698,6 +1037,14 @@ class DesignGenerator:
             hover_transform=animation_preset.get("hover_transform", "translateY(-2px)"),
             use_pulse_animation=animation_preset.get("pulse", False),
             use_float_animation=animation_preset.get("float", False),
+
+            # New design dimensions
+            image_treatment=image_treatment,
+            typography_scale=typography_scale,
+            section_divider=section_divider,
+            card_aspect_ratio=card_aspect_ratio,
+            content_sentiment=content_sentiment,
+            contrast_validated=contrast_validated,
 
             # Content
             headline=headline,

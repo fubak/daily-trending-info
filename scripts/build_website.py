@@ -387,6 +387,15 @@ class WebsiteBuilder:
         if self.design.get('use_pulse_animation', False):
             body_classes.append("use-pulse")
 
+        # Add new design dimension classes
+        image_treatment = self.design.get('image_treatment', 'none')
+        if image_treatment and image_treatment != 'none':
+            body_classes.append(f"image-treatment-{image_treatment}")
+
+        card_aspect = self.design.get('card_aspect_ratio', 'auto')
+        if card_aspect and card_aspect != 'auto':
+            body_classes.append(f"aspect-{card_aspect}")
+
         # Generate SEO-friendly title
         top_topic = self._get_top_topic()
         page_title = f"DailyTrending.info - {top_topic}"
@@ -479,6 +488,7 @@ class WebsiteBuilder:
     </style>
 </head>
 <body class="{' '.join(body_classes)}">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     {self._build_nav()}
 
     <article itemscope itemtype="https://schema.org/Article">
@@ -2451,6 +2461,190 @@ class WebsiteBuilder:
             opacity: 0;
         }}
 
+        /* ===== ENHANCED SCROLL ANIMATIONS ===== */
+        /* Different animation types for variety */
+        .animate-fade-up {{
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+        }}
+
+        .animate-fade-left {{
+            animation: fadeInLeft 0.6s ease-out forwards;
+            opacity: 0;
+        }}
+
+        .animate-fade-right {{
+            animation: fadeInRight 0.6s ease-out forwards;
+            opacity: 0;
+        }}
+
+        .animate-scale-in {{
+            animation: scaleIn 0.5s ease-out forwards;
+            opacity: 0;
+        }}
+
+        .animate-slide-up {{
+            animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            opacity: 0;
+        }}
+
+        @keyframes fadeInLeft {{
+            from {{ opacity: 0; transform: translateX(-30px); }}
+            to {{ opacity: 1; transform: translateX(0); }}
+        }}
+
+        @keyframes fadeInRight {{
+            from {{ opacity: 0; transform: translateX(30px); }}
+            to {{ opacity: 1; transform: translateX(0); }}
+        }}
+
+        @keyframes scaleIn {{
+            from {{ opacity: 0; transform: scale(0.9); }}
+            to {{ opacity: 1; transform: scale(1); }}
+        }}
+
+        @keyframes slideUp {{
+            from {{ opacity: 0; transform: translateY(40px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+
+        /* Staggered animation delays for grid items */
+        .stagger-1 {{ animation-delay: 0.05s; }}
+        .stagger-2 {{ animation-delay: 0.1s; }}
+        .stagger-3 {{ animation-delay: 0.15s; }}
+        .stagger-4 {{ animation-delay: 0.2s; }}
+        .stagger-5 {{ animation-delay: 0.25s; }}
+        .stagger-6 {{ animation-delay: 0.3s; }}
+        .stagger-7 {{ animation-delay: 0.35s; }}
+        .stagger-8 {{ animation-delay: 0.4s; }}
+
+        /* ===== IMAGE TREATMENTS ===== */
+        .image-treatment-grayscale .story-card.has-image::before {{
+            filter: grayscale(100%);
+        }}
+        .image-treatment-sepia .story-card.has-image::before {{
+            filter: sepia(30%);
+        }}
+        .image-treatment-saturate .story-card.has-image::before {{
+            filter: saturate(1.3);
+        }}
+        .image-treatment-contrast .story-card.has-image::before {{
+            filter: contrast(1.1);
+        }}
+        .image-treatment-vignette .story-card.has-image::after {{
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
+        }}
+        .image-treatment-duotone_warm .story-card.has-image::before {{
+            filter: sepia(20%) saturate(1.2) hue-rotate(-10deg);
+        }}
+        .image-treatment-duotone_cool .story-card.has-image::before {{
+            filter: saturate(0.8) hue-rotate(20deg);
+        }}
+
+        /* ===== SECTION DIVIDERS ===== */
+        .section-divider {{
+            margin: 2rem 0;
+            width: 100%;
+        }}
+        .divider-line {{
+            border-top: 1px solid var(--color-border);
+            margin: 2rem 0;
+        }}
+        .divider-thick_line {{
+            border-top: 3px solid var(--color-accent);
+            margin: 2rem 0;
+        }}
+        .divider-gradient_line {{
+            background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+            height: 2px;
+            margin: 2rem 0;
+        }}
+        .divider-dots {{
+            background: radial-gradient(circle, var(--color-accent) 2px, transparent 2px);
+            background-size: 20px 20px;
+            height: 10px;
+            margin: 2rem 0;
+            opacity: 0.5;
+        }}
+        .divider-fade {{
+            background: linear-gradient(180deg, var(--color-bg), var(--color-card-bg), var(--color-bg));
+            height: 40px;
+            margin: 2rem 0;
+        }}
+        .divider-wave {{
+            background: var(--color-accent);
+            height: 20px;
+            margin: 2rem 0;
+            opacity: 0.2;
+            mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1200 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 20 Q300 0 600 20 T1200 20 V40 H0 Z' fill='black'/%3E%3C/svg%3E");
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1200 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 20 Q300 0 600 20 T1200 20 V40 H0 Z' fill='black'/%3E%3C/svg%3E");
+        }}
+
+        /* ===== CARD ASPECT RATIOS ===== */
+        .aspect-landscape .story-card:first-child {{
+            aspect-ratio: 16/9;
+        }}
+        .aspect-portrait .story-card:first-child {{
+            aspect-ratio: 3/4;
+        }}
+        .aspect-square .story-card {{
+            aspect-ratio: 1/1;
+        }}
+        .aspect-wide .story-card:first-child {{
+            aspect-ratio: 21/9;
+        }}
+        .aspect-classic .story-card:first-child {{
+            aspect-ratio: 4/3;
+        }}
+
+        /* ===== ACCESSIBILITY: FOCUS STATES ===== */
+        /* Visible focus indicators for keyboard navigation */
+        a:focus-visible,
+        button:focus-visible,
+        .story-card:focus-visible,
+        .compact-card:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible {{
+            outline: 3px solid var(--color-accent);
+            outline-offset: 2px;
+            border-radius: var(--radius-sm);
+        }}
+
+        /* Skip link for keyboard users */
+        .skip-link {{
+            position: absolute;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--color-accent);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius);
+            z-index: 1000;
+            font-weight: 600;
+            transition: top 0.3s ease;
+        }}
+        .skip-link:focus {{
+            top: 1rem;
+        }}
+
+        /* Focus within for card containers */
+        .story-card:focus-within {{
+            box-shadow: 0 0 0 3px var(--color-accent);
+        }}
+
+        /* Minimum touch target size (44x44px) */
+        .nav-links a,
+        .theme-toggle,
+        .story-card .story-link,
+        .compact-card a {{
+            min-height: 44px;
+            min-width: 44px;
+            display: inline-flex;
+            align-items: center;
+        }}
+
         /* ===== CREATIVE FLOURISHES ===== */
         @keyframes floatCard {{
             0%, 100% {{ transform: translateY(0); }}
@@ -3367,18 +3561,67 @@ class WebsiteBuilder:
             }
         });
 
-        // Animate elements on scroll
+        // Enhanced scroll animations with variety
+        const animationTypes = ['animate-fade-up', 'animate-fade-left', 'animate-fade-right', 'animate-scale-in', 'animate-slide-up'];
+
+        // Check for reduced motion preference
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
         const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry, index) => {
+            entries.forEach((entry) => {
                 if (entry.isIntersecting) {
-                    entry.target.style.animationDelay = `${index * 0.1}s`;
-                    entry.target.classList.add('animate-in');
-                    observer.unobserve(entry.target);
+                    const el = entry.target;
+
+                    if (prefersReducedMotion) {
+                        // Skip animations for users who prefer reduced motion
+                        el.style.opacity = '1';
+                    } else {
+                        // Get element's position in its parent for stagger effect
+                        const parent = el.parentElement;
+                        const siblings = parent ? Array.from(parent.children) : [];
+                        const index = siblings.indexOf(el);
+
+                        // Add stagger class based on position (max 8)
+                        const staggerClass = `stagger-${Math.min(index + 1, 8)}`;
+                        el.classList.add(staggerClass);
+
+                        // Select animation type based on element type and position
+                        let animationType = 'animate-fade-up';
+                        if (el.classList.contains('story-card')) {
+                            // Alternate animations for story cards
+                            if (index === 0) {
+                                animationType = 'animate-scale-in';
+                            } else if (index % 3 === 1) {
+                                animationType = 'animate-fade-left';
+                            } else if (index % 3 === 2) {
+                                animationType = 'animate-fade-right';
+                            } else {
+                                animationType = 'animate-slide-up';
+                            }
+                        } else if (el.classList.contains('compact-card')) {
+                            animationType = index % 2 === 0 ? 'animate-fade-left' : 'animate-fade-right';
+                        } else if (el.classList.contains('stat')) {
+                            animationType = 'animate-scale-in';
+                        } else if (el.classList.contains('section')) {
+                            animationType = 'animate-slide-up';
+                        }
+
+                        el.classList.add(animationType);
+                    }
+
+                    observer.unobserve(el);
                 }
             });
-        }, { threshold: 0.1 });
+        }, {
+            threshold: 0.1,
+            rootMargin: '50px'
+        });
 
-        document.querySelectorAll('.story-card, .compact-card, .stat').forEach(el => {
+        // Observe all animatable elements
+        document.querySelectorAll('.story-card, .compact-card, .stat, .section, .enriched-card, .word-cloud').forEach(el => {
+            if (!prefersReducedMotion) {
+                el.style.opacity = '0';
+            }
             observer.observe(el);
         });
 

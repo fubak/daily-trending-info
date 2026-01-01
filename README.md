@@ -29,14 +29,25 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 - **20+ Color Schemes**: From Midnight Indigo to Sunset Coral
 - **6 Layout Templates**: Newspaper, Magazine, Dashboard, Minimal, Bold, Mosaic
 - **12 Animated Hero Styles**: Cinematic, Glassmorphism, Neon, Duotone, Particles, Waves, Geometric, Spotlight, Glitch, Aurora, Mesh, Retro
+- **Personality-Hero Alignment**: Hero styles matched to personalities for visual consistency
+- **8 Image Treatments**: None, Grayscale, Sepia, Saturate, Contrast, Vignette, Duotone Warm, Duotone Cool
+- **7 Section Dividers**: None, Line, Thick Line, Gradient Line, Dots, Fade, Wave
+- **6 Card Aspect Ratios**: Auto, Landscape (16:9), Portrait (3:4), Square (1:1), Wide (21:9), Classic (4:3)
+- **9 Typography Scales**: Different heading size ratios per personality for visual hierarchy
 - **5 Background Patterns**: Dots, Grid, Lines, Cross, Noise (applied per personality)
-- **~32 Million Combinations**: Unique design generated each build
+- **Content-Aware Animations**: Animation intensity adjusts based on news sentiment (breaking, positive, negative, entertainment)
+- **WCAG Contrast Validation**: Automatic color contrast checking and adjustment for accessibility
+- **~50+ Million Combinations**: Unique design generated each build
 
 ### User Experience
 - **Dark/Light Mode Toggle**: Persistent user preference with localStorage
 - **Responsive Design**: Mobile-first with CSS Grid layouts
 - **Breaking News Ticker**: Animated headline carousel
-- **Smooth Animations**: Configurable animation levels (none, subtle, moderate, playful)
+- **Smooth Animations**: Configurable animation levels (none, subtle, moderate, playful, energetic)
+- **Scroll-Triggered Animations**: Cards animate in with staggered, varied effects (fade, slide, scale)
+- **Reduced Motion Support**: Respects `prefers-reduced-motion` system preference
+- **Keyboard Accessibility**: Skip-to-content link, visible focus indicators
+- **Touch-Friendly**: Minimum 44x44px touch targets for mobile
 
 ### SEO & Analytics
 - **Dynamic Titles**: `DailyTrending.info - [Top Story]`
@@ -158,22 +169,78 @@ daily-trending-info/
 
 ## Hero Styles
 
-Each page generation randomly selects one of 12 animated hero styles:
+Each page generation selects a hero style aligned with the chosen personality:
 
-| Style | Effect |
-|-------|--------|
-| Cinematic | Movie-poster with slow zoom animation on background |
-| Glassmorphism | Frosted glass effect with backdrop blur |
-| Neon | Cyberpunk glow with flickering text animation |
-| Duotone | Two-tone color overlay on grayscale background |
-| Particles | 30 floating animated particles rising upward |
-| Waves | Animated wave pattern at the bottom |
-| Geometric | Floating geometric shapes (circles, squares) |
-| Spotlight | Moving lens flare/spotlight effect |
-| Glitch | Glitch art effect with text distortion |
-| Aurora | Northern lights gradient animation |
-| Mesh | Gradient mesh background with shifting colors |
-| Retro | Synthwave grid with horizon sun
+| Style | Effect | Best For |
+|-------|--------|----------|
+| Cinematic | Movie-poster with slow zoom animation | Brutalist, Editorial, News, Magazine |
+| Glassmorphism | Frosted glass effect with backdrop blur | Magazine, Dashboard |
+| Neon | Cyberpunk glow with flickering text | Tech, Playful |
+| Duotone | Two-tone color overlay on grayscale | Editorial, Magazine |
+| Particles | 30 floating animated particles rising upward | Tech, Playful |
+| Waves | Animated wave pattern at the bottom | Playful |
+| Geometric | Floating geometric shapes (circles, squares) | Brutalist, Playful, Tech, Dashboard |
+| Spotlight | Moving lens flare/spotlight effect | Brutalist, Editorial, Corporate, News, Magazine |
+| Glitch | Glitch art effect with text distortion | Brutalist, Tech |
+| Aurora | Northern lights gradient animation | Minimal, Playful |
+| Mesh | Gradient mesh background with shifting colors | Minimal, Corporate, Tech, Dashboard |
+| Retro | Synthwave grid with horizon sun | Playful |
+
+## New Design Dimensions
+
+### Image Treatments
+Filters applied to card images for visual variety:
+
+| Treatment | Effect |
+|-----------|--------|
+| Grayscale | Black and white conversion |
+| Sepia | Warm vintage tone |
+| Saturate | Enhanced color vibrancy |
+| Contrast | Increased contrast |
+| Vignette | Darkened edges |
+| Duotone Warm | Warm two-tone effect |
+| Duotone Cool | Cool two-tone effect |
+
+### Typography Scales
+Each personality uses different heading size ratios:
+
+| Personality | Scale Ratio | Effect |
+|-------------|-------------|--------|
+| Brutalist | 1.5 | Dramatic size jumps |
+| Editorial | 1.25 | Classic proportions |
+| Minimal | 1.2 | Subtle differences |
+| Playful | 1.4 | Fun, bouncy |
+| Dashboard | 1.15 | Compact, data-dense |
+
+### Section Dividers
+Visual separators between content sections:
+
+| Divider | Style |
+|---------|-------|
+| Line | Simple 1px border |
+| Thick Line | Bold 3px accent color |
+| Gradient Line | Fading accent gradient |
+| Dots | Dotted pattern |
+| Fade | Soft gradient transition |
+| Wave | SVG wave pattern |
+
+### Content-Aware Animations
+Animation intensity adjusts based on detected news sentiment:
+
+| Content Type | Animation Level |
+|--------------|-----------------|
+| Breaking News | Moderate |
+| Entertainment | Playful |
+| Positive News | Playful |
+| Serious/Negative | Subtle |
+| Neutral | Subtle |
+
+### Accessibility Features
+- **WCAG AA Contrast**: Automatic validation and adjustment of text colors
+- **Focus Indicators**: 3px accent-color outlines on interactive elements
+- **Skip Link**: Hidden skip-to-content link for keyboard navigation
+- **Touch Targets**: Minimum 44×44px interactive areas
+- **Reduced Motion**: Respects system preference for reduced motion
 
 ## Local Development
 
