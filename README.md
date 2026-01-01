@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-01 20:02 UTC | [fix: Optimize layout space and make hero image relevant to content](https://github.com/fubak/daily-trending-info/commit/a44e958912198643bb8216c64a74560e8a35d839) |
 | 2026-01-01 19:53 UTC | [feat: Add modular architecture, PWA, sitemap, and accessibility improvements](https://github.com/fubak/daily-trending-info/commit/bc797e447d56db4e5a5873255f0147b400596d4a) |
 | 2026-01-01 19:28 UTC | [fix: Handle None values in content sentiment analysis](https://github.com/fubak/daily-trending-info/commit/8daf0af13e72be93f8849dae0f0040933fe1ad97) |
 | 2026-01-01 19:24 UTC | [feat: Add enhanced design system with animations and accessibility](https://github.com/fubak/daily-trending-info/commit/3decb8543f438223fbbac084ea9ef8798074b25d) |
