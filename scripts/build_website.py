@@ -2495,10 +2495,7 @@ class WebsiteBuilder:
             font-family: var(--font-primary);
             font-size: 2.5rem;
             font-weight: 800;
-            background: linear-gradient(135deg, var(--color-accent), var(--color-accent-secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--color-accent);
         }}
 
         .stat-label {{
