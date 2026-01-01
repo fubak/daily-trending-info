@@ -368,26 +368,24 @@ class WebsiteBuilder:
         if text_transform != 'none':
             body_classes.append(f"text-transform-{text_transform}")
 
-        # Add background pattern based on personality (for variety)
-        # Some personalities get patterns, others stay clean
-        personality = self.design.get('personality', '')
-        pattern_map = {
-            'brutalist': ['dots', 'grid', 'lines'],
-            'tech': ['grid', 'dots', 'noise'],
-            'dashboard': ['grid', 'dots'],
-            'news': ['dots', 'noise'],
-            'magazine': ['noise'],
-            'editorial': [],  # Clean
-            'minimal': [],  # Clean
-            'corporate': [],  # Clean
-            'playful': ['dots', 'cross'],
-        }
-        patterns = pattern_map.get(personality, [])
-        if patterns:
-            # Use date-based random for consistency
-            selected_pattern = self.rng.choice(patterns + [''])  # Include no pattern option
-            if selected_pattern:
-                body_classes.append(f"pattern-{selected_pattern}")
+        # Add creative flourish classes from design spec
+        bg_pattern = self.design.get('background_pattern', 'none')
+        if bg_pattern and bg_pattern != 'none':
+            body_classes.append(f"bg-pattern-{bg_pattern}")
+
+        accent_style = self.design.get('accent_style', 'none')
+        if accent_style and accent_style != 'none':
+            body_classes.append(f"accent-{accent_style}")
+
+        special_mode = self.design.get('special_mode', 'standard')
+        if special_mode and special_mode != 'standard':
+            body_classes.append(f"mode-{special_mode}")
+
+        # Add animation modifiers
+        if self.design.get('use_float_animation', False):
+            body_classes.append("use-float")
+        if self.design.get('use_pulse_animation', False):
+            body_classes.append("use-pulse")
 
         # Generate SEO-friendly title
         top_topic = self._get_top_topic()
@@ -547,6 +545,15 @@ class WebsiteBuilder:
         use_gradients = d.get('use_gradients', True)
         use_blur = d.get('use_blur', False)
         spacing = d.get('spacing', 'comfortable')
+
+        # Creative flourishes
+        bg_pattern = d.get('background_pattern', 'none')
+        accent_style = d.get('accent_style', 'none')
+        special_mode = d.get('special_mode', 'standard')
+        transition_speed = d.get('transition_speed', '200ms')
+        hover_transform = d.get('hover_transform', 'translateY(-2px)')
+        use_pulse = d.get('use_pulse_animation', False)
+        use_float = d.get('use_float_animation', False)
 
         # Map spacing to section gaps
         spacing_map = {
@@ -1894,7 +1901,52 @@ class WebsiteBuilder:
             z-index: 2;
         }}
 
-        /* ===== CATEGORY GRIDS ===== */
+        /* ===== CATEGORIES MULTI-COLUMN LAYOUT ===== */
+        .categories-section {{
+            margin: 3rem 0;
+        }}
+
+        .categories-grid {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin-top: 1.5rem;
+        }}
+
+        .category-column {{
+            background: var(--color-card-bg);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            border: 1px solid var(--color-border);
+        }}
+
+        .category-header {{
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--color-accent);
+        }}
+
+        .category-title {{
+            font-family: var(--font-primary);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--color-text);
+            margin: 0;
+        }}
+
+        .category-list {{
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }}
+
+        @media (max-width: 768px) {{
+            .categories-grid {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+
+        /* Legacy category-grid support */
         .category-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -2399,6 +2451,146 @@ class WebsiteBuilder:
             opacity: 0;
         }}
 
+        /* ===== CREATIVE FLOURISHES ===== */
+        @keyframes floatCard {{
+            0%, 100% {{ transform: translateY(0); }}
+            50% {{ transform: translateY(-8px); }}
+        }}
+
+        @keyframes pulseGlow {{
+            0%, 100% {{ box-shadow: 0 0 5px var(--color-accent); }}
+            50% {{ box-shadow: 0 0 20px var(--color-accent), 0 0 40px var(--color-accent); }}
+        }}
+
+        @keyframes borderGradient {{
+            0% {{ border-color: var(--color-accent); }}
+            50% {{ border-color: var(--color-accent-secondary); }}
+            100% {{ border-color: var(--color-accent); }}
+        }}
+
+        /* Background pattern overlay */
+        .bg-pattern-dots::before {{
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+            opacity: 0.4;
+            z-index: -1;
+        }}
+
+        .bg-pattern-grid::before {{
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(var(--color-border) 1px, transparent 1px),
+                              linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            opacity: 0.3;
+            z-index: -1;
+        }}
+
+        .bg-pattern-diagonal::before {{
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                var(--color-border) 10px,
+                var(--color-border) 11px
+            );
+            pointer-events: none;
+            opacity: 0.2;
+            z-index: -1;
+        }}
+
+        .bg-pattern-gradient_radial::before {{
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at top, var(--color-accent) 0%, transparent 50%);
+            pointer-events: none;
+            opacity: 0.15;
+            z-index: -1;
+        }}
+
+        /* Accent styles for highlighted elements */
+        .accent-glow {{
+            box-shadow: 0 0 60px -20px var(--color-accent);
+        }}
+
+        .accent-neon_border {{
+            border: 2px solid var(--color-accent) !important;
+            box-shadow: 0 0 20px var(--color-accent), inset 0 0 20px rgba(255,255,255,0.05);
+        }}
+
+        .accent-underline {{
+            border-bottom: 3px solid var(--color-accent);
+        }}
+
+        .accent-corner_accent {{
+            border-top: 4px solid var(--color-accent);
+            border-left: 4px solid var(--color-accent);
+        }}
+
+        /* Special visual modes */
+        .mode-high_contrast {{
+            --color-text: #ffffff;
+            --color-muted: #c0c0c0;
+        }}
+
+        .mode-high_contrast .story-card,
+        .mode-high_contrast .compact-card {{
+            border-width: 2px;
+        }}
+
+        .mode-glassmorphism .story-card,
+        .mode-glassmorphism .section,
+        .mode-glassmorphism .compact-card {{
+            background: rgba(24, 24, 27, 0.7) !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }}
+
+        .mode-vibrant {{
+            --color-accent: color-mix(in srgb, var(--color-accent) 100%, white 20%);
+        }}
+
+        .mode-muted {{
+            filter: saturate(0.7);
+        }}
+
+        .mode-duotone {{
+            filter: sepia(0.2) saturate(1.2);
+        }}
+
+        /* Float and pulse animations */
+        .use-float .story-card:hover,
+        .use-float .compact-card:hover {{
+            animation: floatCard 3s ease-in-out infinite;
+        }}
+
+        .use-pulse .story-card {{
+            animation: pulseGlow 3s ease-in-out infinite;
+        }}
+
         /* ===== RESPONSIVE ===== */
         @media (max-width: 1024px) {{
             .layout-newspaper .top-stories,
@@ -2823,16 +3015,26 @@ class WebsiteBuilder:
     </section>"""
 
     def _build_top_stories(self) -> str:
-        """Build the top stories section."""
-        top = self.ctx.trends[:6]
-        images = self.ctx.images[1:7] if len(self.ctx.images) > 1 else []
+        """Build the top stories section with AI summaries."""
+        top = self.ctx.trends[:4]  # Reduced from 6 to 4
+        images = self.ctx.images[1:5] if len(self.ctx.images) > 1 else []
+
+        # Get AI summaries if available
+        summaries = {}
+        if self.ctx.enriched_content and self.ctx.enriched_content.get('story_summaries'):
+            for s in self.ctx.enriched_content['story_summaries']:
+                summaries[s.get('title', '')] = s.get('summary', '')
 
         cards_html = []
         for i, trend in enumerate(top):
             title = html.escape(trend.get('title') or 'Untitled')
             source = html.escape((trend.get('source') or '').replace('_', ' ').title())
-            desc = html.escape((trend.get('description') or '')[:120]) if trend.get('description') else ''
             url = trend.get('url') or '#'
+
+            # Use AI summary if available, otherwise use description
+            raw_title = trend.get('title', '')
+            ai_summary = summaries.get(raw_title, '')
+            desc = html.escape(ai_summary) if ai_summary else html.escape((trend.get('description') or '')[:150])
 
             # Add image to first few cards
             image = images[i] if i < len(images) else None
@@ -2842,7 +3044,6 @@ class WebsiteBuilder:
             if i == 0:
                 extra_class = "featured"
             elif image:
-                # Escape URL for CSS context (remove quotes, parentheses, backslashes)
                 safe_img_url = html.escape(image.get("url_medium", "")).replace("'", "").replace('"', '')
                 image_style = f'style="background-image: url(\'{safe_img_url}\');"'
                 extra_class = "has-image"
@@ -2869,18 +3070,20 @@ class WebsiteBuilder:
     </section>"""
 
     def _build_category_sections(self) -> str:
-        """Build sections for each category."""
+        """Build compact category sections in a multi-column layout."""
         sections_html = []
 
-        # Use pre-computed sorted categories for consistent ordering with nav
-        for category, trends in self._sorted_categories:
+        # Limit to top 4 categories, 4 articles each for a cleaner layout
+        categories_to_show = self._sorted_categories[:4]
+
+        for category, trends in categories_to_show:
             if len(trends) < 2:
                 continue
 
             section_id = category.lower().replace(' ', '-')
 
             cards_html = []
-            for i, trend in enumerate(trends[:6]):
+            for i, trend in enumerate(trends[:4]):  # Reduced from 6 to 4
                 title = html.escape(trend.get('title') or 'Untitled')
                 source = html.escape((trend.get('source') or '').replace('_', ' ').title())
                 url = trend.get('url') or '#'
@@ -2895,17 +3098,26 @@ class WebsiteBuilder:
                 </a>''')
 
             sections_html.append(f'''
-    <section class="section" id="{html.escape(section_id)}">
-        <div class="section-header">
-            <h2 class="section-title">{html.escape(category)}</h2>
-            <span class="section-count">{len(trends)} stories</span>
-        </div>
-        <div class="category-grid">
-            {''.join(cards_html)}
-        </div>
-    </section>''')
+        <div class="category-column">
+            <div class="category-header">
+                <h3 class="category-title">{html.escape(category)}</h3>
+            </div>
+            <div class="category-list">
+                {''.join(cards_html)}
+            </div>
+        </div>''')
 
-        return '\n'.join(sections_html)
+        # Wrap all categories in a multi-column container
+        return f"""
+    <section class="section categories-section" id="categories">
+        <div class="section-header">
+            <h2 class="section-title">By Category</h2>
+            <span class="section-count">{len(categories_to_show)} sections</span>
+        </div>
+        <div class="categories-grid">
+            {''.join(sections_html)}
+        </div>
+    </section>"""
 
     def _build_enriched_content_section(self) -> str:
         """Build the enriched content section with Word of Day and Grokipedia."""

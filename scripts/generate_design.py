@@ -70,6 +70,15 @@ class DesignSpec:
     hero_style: str = "full"
     hero_overlay_opacity: float = 0.85
 
+    # Creative flourishes
+    background_pattern: str = "none"
+    accent_style: str = "none"
+    special_mode: str = "standard"
+    transition_speed: str = "200ms"
+    hover_transform: str = "translateY(-2px)"
+    use_pulse_animation: bool = False
+    use_float_animation: bool = False
+
     # Content
     headline: str = "Today's Trends"
     subheadline: str = "What the world is talking about"
@@ -429,6 +438,80 @@ HERO_PATTERNS = [
     "minimal",     # Compact
     "gradient",    # Animated gradient
     "ticker",      # Breaking news style
+    "cinematic",   # Wide letterbox with blur
+    "stack",       # Vertically stacked headline
+    "marquee",     # Scrolling ticker bar
+]
+
+# ============================================================================
+# VISUAL FLOURISHES - Additional creative elements
+# ============================================================================
+
+BACKGROUND_PATTERNS = {
+    "none": "",
+    "dots": "radial-gradient(circle, var(--color-border) 1px, transparent 1px)",
+    "grid": "linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)",
+    "diagonal": "repeating-linear-gradient(45deg, var(--color-border), var(--color-border) 1px, transparent 1px, transparent 10px)",
+    "noise": "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E\")",
+    "gradient_radial": "radial-gradient(ellipse at top, var(--color-accent) 0%, transparent 50%)",
+    "gradient_sweep": "conic-gradient(from 180deg at 50% 50%, var(--color-accent) 0deg, transparent 60deg, transparent 300deg, var(--color-accent) 360deg)",
+}
+
+# Decorative accents that can be added to sections
+ACCENT_STYLES = {
+    "none": {},
+    "glow": {"box-shadow": "0 0 60px -20px var(--color-accent)"},
+    "neon_border": {"border": "2px solid var(--color-accent)", "box-shadow": "0 0 20px var(--color-accent), inset 0 0 20px rgba(255,255,255,0.05)"},
+    "gradient_border": {"border-image": "linear-gradient(135deg, var(--color-accent), var(--color-accent-secondary)) 1"},
+    "underline": {"border-bottom": "3px solid var(--color-accent)"},
+    "corner_accent": {"border-top": "4px solid var(--color-accent)", "border-left": "4px solid var(--color-accent)"},
+    "pill_badge": {"border-radius": "9999px", "padding": "0.5rem 1.5rem"},
+}
+
+# Animation presets for different energy levels
+ANIMATION_PRESETS = {
+    "none": {
+        "transition_speed": "0ms",
+        "hover_transform": "none",
+        "pulse": False,
+        "float": False,
+    },
+    "subtle": {
+        "transition_speed": "200ms",
+        "hover_transform": "translateY(-2px)",
+        "pulse": False,
+        "float": False,
+    },
+    "moderate": {
+        "transition_speed": "300ms",
+        "hover_transform": "translateY(-4px) scale(1.01)",
+        "pulse": False,
+        "float": False,
+    },
+    "playful": {
+        "transition_speed": "400ms",
+        "hover_transform": "translateY(-6px) scale(1.02) rotate(0.5deg)",
+        "pulse": True,
+        "float": True,
+    },
+    "energetic": {
+        "transition_speed": "250ms",
+        "hover_transform": "translateY(-8px) scale(1.03)",
+        "pulse": True,
+        "float": True,
+    },
+}
+
+# Special visual modes for dramatic variation
+SPECIAL_MODES = [
+    "standard",      # Normal look
+    "high_contrast", # Maximum readability
+    "duotone",       # Two-color aesthetic
+    "monochrome",    # Single accent color
+    "vibrant",       # Saturated colors
+    "muted",         # Desaturated, subtle
+    "retro",         # Vintage feel
+    "glassmorphism", # Frosted glass everywhere
 ]
 
 
@@ -513,6 +596,12 @@ class DesignGenerator:
         # 5. Select layout and hero patterns
         layout_style = rng.choice(LAYOUT_PATTERNS)
         hero_style = rng.choice(HERO_PATTERNS)
+
+        # 5b. Select creative flourishes based on personality
+        bg_pattern = self._select_background_pattern(personality_name, rng)
+        accent_style = self._select_accent_style(personality_name, rng)
+        special_mode = self._select_special_mode(personality_name, scheme, rng)
+        animation_preset = ANIMATION_PRESETS.get(animation, ANIMATION_PRESETS["subtle"])
 
         # 6. Select AI variant if available (multi-variant support)
         selected_variant = None
@@ -601,6 +690,15 @@ class DesignGenerator:
             # Hero
             hero_style=hero_style,
 
+            # Creative flourishes
+            background_pattern=bg_pattern,
+            accent_style=accent_style,
+            special_mode=special_mode,
+            transition_speed=animation_preset.get("transition_speed", "200ms"),
+            hover_transform=animation_preset.get("hover_transform", "translateY(-2px)"),
+            use_pulse_animation=animation_preset.get("pulse", False),
+            use_float_animation=animation_preset.get("float", False),
+
             # Content
             headline=headline,
             subheadline=subheadline,
@@ -611,6 +709,54 @@ class DesignGenerator:
             # Meta
             design_seed=datetime.now().strftime("%Y-%m-%d"),
         )
+
+    def _select_background_pattern(self, personality: str, rng: random.Random) -> str:
+        """Select a background pattern based on personality."""
+        pattern_weights = {
+            "brutalist": ["none", "grid", "diagonal"],
+            "editorial": ["none", "none", "dots"],
+            "minimal": ["none", "none", "none"],
+            "corporate": ["none", "dots", "gradient_radial"],
+            "playful": ["dots", "gradient_radial", "gradient_sweep", "noise"],
+            "tech": ["grid", "dots", "noise", "gradient_radial"],
+            "news": ["none", "none", "grid"],
+            "magazine": ["none", "gradient_radial", "noise"],
+            "dashboard": ["grid", "dots", "none"],
+        }
+        options = pattern_weights.get(personality, ["none"])
+        return rng.choice(options)
+
+    def _select_accent_style(self, personality: str, rng: random.Random) -> str:
+        """Select decorative accent style based on personality."""
+        accent_weights = {
+            "brutalist": ["none", "underline", "corner_accent"],
+            "editorial": ["none", "underline"],
+            "minimal": ["none", "none"],
+            "corporate": ["none", "glow"],
+            "playful": ["glow", "neon_border", "pill_badge", "gradient_border"],
+            "tech": ["glow", "neon_border", "gradient_border"],
+            "news": ["none", "underline"],
+            "magazine": ["none", "glow"],
+            "dashboard": ["none", "glow", "neon_border"],
+        }
+        options = accent_weights.get(personality, ["none"])
+        return rng.choice(options)
+
+    def _select_special_mode(self, personality: str, scheme: Dict, rng: random.Random) -> str:
+        """Select a special visual mode for dramatic variation."""
+        mode_weights = {
+            "brutalist": ["standard", "high_contrast", "monochrome", "duotone"],
+            "editorial": ["standard", "standard", "muted"],
+            "minimal": ["standard", "standard", "muted", "monochrome"],
+            "corporate": ["standard", "standard"],
+            "playful": ["standard", "vibrant", "glassmorphism"],
+            "tech": ["standard", "glassmorphism", "duotone", "vibrant"],
+            "news": ["standard", "high_contrast"],
+            "magazine": ["standard", "vibrant", "muted"],
+            "dashboard": ["standard", "glassmorphism", "high_contrast"],
+        }
+        options = mode_weights.get(personality, ["standard"])
+        return rng.choice(options)
 
     def _select_ai_variant(self, variants: List[Dict], keywords: List[str], recent_themes: List[str]) -> Optional[Dict]:
         """Choose an AI variant deterministically while avoiding recent repeats."""
