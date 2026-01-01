@@ -27,11 +27,20 @@ from dataclasses import asdict
 # Add scripts directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from config import (
+    MIN_TRENDS, MIN_FRESH_RATIO, setup_logging,
+    MAX_IMAGE_KEYWORDS, IMAGES_PER_KEYWORD
+)
 from collect_trends import TrendCollector
 from fetch_images import ImageFetcher
 from generate_design import DesignGenerator, DesignSpec
 from build_website import WebsiteBuilder, BuildContext
 from archive_manager import ArchiveManager
+from generate_rss import generate_rss_feed
+from keyword_tracker import KeywordTracker
+
+# Setup logging
+logger = setup_logging("pipeline")
 
 
 class Pipeline:
@@ -51,6 +60,7 @@ class Pipeline:
         self.image_fetcher = ImageFetcher()
         self.design_generator = DesignGenerator()
         self.archive_manager = ArchiveManager(public_dir=str(self.public_dir))
+        self.keyword_tracker = KeywordTracker()
 
         # Pipeline data
         self.trends = []
@@ -70,10 +80,10 @@ class Pipeline:
         Returns:
             True if successful, False otherwise
         """
-        print("=" * 60)
-        print("TREND WEBSITE GENERATOR")
-        print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print("=" * 60)
+        logger.info("=" * 60)
+        logger.info("TREND WEBSITE GENERATOR")
+        logger.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info("=" * 60)
 
         try:
             # Step 1: Archive previous website
@@ -93,34 +103,38 @@ class Pipeline:
             if not dry_run:
                 self._step_build_website()
 
-            # Step 6: Cleanup old archives
+            # Step 6: Generate RSS feed
+            if not dry_run:
+                self._step_generate_rss()
+
+            # Step 7: Cleanup old archives
             if archive and not dry_run:
                 self._step_cleanup()
 
-            # Step 7: Save pipeline data
+            # Step 8: Save pipeline data
             self._save_data()
 
-            print("\n" + "=" * 60)
-            print("PIPELINE COMPLETE")
-            print("=" * 60)
+            logger.info("=" * 60)
+            logger.info("PIPELINE COMPLETE")
+            logger.info("=" * 60)
 
             if not dry_run:
-                print(f"\nWebsite generated at: {self.public_dir / 'index.html'}")
-                print(f"Archive available at: {self.public_dir / 'archive' / 'index.html'}")
+                logger.info(f"Website generated at: {self.public_dir / 'index.html'}")
+                logger.info(f"Archive available at: {self.public_dir / 'archive' / 'index.html'}")
 
             return True
 
         except Exception as e:
-            print(f"\n{'=' * 60}")
-            print(f"PIPELINE FAILED: {e}")
-            print("=" * 60)
+            logger.error("=" * 60)
+            logger.error(f"PIPELINE FAILED: {e}")
+            logger.error("=" * 60)
             import traceback
             traceback.print_exc()
             return False
 
     def _step_archive(self):
         """Archive the previous website."""
-        print("\n[1/6] Archiving previous website...")
+        logger.info("[1/7] Archiving previous website...")
 
         # Try to load previous design metadata
         previous_design = None
@@ -136,18 +150,30 @@ class Pipeline:
 
     def _step_collect_trends(self):
         """Collect trends from all sources."""
-        print("\n[2/6] Collecting trends...")
+        logger.info("[2/7] Collecting trends...")
 
         self.trends = self.trend_collector.collect_all()
         self.keywords = self.trend_collector.get_all_keywords()
         self.global_keywords = self.trend_collector.get_global_keywords()
 
-        print(f"  Collected {len(self.trends)} unique trends")
-        print(f"  Extracted {len(self.keywords)} keywords")
-        print(f"  Identified {len(self.global_keywords)} global meta-trends")
+        # Get freshness ratio
+        freshness_ratio = self.trend_collector.get_freshness_ratio()
 
-        # Quality gate: Ensure minimum content before proceeding
-        MIN_TRENDS = 5
+        logger.info(f"Collected {len(self.trends)} unique trends")
+        logger.info(f"Extracted {len(self.keywords)} keywords")
+        logger.info(f"Identified {len(self.global_keywords)} global meta-trends")
+        logger.info(f"Freshness ratio: {freshness_ratio:.0%} from past 24h")
+
+        # Record keywords for trending analysis
+        self.keyword_tracker.record_keywords(self.keywords)
+
+        # Log trending keywords
+        trending = self.keyword_tracker.get_trending_keywords(5)
+        if trending:
+            trending_str = ", ".join([f"{t.keyword} ({t.trend})" for t in trending])
+            logger.info(f"Top trending keywords: {trending_str}")
+
+        # Quality gate 1: Ensure minimum content
         if len(self.trends) < MIN_TRENDS:
             raise Exception(
                 f"Insufficient content: Only {len(self.trends)} trends found. "
@@ -155,53 +181,61 @@ class Pipeline:
                 "Aborting to prevent deploying a broken site."
             )
 
+        # Quality gate 2: Ensure content freshness
+        if freshness_ratio < MIN_FRESH_RATIO:
+            logger.warning(
+                f"Low freshness: Only {freshness_ratio:.0%} of trends are from past 24h. "
+                f"Minimum recommended is {MIN_FRESH_RATIO:.0%}. Proceeding with caution."
+            )
+
     def _step_fetch_images(self):
         """Fetch images based on trending keywords."""
-        print("\n[3/6] Fetching images...")
+        logger.info("[3/7] Fetching images...")
 
         # Prioritize global keywords (meta-trends) for image search
         # These are words appearing in 3+ stories, more likely to be relevant
         search_keywords = []
 
-        # Add global keywords first (up to 4)
+        # Add global keywords first (up to half the slots)
+        global_slots = MAX_IMAGE_KEYWORDS // 2
         if self.global_keywords:
-            search_keywords.extend(self.global_keywords[:4])
-            print(f"  Using {len(search_keywords)} global keywords for images")
+            search_keywords.extend(self.global_keywords[:global_slots])
+            logger.info(f"Using {len(search_keywords)} global keywords for images")
 
         # Fill remaining slots with top regular keywords
-        remaining_slots = 8 - len(search_keywords)
+        remaining_slots = MAX_IMAGE_KEYWORDS - len(search_keywords)
         if remaining_slots > 0:
             for kw in self.keywords:
                 if kw not in search_keywords:
                     search_keywords.append(kw)
-                    if len(search_keywords) >= 8:
+                    if len(search_keywords) >= MAX_IMAGE_KEYWORDS:
                         break
 
         if search_keywords:
             self.images = self.image_fetcher.fetch_for_keywords(
                 search_keywords,
-                images_per_keyword=2
+                images_per_keyword=IMAGES_PER_KEYWORD
             )
-            print(f"  Fetched {len(self.images)} images")
+            logger.info(f"Fetched {len(self.images)} images")
         else:
-            print("  No keywords for image search, using fallback gradients")
+            logger.warning("No keywords for image search, using fallback gradients")
 
     def _step_generate_design(self):
         """Generate the design specification."""
-        print("\n[4/6] Generating design...")
+        logger.info("[4/7] Generating design...")
 
         # Convert trends to dict format for the generator
         trends_data = [asdict(t) if hasattr(t, '__dataclass_fields__') else t for t in self.trends]
 
         self.design = self.design_generator.generate(trends_data, self.keywords)
 
-        print(f"  Theme: {self.design.theme_name}")
-        print(f"  Mood: {self.design.mood}")
-        print(f"  Headline: {self.design.headline}")
+        logger.info(f"Theme: {self.design.theme_name}")
+        logger.info(f"Mood: {self.design.mood}")
+        logger.info(f"Headline: {self.design.headline}")
 
     def _step_build_website(self):
         """Build the final HTML website."""
-        print("\n[5/6] Building website...")
+        logger.info("[5/7] Building website...")
 
         # Convert data to proper format
         trends_data = [asdict(t) if hasattr(t, '__dataclass_fields__') else t for t in self.trends]
@@ -221,14 +255,27 @@ class Pipeline:
         output_path = self.public_dir / "index.html"
         builder.save(str(output_path))
 
-        print(f"  Website saved to {output_path}")
+        logger.info(f"Website saved to {output_path}")
+
+    def _step_generate_rss(self):
+        """Generate RSS feed."""
+        logger.info("[6/7] Generating RSS feed...")
+
+        # Convert trends to dict format
+        trends_data = [asdict(t) if hasattr(t, '__dataclass_fields__') else t for t in self.trends]
+
+        # Generate RSS feed
+        output_path = self.public_dir / "feed.xml"
+        generate_rss_feed(trends_data, output_path)
+
+        logger.info(f"RSS feed saved to {output_path}")
 
     def _step_cleanup(self):
         """Clean up old archives."""
-        print("\n[6/6] Cleaning up old archives...")
+        logger.info("[7/7] Cleaning up old archives...")
 
         removed = self.archive_manager.cleanup_old(keep_days=30)
-        print(f"  Removed {removed} old archives")
+        logger.info(f"Removed {removed} old archives")
 
     def _save_data(self):
         """Save pipeline data for debugging/reference."""
@@ -251,7 +298,7 @@ class Pipeline:
         with open(self.data_dir / "keywords.json", "w") as f:
             json.dump(self.keywords, f, indent=2)
 
-        print(f"\n  Pipeline data saved to {self.data_dir}")
+        logger.info(f"Pipeline data saved to {self.data_dir}")
 
 
 def main():
@@ -299,7 +346,7 @@ Environment variables:
         env_path = Path(__file__).parent.parent / ".env"
         if env_path.exists():
             load_dotenv(env_path)
-            print(f"Loaded environment from {env_path}")
+            logger.info(f"Loaded environment from {env_path}")
     except ImportError:
         pass
 

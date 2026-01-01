@@ -17,12 +17,20 @@ from urllib.parse import quote_plus
 
 import requests
 
+from config import (
+    setup_logging, IMAGE_CACHE_DIR, IMAGE_CACHE_MAX_AGE_DAYS,
+    IMAGE_CACHE_MAX_ENTRIES, TIMEOUTS, RETRY_MAX_ATTEMPTS,
+    RETRY_BACKOFF_FACTOR, RETRY_STATUS_CODES, DELAYS, MIN_IMAGES_REQUIRED
+)
 
-# Cache configuration
-CACHE_DIR = Path(__file__).parent.parent / "data" / "image_cache"
+# Setup logging
+logger = setup_logging("images")
+
+# Cache configuration (using config values)
+CACHE_DIR = IMAGE_CACHE_DIR
 CACHE_INDEX_FILE = CACHE_DIR / "cache_index.json"
-CACHE_MAX_AGE_DAYS = 7  # Refresh cached images after this many days
-CACHE_MAX_ENTRIES = 500  # Maximum cached image entries
+CACHE_MAX_AGE_DAYS = IMAGE_CACHE_MAX_AGE_DAYS
+CACHE_MAX_ENTRIES = IMAGE_CACHE_MAX_ENTRIES
 
 
 @dataclass
@@ -67,7 +75,7 @@ class ImageCache:
             with open(self.index_file, 'w') as f:
                 json.dump(self.index, f, indent=2)
         except IOError as e:
-            print(f"  Warning: Could not save cache index: {e}")
+            logger.warning(f"Could not save cache index: {e}")
 
     def _query_key(self, query: str) -> str:
         """Generate a normalized cache key for a query."""
@@ -156,7 +164,7 @@ class ImageCache:
             k: v for k, v in images.items() if k in keep_image_ids
         }
 
-        print(f"  Cache cleaned: kept {len(self.index['images'])} images")
+        logger.info(f"Cache cleaned: kept {len(self.index['images'])} images")
 
     def get_random_cached(self, count: int = 10) -> List[Image]:
         """Get random cached images as fallback."""
@@ -200,7 +208,7 @@ class ImageFetcher:
 
         # Rate limiting
         self._last_request_time = 0
-        self._min_request_interval = 0.5  # seconds
+        self._min_request_interval = DELAYS.get("between_images", 0.3)
 
     def _rate_limit(self):
         """Ensure we don't exceed API rate limits."""
@@ -209,32 +217,76 @@ class ImageFetcher:
             time.sleep(self._min_request_interval - elapsed)
         self._last_request_time = time.time()
 
+    def _request_with_retry(self, url: str, headers: Dict, params: Dict,
+                            service_name: str) -> Optional[requests.Response]:
+        """Make HTTP request with exponential backoff retry."""
+        timeout = TIMEOUTS.get("image_api", 15)
+
+        for attempt in range(RETRY_MAX_ATTEMPTS):
+            try:
+                self._rate_limit()
+                response = self.session.get(url, headers=headers, params=params, timeout=timeout)
+
+                # Success
+                if response.status_code == 200:
+                    return response
+
+                # Retryable error
+                if response.status_code in RETRY_STATUS_CODES:
+                    wait_time = RETRY_BACKOFF_FACTOR ** attempt
+                    logger.warning(
+                        f"{service_name} returned {response.status_code}, "
+                        f"retrying in {wait_time}s (attempt {attempt + 1}/{RETRY_MAX_ATTEMPTS})"
+                    )
+                    time.sleep(wait_time)
+                    continue
+
+                # Non-retryable error
+                response.raise_for_status()
+
+            except requests.exceptions.Timeout:
+                wait_time = RETRY_BACKOFF_FACTOR ** attempt
+                logger.warning(
+                    f"{service_name} timeout, retrying in {wait_time}s "
+                    f"(attempt {attempt + 1}/{RETRY_MAX_ATTEMPTS})"
+                )
+                time.sleep(wait_time)
+            except requests.exceptions.RequestException as e:
+                if attempt < RETRY_MAX_ATTEMPTS - 1:
+                    wait_time = RETRY_BACKOFF_FACTOR ** attempt
+                    logger.warning(f"{service_name} error: {e}, retrying in {wait_time}s")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"{service_name} failed after {RETRY_MAX_ATTEMPTS} attempts: {e}")
+                    return None
+
+        return None
+
     def search_pexels(self, query: str, per_page: int = 5) -> List[Image]:
-        """Search for images on Pexels."""
+        """Search for images on Pexels with retry logic."""
         if not self.pexels_key:
-            print("  Pexels API key not configured")
+            logger.debug("Pexels API key not configured")
             return []
 
         images = []
+        headers = {'Authorization': self.pexels_key}
+        params = {
+            'query': query,
+            'per_page': per_page,
+            'orientation': 'landscape'
+        }
+
+        response = self._request_with_retry(
+            'https://api.pexels.com/v1/search',
+            headers=headers,
+            params=params,
+            service_name='Pexels'
+        )
+
+        if not response:
+            return []
 
         try:
-            self._rate_limit()
-
-            headers = {'Authorization': self.pexels_key}
-            params = {
-                'query': query,
-                'per_page': per_page,
-                'orientation': 'landscape'
-            }
-
-            response = self.session.get(
-                'https://api.pexels.com/v1/search',
-                headers=headers,
-                params=params,
-                timeout=15
-            )
-            response.raise_for_status()
-
             data = response.json()
 
             for photo in data.get('photos', []):
@@ -256,39 +308,36 @@ class ImageFetcher:
                 )
                 images.append(image)
 
-        except requests.exceptions.HTTPError as e:
-            print(f"  Pexels API error: {e}")
         except Exception as e:
-            print(f"  Pexels error: {e}")
+            logger.error(f"Pexels parse error: {e}")
 
         return images
 
     def search_unsplash(self, query: str, per_page: int = 5) -> List[Image]:
-        """Search for images on Unsplash."""
+        """Search for images on Unsplash with retry logic."""
         if not self.unsplash_key:
-            print("  Unsplash API key not configured")
+            logger.debug("Unsplash API key not configured")
             return []
 
         images = []
+        headers = {'Authorization': f'Client-ID {self.unsplash_key}'}
+        params = {
+            'query': query,
+            'per_page': per_page,
+            'orientation': 'landscape'
+        }
+
+        response = self._request_with_retry(
+            'https://api.unsplash.com/search/photos',
+            headers=headers,
+            params=params,
+            service_name='Unsplash'
+        )
+
+        if not response:
+            return []
 
         try:
-            self._rate_limit()
-
-            headers = {'Authorization': f'Client-ID {self.unsplash_key}'}
-            params = {
-                'query': query,
-                'per_page': per_page,
-                'orientation': 'landscape'
-            }
-
-            response = self.session.get(
-                'https://api.unsplash.com/search/photos',
-                headers=headers,
-                params=params,
-                timeout=15
-            )
-            response.raise_for_status()
-
             data = response.json()
 
             for photo in data.get('results', []):
@@ -311,16 +360,14 @@ class ImageFetcher:
                 )
                 images.append(image)
 
-        except requests.exceptions.HTTPError as e:
-            print(f"  Unsplash API error: {e}")
         except Exception as e:
-            print(f"  Unsplash error: {e}")
+            logger.error(f"Unsplash parse error: {e}")
 
         return images
 
     def search(self, query: str, per_page: int = 5) -> List[Image]:
         """Search for images, trying cache first, then Pexels, then Unsplash."""
-        print(f"  Searching for: '{query}'")
+        logger.debug(f"Searching for: '{query}'")
 
         # Check cache first
         if self.use_cache and self.cache and self.cache.is_cached(query):
@@ -329,7 +376,7 @@ class ImageFetcher:
                 # Filter out already used images
                 cached_images = [img for img in cached_images if img.id not in self.used_ids]
                 if cached_images:
-                    print(f"    Found {len(cached_images)} images (cached)")
+                    logger.debug(f"Found {len(cached_images)} images (cached)")
                     return cached_images
 
         # Try Pexels first
@@ -346,16 +393,16 @@ class ImageFetcher:
         # Filter out already used images
         images = [img for img in images if img.id not in self.used_ids]
 
-        print(f"    Found {len(images)} images")
+        logger.debug(f"Found {len(images)} images")
         return images
 
     def fetch_for_keywords(self, keywords: List[str], images_per_keyword: int = 3) -> List[Image]:
         """Fetch images for a list of keywords."""
-        print("Fetching images for keywords...")
+        logger.info("Fetching images for keywords...")
 
         if self.use_cache and self.cache:
             stats = self.cache.get_stats()
-            print(f"  Cache stats: {stats['total_images']} images, {stats['total_queries']} queries")
+            logger.info(f"Cache stats: {stats['total_images']} images, {stats['total_queries']} queries")
 
         all_images = []
 
@@ -367,22 +414,21 @@ class ImageFetcher:
             for img in images:
                 self.used_ids.add(img.id)
 
-            time.sleep(0.3)  # Be nice to APIs
+            time.sleep(DELAYS.get("between_images", 0.3))
 
         # If we got very few images, supplement with cached fallback
-        MIN_IMAGES = 5
-        if len(all_images) < MIN_IMAGES and self.use_cache and self.cache:
-            print(f"  Only {len(all_images)} images found, using cached fallback...")
-            fallback = self.cache.get_random_cached(MIN_IMAGES - len(all_images))
+        if len(all_images) < MIN_IMAGES_REQUIRED and self.use_cache and self.cache:
+            logger.info(f"Only {len(all_images)} images found, using cached fallback...")
+            fallback = self.cache.get_random_cached(MIN_IMAGES_REQUIRED - len(all_images))
             # Filter out duplicates
             fallback = [img for img in fallback if img.id not in self.used_ids]
             all_images.extend(fallback)
             for img in fallback:
                 self.used_ids.add(img.id)
-            print(f"  Added {len(fallback)} cached images as fallback")
+            logger.info(f"Added {len(fallback)} cached images as fallback")
 
         self.images = all_images
-        print(f"Total images fetched: {len(all_images)}")
+        logger.info(f"Total images fetched: {len(all_images)}")
 
         return all_images
 
@@ -442,7 +488,7 @@ class ImageFetcher:
         """Save images to a JSON file."""
         with open(filepath, 'w') as f:
             f.write(self.to_json())
-        print(f"Saved {len(self.images)} images to {filepath}")
+        logger.info(f"Saved {len(self.images)} images to {filepath}")
 
 
 class FallbackImageGenerator:

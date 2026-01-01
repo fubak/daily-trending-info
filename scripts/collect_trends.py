@@ -24,12 +24,22 @@ import time
 import random
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from urllib.parse import quote_plus
+from difflib import SequenceMatcher
 
 import requests
 import feedparser
 from bs4 import BeautifulSoup
+
+from config import (
+    LIMITS, TIMEOUTS, DELAYS, MIN_TRENDS, MIN_FRESH_RATIO,
+    TREND_FRESHNESS_HOURS, DEDUP_SIMILARITY_THRESHOLD,
+    DEDUP_SEMANTIC_THRESHOLD, setup_logging
+)
+
+# Setup logging
+logger = setup_logging("collect_trends")
 
 
 # Common non-English characters and patterns
@@ -73,10 +83,18 @@ class Trend:
     description: Optional[str] = None
     score: float = 1.0
     keywords: List[str] = None
+    timestamp: datetime = field(default_factory=datetime.now)
 
     def __post_init__(self):
         if self.keywords is None:
             self.keywords = self._extract_keywords()
+
+    def is_fresh(self, max_hours: int = TREND_FRESHNESS_HOURS) -> bool:
+        """Check if this trend is from within the specified hours."""
+        if not self.timestamp:
+            return True  # Assume fresh if no timestamp
+        age = datetime.now() - self.timestamp
+        return age < timedelta(hours=max_hours)
 
     def _extract_keywords(self) -> List[str]:
         """Extract meaningful keywords from title."""
@@ -132,7 +150,7 @@ class TrendCollector:
 
     def collect_all(self) -> List[Trend]:
         """Collect trends from all available sources."""
-        print("Collecting trends from all sources...")
+        logger.info("Collecting trends from all sources...")
 
         collectors = [
             ("Google Trends", self._collect_google_trends),
@@ -151,16 +169,16 @@ class TrendCollector:
 
         for name, collector in collectors:
             try:
-                print(f"  Fetching from {name}...")
+                logger.info(f"Fetching from {name}...")
                 trends = collector()
                 self.trends.extend(trends)
-                print(f"    Found {len(trends)} trends")
+                logger.info(f"  Found {len(trends)} trends")
             except Exception as e:
-                print(f"    Error: {e}")
+                logger.warning(f"  Error from {name}: {e}")
                 continue
 
             # Small delay between sources
-            time.sleep(0.5)
+            time.sleep(DELAYS["between_sources"])
 
         # Deduplicate and score
         self._deduplicate()
@@ -169,8 +187,15 @@ class TrendCollector:
         # Sort by score
         self.trends.sort(key=lambda t: t.score, reverse=True)
 
-        print(f"Total unique trends: {len(self.trends)}")
+        logger.info(f"Total unique trends: {len(self.trends)}")
         return self.trends
+
+    def get_freshness_ratio(self) -> float:
+        """Calculate the ratio of fresh trends (from past 24 hours)."""
+        if not self.trends:
+            return 0.0
+        fresh_count = sum(1 for t in self.trends if t.is_fresh())
+        return fresh_count / len(self.trends)
 
     def _collect_google_trends(self) -> List[Trend]:
         """Collect trends from Google Trends RSS."""
@@ -329,6 +354,7 @@ class TrendCollector:
                         f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json",
                         timeout=5
                     )
+                    story_response.raise_for_status()
                     story = story_response.json()
 
                     if story and story.get('title') and is_english_text(story['title']):
@@ -666,32 +692,53 @@ class TrendCollector:
         return re.sub(r'\s+', ' ', clean)[:500]
 
     def _deduplicate(self):
-        """Remove duplicate trends based on title similarity."""
-        seen_titles = set()
+        """Remove duplicate trends using semantic similarity matching.
+
+        Uses a two-pass approach:
+        1. Exact/near-exact matches (word overlap)
+        2. Semantic similarity using SequenceMatcher for similar stories
+        """
+        if not self.trends:
+            return
+
         unique_trends = []
+        seen_normalized = []  # List of (normalized_title, words_set)
 
         for trend in self.trends:
             # Normalize title for comparison
             normalized = trend.title.lower().strip()
             normalized = re.sub(r'[^\w\s]', '', normalized)
+            words = set(normalized.split())
 
-            # Simple dedup - skip if very similar title exists
-            if normalized not in seen_titles:
-                # Check for partial matches
-                is_dupe = False
-                for seen in seen_titles:
-                    # If 80% of words match, consider it a duplicate
-                    words1 = set(normalized.split())
-                    words2 = set(seen.split())
-                    if words1 and words2:
-                        overlap = len(words1 & words2) / min(len(words1), len(words2))
-                        if overlap > 0.8:
-                            is_dupe = True
-                            break
+            if not words:
+                continue
 
-                if not is_dupe:
-                    seen_titles.add(normalized)
-                    unique_trends.append(trend)
+            is_dupe = False
+
+            for seen_norm, seen_words in seen_normalized:
+                # Fast check: word overlap (O(1) set operations)
+                if seen_words:
+                    overlap = len(words & seen_words) / min(len(words), len(seen_words))
+                    if overlap > DEDUP_SIMILARITY_THRESHOLD:
+                        is_dupe = True
+                        logger.debug(f"Duplicate (word overlap {overlap:.0%}): {trend.title[:50]}")
+                        break
+
+                # Semantic check using SequenceMatcher for stories about same event
+                # E.g., "Sam Altman fired from OpenAI" vs "OpenAI removes Sam Altman as CEO"
+                similarity = SequenceMatcher(None, normalized, seen_norm).ratio()
+                if similarity > DEDUP_SEMANTIC_THRESHOLD:
+                    is_dupe = True
+                    logger.debug(f"Duplicate (semantic {similarity:.0%}): {trend.title[:50]}")
+                    break
+
+            if not is_dupe:
+                seen_normalized.append((normalized, words))
+                unique_trends.append(trend)
+
+        removed_count = len(self.trends) - len(unique_trends)
+        if removed_count > 0:
+            logger.info(f"Removed {removed_count} duplicate trends")
 
         self.trends = unique_trends
 
@@ -715,7 +762,7 @@ class TrendCollector:
         }
 
         if global_keywords:
-            print(f"  Found {len(global_keywords)} global keywords: {', '.join(list(global_keywords)[:10])}...")
+            logger.info(f"Found {len(global_keywords)} global keywords: {', '.join(list(global_keywords)[:10])}...")
 
         # Store for later use (image fetching, word cloud)
         self.global_keywords = global_keywords
