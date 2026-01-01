@@ -234,7 +234,7 @@ Respond with ONLY a valid JSON object:
         count: int = 3
     ) -> List[WhyThisMatters]:
         """
-        Generate 'Why This Matters' context for top stories.
+        Generate 'Why This Matters' context for top stories (batched into single API call).
 
         Args:
             trends: List of trend dictionaries
@@ -246,46 +246,69 @@ Respond with ONLY a valid JSON object:
         if not self.groq_key:
             return []
 
-        results = []
         top_stories = trends[:count]
+        if not top_stories:
+            return []
 
-        for story in top_stories:
+        # Build batched prompt for all stories
+        stories_data = []
+        for i, story in enumerate(top_stories):
             title = story.get('title', '') or ''
-            url = story.get('url', '') or ''
             desc = (story.get('description') or '')[:200]
+            stories_data.append(f"{i+1}. TITLE: {title}\n   CONTEXT: {desc}")
 
-            prompt = f"""Analyze this news story and explain why it matters to readers.
+        stories_text = "\n\n".join(stories_data)
 
-STORY: {title}
-CONTEXT: {desc}
+        prompt = f"""Analyze these news stories and explain why each matters to readers.
 
-Write a brief "Why This Matters" explanation (2-3 sentences) that:
+STORIES:
+{stories_text}
+
+For EACH story, write a brief "Why This Matters" explanation (2-3 sentences) that:
 1. Explains the broader significance of this story
 2. Connects it to readers' lives or larger trends
 3. Is accessible to a general audience
 
 Respond with ONLY a valid JSON object:
 {{
-  "explanation": "2-3 sentence explanation of why this matters",
-  "impact_areas": ["area1", "area2"] // e.g., technology, privacy, economy, health
+  "stories": [
+    {{
+      "story_number": 1,
+      "explanation": "2-3 sentence explanation of why story 1 matters",
+      "impact_areas": ["area1", "area2"]
+    }},
+    {{
+      "story_number": 2,
+      "explanation": "2-3 sentence explanation of why story 2 matters",
+      "impact_areas": ["area1", "area2"]
+    }},
+    {{
+      "story_number": 3,
+      "explanation": "2-3 sentence explanation of why story 3 matters",
+      "impact_areas": ["area1", "area2"]
+    }}
+  ]
 }}"""
 
-            try:
-                response = self._call_groq(prompt, max_tokens=200)
-                data = self._parse_json_response(response)
+        try:
+            response = self._call_groq(prompt, max_tokens=600)
+            data = self._parse_json_response(response)
 
-                if data and data.get('explanation'):
-                    results.append(WhyThisMatters(
-                        story_title=title,
-                        story_url=url,
-                        explanation=data.get('explanation', ''),
-                        impact_areas=data.get('impact_areas', [])
-                    ))
-            except Exception as e:
-                logger.warning(f"Why This Matters generation failed for '{title[:30]}': {e}")
-                continue
-
-        return results
+            results = []
+            if data and data.get('stories'):
+                for i, item in enumerate(data['stories']):
+                    if i < len(top_stories) and item.get('explanation'):
+                        story = top_stories[i]
+                        results.append(WhyThisMatters(
+                            story_title=story.get('title', '') or '',
+                            story_url=story.get('url', '') or '',
+                            explanation=item.get('explanation', ''),
+                            impact_areas=item.get('impact_areas', [])
+                        ))
+            return results
+        except Exception as e:
+            logger.warning(f"Why This Matters batch generation failed: {e}")
+            return []
 
     def _build_editorial_context(self, stories: List[Dict], keywords: List[str]) -> str:
         """Build rich context for editorial generation."""
