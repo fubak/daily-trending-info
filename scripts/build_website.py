@@ -4291,7 +4291,7 @@ class WebsiteBuilder:
                     border-radius: var(--radius);
                     font-size: 0.9rem;
                     z-index: 9999;
-                    animation: fadeInUp 0.3s ease;
+                    animation: toastFadeIn 0.3s ease;
                 `;
                 document.body.appendChild(toast);
                 setTimeout(() => toast.remove(), 3000);
@@ -4358,10 +4358,10 @@ class WebsiteBuilder:
             setTimeout(() => { liveRegion.textContent = message; }, 100);
         }
 
-        // Add toast animation
+        // Add toast animation (unique name to avoid conflict with main fadeInUp)
         const style = document.createElement('style');
         style.textContent = `
-            @keyframes fadeInUp {
+            @keyframes toastFadeIn {
                 from { opacity: 0; transform: translate(-50%, 10px); }
                 to { opacity: 1; transform: translate(-50%, 0); }
             }
