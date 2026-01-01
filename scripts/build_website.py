@@ -2615,8 +2615,8 @@ class WebsiteBuilder:
 
         items = []
         for trend in top_trends:
-            source = html.escape(trend.get('source', '').replace('_', ' ').title())
-            title = html.escape(trend.get('title', '')[:80])
+            source = html.escape((trend.get('source') or '').replace('_', ' ').title())
+            title = html.escape((trend.get('title') or '')[:80])
             items.append(f'''
             <div class="ticker-item">
                 <span class="ticker-source">{source}</span>
@@ -2683,10 +2683,10 @@ class WebsiteBuilder:
 
         cards_html = []
         for i, trend in enumerate(top):
-            title = html.escape(trend.get('title', 'Untitled'))
-            source = html.escape(trend.get('source', '').replace('_', ' ').title())
-            desc = html.escape(trend.get('description', '')[:120]) if trend.get('description') else ''
-            url = trend.get('url', '#')
+            title = html.escape(trend.get('title') or 'Untitled')
+            source = html.escape((trend.get('source') or '').replace('_', ' ').title())
+            desc = html.escape((trend.get('description') or '')[:120]) if trend.get('description') else ''
+            url = trend.get('url') or '#'
 
             # Add image to first few cards
             image = images[i] if i < len(images) else None
@@ -2735,9 +2735,9 @@ class WebsiteBuilder:
 
             cards_html = []
             for i, trend in enumerate(trends[:6]):
-                title = html.escape(trend.get('title', 'Untitled'))
-                source = html.escape(trend.get('source', '').replace('_', ' ').title())
-                url = trend.get('url', '#')
+                title = html.escape(trend.get('title') or 'Untitled')
+                source = html.escape((trend.get('source') or '').replace('_', ' ').title())
+                url = trend.get('url') or '#'
 
                 cards_html.append(f'''
                 <a href="{html.escape(url)}" class="compact-card" target="_blank" rel="noopener">
