@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import re
+import time
 import requests
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional
@@ -107,32 +108,44 @@ class ContentEnricher:
 
         return enriched
 
-    def _call_groq(self, prompt: str, max_tokens: int = 500) -> Optional[str]:
-        """Call Groq API with the given prompt."""
+    def _call_groq(self, prompt: str, max_tokens: int = 500, max_retries: int = 5) -> Optional[str]:
+        """Call Groq API with the given prompt and retry logic."""
         if not self.groq_key:
             logger.warning("No Groq API key available")
             return None
 
-        try:
-            response = self.session.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.groq_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "llama-3.3-70b-versatile",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": max_tokens,
-                    "temperature": 0.7
-                },
-                timeout=45
-            )
-            response.raise_for_status()
-            return response.json().get('choices', [{}])[0].get('message', {}).get('content')
-        except Exception as e:
-            logger.warning(f"Groq API error: {e}")
-            return None
+        for attempt in range(max_retries):
+            try:
+                response = self.session.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.groq_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "llama-3.3-70b-versatile",
+                        "messages": [{"role": "user", "content": prompt}],
+                        "max_tokens": max_tokens,
+                        "temperature": 0.7
+                    },
+                    timeout=45
+                )
+                response.raise_for_status()
+                return response.json().get('choices', [{}])[0].get('message', {}).get('content')
+            except requests.exceptions.HTTPError as e:
+                if response.status_code == 429:
+                    wait_time = (2 ** attempt) * 5
+                    logger.warning(f"Groq rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                logger.warning(f"Groq API error: {e}")
+                return None
+            except Exception as e:
+                logger.warning(f"Groq API error: {e}")
+                return None
+
+        logger.warning("Groq API: Max retries exceeded")
+        return None
 
     def _parse_json_response(self, response: str) -> Optional[Dict]:
         """Parse JSON from LLM response, handling markdown code blocks."""
