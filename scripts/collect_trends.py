@@ -224,7 +224,7 @@ class TrendCollector:
                     trends.append(trend)
 
         except Exception as e:
-            print(f"    Google Trends error: {e}")
+            logger.warning(f"Google Trends error: {e}")
 
         return trends
 
@@ -276,7 +276,7 @@ class TrendCollector:
                         trends.append(trend)
 
             except Exception as e:
-                print(f"      {name} RSS error: {e}")
+                logger.warning(f"{name} RSS error: {e}")
                 continue
 
             time.sleep(0.15)
@@ -327,7 +327,7 @@ class TrendCollector:
                         trends.append(trend)
 
             except Exception as e:
-                print(f"      {name} RSS error: {e}")
+                logger.warning(f"{name} RSS error: {e}")
                 continue
 
             time.sleep(0.15)
@@ -373,7 +373,7 @@ class TrendCollector:
                     continue
 
         except Exception as e:
-            print(f"    Hacker News error: {e}")
+            logger.warning(f"Hacker News error: {e}")
 
         return trends
 
@@ -425,7 +425,7 @@ class TrendCollector:
                         trends.append(trend)
 
             except Exception as e:
-                print(f"      Reddit r/{subreddit} RSS error: {e}")
+                logger.warning(f"Reddit r/{subreddit} RSS error: {e}")
                 continue
 
             time.sleep(0.15)
@@ -484,7 +484,7 @@ class TrendCollector:
                     trends.append(trend)
 
         except Exception as e:
-            print(f"    GitHub Trending error: {e}")
+            logger.warning(f"GitHub Trending error: {e}")
 
         return trends
 
@@ -527,7 +527,7 @@ class TrendCollector:
                     trends.append(trend)
 
         except Exception as e:
-            print(f"    Wikipedia Current Events error: {e}")
+            logger.warning(f"Wikipedia Current Events error: {e}")
 
         return trends
 
@@ -556,7 +556,7 @@ class TrendCollector:
                     trends.append(trend)
 
         except Exception as e:
-            print(f"    Lobsters error: {e}")
+            logger.warning(f"Lobsters error: {e}")
 
         return trends
 
@@ -586,7 +586,7 @@ class TrendCollector:
                     trends.append(trend)
 
         except Exception as e:
-            print(f"    Product Hunt error: {e}")
+            logger.warning(f"Product Hunt error: {e}")
 
         return trends
 
@@ -620,7 +620,7 @@ class TrendCollector:
                     trends.append(trend)
 
         except Exception as e:
-            print(f"    Dev.to error: {e}")
+            logger.warning(f"Dev.to error: {e}")
 
         return trends
 
@@ -649,7 +649,7 @@ class TrendCollector:
                     trends.append(trend)
 
         except Exception as e:
-            print(f"    Slashdot error: {e}")
+            logger.warning(f"Slashdot error: {e}")
 
         return trends
 
@@ -679,7 +679,7 @@ class TrendCollector:
                     trends.append(trend)
 
         except Exception as e:
-            print(f"    Ars Features error: {e}")
+            logger.warning(f"Ars Features error: {e}")
 
         return trends
 
@@ -818,7 +818,7 @@ class TrendCollector:
         """Save trends to a JSON file."""
         with open(filepath, 'w') as f:
             f.write(self.to_json())
-        print(f"Saved {len(self.trends)} trends to {filepath}")
+        logger.info(f"Saved {len(self.trends)} trends to {filepath}")
 
 
 def main():
@@ -826,14 +826,13 @@ def main():
     collector = TrendCollector()
     trends = collector.collect_all()
 
-    print("\nTop 10 Trends:")
-    print("-" * 60)
+    logger.info("Top 10 Trends:")
+    logger.info("-" * 60)
 
     for i, trend in enumerate(collector.get_top_trends(10), 1):
-        print(f"{i:2}. [{trend.source}] {trend.title}")
-        print(f"    Keywords: {', '.join(trend.keywords)}")
-        print(f"    Score: {trend.score:.2f}")
-        print()
+        logger.info(f"{i:2}. [{trend.source}] {trend.title}")
+        logger.info(f"    Keywords: {', '.join(trend.keywords)}")
+        logger.info(f"    Score: {trend.score:.2f}")
 
     # Save to file
     output_dir = os.path.dirname(os.path.abspath(__file__))

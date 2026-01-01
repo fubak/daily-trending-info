@@ -23,6 +23,7 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 from dataclasses import asdict
+from typing import List
 
 # Add scripts directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -69,6 +70,50 @@ class Pipeline:
         self.keywords = []
         self.global_keywords = []
 
+    def _validate_environment(self) -> List[str]:
+        """
+        Validate environment configuration and API keys.
+
+        Returns:
+            List of warning messages (empty if all OK)
+        """
+        warnings = []
+
+        # Check image API keys
+        pexels_key = os.getenv('PEXELS_API_KEY')
+        unsplash_key = os.getenv('UNSPLASH_ACCESS_KEY')
+        if not pexels_key and not unsplash_key:
+            warnings.append(
+                "No image API keys configured (PEXELS_API_KEY or UNSPLASH_ACCESS_KEY). "
+                "Images will use fallback gradients."
+            )
+
+        # Check AI API keys for design generation
+        groq_key = os.getenv('GROQ_API_KEY')
+        openrouter_key = os.getenv('OPENROUTER_API_KEY')
+        if not groq_key and not openrouter_key:
+            warnings.append(
+                "No AI API keys configured (GROQ_API_KEY or OPENROUTER_API_KEY). "
+                "Design will use preset themes."
+            )
+
+        # Check directory permissions
+        try:
+            test_file = self.public_dir / ".write_test"
+            test_file.touch()
+            test_file.unlink()
+        except (IOError, OSError) as e:
+            warnings.append(f"Cannot write to public directory: {e}")
+
+        try:
+            test_file = self.data_dir / ".write_test"
+            test_file.touch()
+            test_file.unlink()
+        except (IOError, OSError) as e:
+            warnings.append(f"Cannot write to data directory: {e}")
+
+        return warnings
+
     def run(self, archive: bool = True, dry_run: bool = False) -> bool:
         """
         Run the complete pipeline.
@@ -84,6 +129,11 @@ class Pipeline:
         logger.info("TREND WEBSITE GENERATOR")
         logger.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         logger.info("=" * 60)
+
+        # Validate environment before starting
+        env_warnings = self._validate_environment()
+        for warning in env_warnings:
+            logger.warning(f"Environment: {warning}")
 
         try:
             # Step 1: Archive previous website
@@ -279,26 +329,49 @@ class Pipeline:
 
     def _save_data(self):
         """Save pipeline data for debugging/reference."""
+        saved_files = []
+        errors = []
+
         # Save trends
-        with open(self.data_dir / "trends.json", "w") as f:
-            trends_data = [asdict(t) if hasattr(t, '__dataclass_fields__') else t for t in self.trends]
-            json.dump(trends_data, f, indent=2)
+        try:
+            with open(self.data_dir / "trends.json", "w") as f:
+                trends_data = [asdict(t) if hasattr(t, '__dataclass_fields__') else t for t in self.trends]
+                json.dump(trends_data, f, indent=2, default=str)
+            saved_files.append("trends.json")
+        except (IOError, OSError) as e:
+            errors.append(f"trends.json: {e}")
 
         # Save images
-        with open(self.data_dir / "images.json", "w") as f:
-            images_data = [asdict(i) if hasattr(i, '__dataclass_fields__') else i for i in self.images]
-            json.dump(images_data, f, indent=2)
+        try:
+            with open(self.data_dir / "images.json", "w") as f:
+                images_data = [asdict(i) if hasattr(i, '__dataclass_fields__') else i for i in self.images]
+                json.dump(images_data, f, indent=2, default=str)
+            saved_files.append("images.json")
+        except (IOError, OSError) as e:
+            errors.append(f"images.json: {e}")
 
         # Save design
-        with open(self.data_dir / "design.json", "w") as f:
-            design_data = asdict(self.design) if hasattr(self.design, '__dataclass_fields__') else self.design
-            json.dump(design_data, f, indent=2)
+        try:
+            with open(self.data_dir / "design.json", "w") as f:
+                design_data = asdict(self.design) if hasattr(self.design, '__dataclass_fields__') else self.design
+                json.dump(design_data, f, indent=2, default=str)
+            saved_files.append("design.json")
+        except (IOError, OSError) as e:
+            errors.append(f"design.json: {e}")
 
         # Save keywords
-        with open(self.data_dir / "keywords.json", "w") as f:
-            json.dump(self.keywords, f, indent=2)
+        try:
+            with open(self.data_dir / "keywords.json", "w") as f:
+                json.dump(self.keywords, f, indent=2, default=str)
+            saved_files.append("keywords.json")
+        except (IOError, OSError) as e:
+            errors.append(f"keywords.json: {e}")
 
-        logger.info(f"Pipeline data saved to {self.data_dir}")
+        if saved_files:
+            logger.info(f"Pipeline data saved to {self.data_dir}: {', '.join(saved_files)}")
+        if errors:
+            for error in errors:
+                logger.error(f"Failed to save: {error}")
 
 
 def main():

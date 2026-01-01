@@ -2534,7 +2534,7 @@ class WebsiteBuilder:
 
         items = []
         for trend in top_trends:
-            source = trend.get('source', '').replace('_', ' ').title()
+            source = html.escape(trend.get('source', '').replace('_', ' ').title())
             title = html.escape(trend.get('title', '')[:80])
             items.append(f'''
             <div class="ticker-item">
@@ -2603,7 +2603,7 @@ class WebsiteBuilder:
         cards_html = []
         for i, trend in enumerate(top):
             title = html.escape(trend.get('title', 'Untitled'))
-            source = trend.get('source', '').replace('_', ' ').title()
+            source = html.escape(trend.get('source', '').replace('_', ' ').title())
             desc = html.escape(trend.get('description', '')[:120]) if trend.get('description') else ''
             url = trend.get('url', '#')
 
@@ -2615,7 +2615,9 @@ class WebsiteBuilder:
             if i == 0:
                 extra_class = "featured"
             elif image:
-                image_style = f'style="background-image: url(\'{image.get("url_medium", "")}\');"'
+                # Escape URL for CSS context (remove quotes, parentheses, backslashes)
+                safe_img_url = html.escape(image.get("url_medium", "")).replace("'", "").replace('"', '')
+                image_style = f'style="background-image: url(\'{safe_img_url}\');"'
                 extra_class = "has-image"
 
             cards_html.append(f'''
@@ -2653,7 +2655,7 @@ class WebsiteBuilder:
             cards_html = []
             for i, trend in enumerate(trends[:6]):
                 title = html.escape(trend.get('title', 'Untitled'))
-                source = trend.get('source', '').replace('_', ' ').title()
+                source = html.escape(trend.get('source', '').replace('_', ' ').title())
                 url = trend.get('url', '#')
 
                 cards_html.append(f'''
@@ -2666,9 +2668,9 @@ class WebsiteBuilder:
                 </a>''')
 
             sections_html.append(f'''
-    <section class="section" id="{section_id}">
+    <section class="section" id="{html.escape(section_id)}">
         <div class="section-header">
-            <h2 class="section-title">{category}</h2>
+            <h2 class="section-title">{html.escape(category)}</h2>
             <span class="section-count">{len(trends)} stories</span>
         </div>
         <div class="category-grid">

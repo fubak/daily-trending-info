@@ -9,6 +9,7 @@ import json
 import time
 import random
 import hashlib
+import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
@@ -70,10 +71,24 @@ class ImageCache:
         return {"queries": {}, "images": {}}
 
     def _save_index(self):
-        """Save the cache index to disk."""
+        """Save the cache index to disk using atomic file operations."""
         try:
-            with open(self.index_file, 'w') as f:
-                json.dump(self.index, f, indent=2)
+            # Write to temporary file first, then rename for atomicity
+            fd, tmp_path = tempfile.mkstemp(
+                dir=self.cache_dir,
+                prefix='.cache_index_',
+                suffix='.tmp'
+            )
+            try:
+                with os.fdopen(fd, 'w') as f:
+                    json.dump(self.index, f, indent=2)
+                # Atomic rename (works on POSIX systems)
+                os.replace(tmp_path, self.index_file)
+            except Exception:
+                # Clean up temp file on failure
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+                raise
         except IOError as e:
             logger.warning(f"Could not save cache index: {e}")
 
