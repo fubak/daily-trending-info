@@ -1847,8 +1847,8 @@ class WebsiteBuilder:
 
         /* Ensure all cards have consistent compact height */
         .top-stories .story-card {{
-            min-height: 140px;
-            max-height: 160px;
+            min-height: 160px;
+            max-height: 200px;
         }}
 
         /* Layout variants for top stories - all optimized for horizontal display */
@@ -2267,6 +2267,7 @@ class WebsiteBuilder:
         .story-content {{
             position: relative;
             padding: var(--card-padding);
+            padding-top: calc(var(--card-padding) + 1.5rem); /* Extra space for badges */
             display: flex;
             flex-direction: column;
             height: 100%;
@@ -3245,8 +3246,8 @@ class WebsiteBuilder:
             }}
 
             .top-stories .story-card {{
-                min-height: 120px;
-                max-height: 140px;
+                min-height: 140px;
+                max-height: 180px;
             }}
 
             .top-stories .story-card:first-child {{
