@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 04:23 UTC | [feat: Comprehensive SEO and LLM optimization improvements](https://github.com/fubak/daily-trending-info/commit/182c515dd2c35d1594a6356a4498015422174e9b) |
 | 2026-01-02 03:54 UTC | [fix: Improve Daily Features 3-column layout with placeholders](https://github.com/fubak/daily-trending-info/commit/3c6449b0fb88d941d8e8c7db9e000c94f6ec9130) |
 | 2026-01-02 03:36 UTC | [fix: Use gemini-2.5-flash-lite model for higher rate limits](https://github.com/fubak/daily-trending-info/commit/9794d0ecfd48c4cc84ec8abf928e2a60f91f7a23) |
 | 2026-01-02 03:27 UTC | [fix: Add GOOGLE_AI_API_KEY to workflow environment](https://github.com/fubak/daily-trending-info/commit/8a581e77f0841e56e268ae92089ce74f31641c1a) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 02:21 UTC | [feat: Add 3-column Daily Features layout and comprehensive mobile support](https://github.com/fubak/daily-trending-info/commit/7196ead4dfb0a6dd1a5d44e242671844cd38d00d) |
 | 2026-01-02 02:12 UTC | [feat: Comprehensive SEO improvements for better discoverability](https://github.com/fubak/daily-trending-info/commit/e133803d791af5846b9b449fc4a31544dd0aa345) |
 | 2026-01-02 02:03 UTC | [feat: Add editorial article to homepage and fix sitemap discovery](https://github.com/fubak/daily-trending-info/commit/d5666bd0ba4d10885a055857883d94176b26fca8) |
-| 2026-01-02 01:46 UTC | [fix: Add fallback JSON parsing that strips control characters](https://github.com/fubak/daily-trending-info/commit/36aad876adc08ea7e87d240e5418643b73ea3624) |
 <!-- CHANGELOG_END -->
 
 ## Features
