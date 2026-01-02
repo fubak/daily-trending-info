@@ -1453,7 +1453,20 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
         return related
 
     def generate_articles_index(self, design: Optional[Dict] = None) -> str:
-        """Generate an index page listing all articles."""
+        """
+        Generate an enhanced index page with search, filter, sort, and pagination.
+
+        Features:
+        - Full-text search across title, summary, keywords
+        - Filter by date range, mood, word count
+        - Sort by date, length, or alphabetically
+        - Pagination (20 per page)
+        - Month grouping with dividers
+        - View toggle (list/compact)
+        - Stats bar
+        - Keyboard navigation
+        - URL state persistence
+        """
         articles = self.get_all_articles()
 
         # Get design colors
@@ -1461,21 +1474,25 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
         accent_color = design.get('accent_color', '#4facfe') if design else '#4facfe'
         bg_color = design.get('background_color', '#0f0f23') if design else '#0f0f23'
 
-        # Build article cards
-        article_cards = []
-        for article in articles[:50]:  # Limit to 50 most recent
-            date_formatted = datetime.strptime(article['date'], "%Y-%m-%d").strftime("%B %d, %Y")
-            article_cards.append(f'''
-            <article class="article-card">
-                <time datetime="{article['date']}">{date_formatted}</time>
-                <h2><a href="{article['url']}">{article['title']}</a></h2>
-                <p>{article.get('summary', '')}</p>
-                <div class="article-meta">
-                    <span class="mood-badge">{article.get('mood', 'informative')}</span>
-                    <span>{article.get('word_count', 0)} words</span>
-                </div>
-            </article>
-            ''')
+        # Calculate stats
+        total_articles = len(articles)
+        total_words = sum(a.get('word_count', 0) for a in articles)
+        reading_hours = round(total_words / 200 / 60, 1)  # 200 wpm
+
+        # Get unique moods for filter
+        moods = sorted(set(a.get('mood', 'informative') for a in articles))
+
+        # Escape article data for JSON embedding
+        # The data comes from our own metadata files (trusted), but we still escape for HTML safety
+        articles_json = json.dumps([{
+            'title': a.get('title', '').replace('<', '&lt;').replace('>', '&gt;'),
+            'date': a.get('date', ''),
+            'url': a.get('url', ''),
+            'summary': (a.get('summary', '') or '').replace('<', '&lt;').replace('>', '&gt;'),
+            'mood': a.get('mood', 'informative'),
+            'word_count': a.get('word_count', 0),
+            'keywords': a.get('keywords', [])
+        } for a in articles])
 
         html = f'''<!DOCTYPE html>
 <html lang="en">
@@ -1483,11 +1500,11 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editorial Articles | DailyTrending.info</title>
-    <meta name="description" content="Daily editorial articles analyzing trending news and technology stories.">
+    <meta name="description" content="Browse {total_articles} daily editorial articles analyzing trending news and technology stories. Search, filter by mood, and explore our archive.">
     <link rel="canonical" href="https://dailytrending.info/articles/">
 
     <meta property="og:title" content="Editorial Articles | DailyTrending.info">
-    <meta property="og:description" content="Daily editorial articles analyzing trending news and technology stories.">
+    <meta property="og:description" content="Browse {total_articles} daily editorial articles analyzing trending news and technology stories.">
     <meta property="og:type" content="website">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1519,11 +1536,21 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
             padding: 2rem 1.5rem;
         }}
 
+        .back-link {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--accent);
+            text-decoration: none;
+            margin-bottom: 2rem;
+            font-weight: 500;
+        }}
+
+        .back-link:hover {{ opacity: 0.8; }}
+
         .page-header {{
             text-align: center;
-            margin-bottom: 3rem;
-            padding-bottom: 2rem;
-            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
         }}
 
         .page-header h1 {{
@@ -1536,29 +1563,222 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
             color: var(--text-muted);
         }}
 
+        /* Stats bar */
+        .stats-bar {{
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            padding: 1rem;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }}
+
+        .stat {{
+            text-align: center;
+        }}
+
+        .stat-value {{
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }}
+
+        .stat-label {{
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }}
+
+        /* Search box */
+        .search-box {{
+            position: relative;
+            margin-bottom: 1.5rem;
+        }}
+
+        .search-box input {{
+            width: 100%;
+            padding: 1rem 1rem 1rem 3rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }}
+
+        .search-box input:focus {{
+            border-color: var(--primary);
+        }}
+
+        .search-box input::placeholder {{
+            color: var(--text-muted);
+        }}
+
+        .search-icon {{
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }}
+
+        .search-hint {{
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            background: rgba(255,255,255,0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }}
+
+        /* Controls bar */
+        .controls-bar {{
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }}
+
+        .filter-group {{
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }}
+
+        .filter-label {{
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }}
+
+        select {{
+            padding: 0.5rem 2rem 0.5rem 0.75rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.875rem;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+        }}
+
+        select:focus {{
+            outline: none;
+            border-color: var(--primary);
+        }}
+
+        .view-toggle {{
+            display: flex;
+            margin-left: auto;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            overflow: hidden;
+        }}
+
+        .view-btn {{
+            padding: 0.5rem 0.75rem;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+
+        .view-btn.active {{
+            background: var(--primary);
+            color: white;
+        }}
+
+        .view-btn:hover:not(.active) {{
+            background: rgba(255,255,255,0.1);
+        }}
+
+        /* Results info */
+        .results-info {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }}
+
+        .clear-filters {{
+            background: none;
+            border: none;
+            color: var(--accent);
+            cursor: pointer;
+            font-size: 0.875rem;
+        }}
+
+        .clear-filters:hover {{
+            text-decoration: underline;
+        }}
+
+        /* Month dividers */
+        .month-divider {{
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 2rem 0 1rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            font-weight: 600;
+        }}
+
+        .month-divider::after {{
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }}
+
+        .month-divider span {{
+            background: var(--bg);
+            padding-right: 1rem;
+        }}
+
+        /* Articles grid */
         .articles-grid {{
             display: grid;
-            gap: 2rem;
+            gap: 1.5rem;
         }}
 
-        .no-articles {{
-            text-align: center;
-            color: var(--text-muted);
-            padding: 3rem;
-            font-size: 1.1rem;
+        .articles-grid.compact {{
+            gap: 0.5rem;
         }}
 
+        /* Article card */
         .article-card {{
             background: rgba(255,255,255,0.03);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 1.5rem;
-            transition: transform 0.2s, border-color 0.2s;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+            cursor: pointer;
         }}
 
         .article-card:hover {{
             transform: translateY(-2px);
             border-color: var(--primary);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }}
+
+        .article-card.focused {{
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent);
         }}
 
         .article-card time {{
@@ -1584,6 +1804,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
         .article-card p {{
             color: var(--text-muted);
             margin-bottom: 1rem;
+            line-height: 1.5;
         }}
 
         .article-meta {{
@@ -1591,6 +1812,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
             gap: 1rem;
             font-size: 0.875rem;
             color: var(--text-muted);
+            align-items: center;
         }}
 
         .mood-badge {{
@@ -1603,17 +1825,159 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
             text-transform: uppercase;
         }}
 
-        .back-link {{
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--accent);
-            text-decoration: none;
-            margin-bottom: 2rem;
+        /* Compact view */
+        .articles-grid.compact .article-card {{
+            padding: 1rem;
+            border-radius: 8px;
         }}
 
-        .back-link:hover {{
-            opacity: 0.8;
+        .articles-grid.compact .article-card h2 {{
+            font-size: 1.1rem;
+            margin: 0.25rem 0;
+        }}
+
+        .articles-grid.compact .article-card p {{
+            display: none;
+        }}
+
+        .articles-grid.compact .article-meta {{
+            margin-top: 0.5rem;
+        }}
+
+        /* Pagination */
+        .pagination {{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }}
+
+        .page-btn {{
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }}
+
+        .page-btn:hover:not(:disabled) {{
+            background: var(--primary);
+            border-color: var(--primary);
+        }}
+
+        .page-btn:disabled {{
+            opacity: 0.5;
+            cursor: not-allowed;
+        }}
+
+        .page-btn.active {{
+            background: var(--primary);
+            border-color: var(--primary);
+        }}
+
+        .page-info {{
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin: 0 1rem;
+        }}
+
+        /* No results */
+        .no-results {{
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }}
+
+        .no-results h3 {{
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }}
+
+        /* Highlight */
+        mark {{
+            background: var(--accent);
+            color: var(--bg);
+            padding: 0 0.2rem;
+            border-radius: 2px;
+        }}
+
+        /* Responsive */
+        @media (max-width: 768px) {{
+            .controls-bar {{
+                flex-direction: column;
+                align-items: stretch;
+            }}
+
+            .filter-group {{
+                width: 100%;
+            }}
+
+            select {{
+                flex: 1;
+            }}
+
+            .view-toggle {{
+                margin-left: 0;
+                justify-content: center;
+            }}
+
+            .stats-bar {{
+                gap: 1rem;
+            }}
+
+            .stat-value {{
+                font-size: 1.25rem;
+            }}
+
+            .search-hint {{
+                display: none;
+            }}
+        }}
+
+        @media (max-width: 480px) {{
+            .container {{
+                padding: 1rem;
+            }}
+
+            .article-card {{
+                padding: 1rem;
+            }}
+
+            .article-card h2 {{
+                font-size: 1.25rem;
+            }}
+
+            .pagination {{
+                gap: 0.25rem;
+            }}
+
+            .page-btn {{
+                padding: 0.4rem 0.6rem;
+                font-size: 0.8rem;
+            }}
+        }}
+
+        /* Keyboard focus visible */
+        :focus-visible {{
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }}
+
+        /* Screen reader only */
+        .sr-only {{
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            border: 0;
         }}
     </style>
 </head>
@@ -1631,9 +1995,487 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
             <p>Daily analysis and insights from DailyTrending.info</p>
         </header>
 
-        <div class="articles-grid">
-            {''.join(article_cards) if article_cards else '<p class="no-articles">No articles yet. Check back tomorrow for our first editorial!</p>'}
+        <div class="stats-bar" aria-label="Article statistics">
+            <div class="stat">
+                <div class="stat-value" id="stat-articles">{total_articles}</div>
+                <div class="stat-label">Articles</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">{total_words:,}</div>
+                <div class="stat-label">Total Words</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">{reading_hours}h</div>
+                <div class="stat-label">Reading Time</div>
+            </div>
+        </div>
+
+        <div class="search-box">
+            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="search" id="search-input" placeholder="Search articles..." aria-label="Search articles">
+            <span class="search-hint">Press /</span>
+        </div>
+
+        <div class="controls-bar">
+            <div class="filter-group">
+                <label class="filter-label" for="date-filter">Date:</label>
+                <select id="date-filter">
+                    <option value="all">All Time</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                    <option value="3months">Last 3 Months</option>
+                    <option value="year">This Year</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="mood-filter">Mood:</label>
+                <select id="mood-filter">
+                    <option value="all">All Moods</option>
+                    {chr(10).join(f'<option value="{m.lower()}">{m.title()}</option>' for m in moods)}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="length-filter">Length:</label>
+                <select id="length-filter">
+                    <option value="all">Any Length</option>
+                    <option value="short">Quick (&lt;800)</option>
+                    <option value="medium">Standard (800-1000)</option>
+                    <option value="long">Deep Dive (&gt;1000)</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="sort-select">Sort:</label>
+                <select id="sort-select">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="longest">Longest First</option>
+                    <option value="shortest">Shortest First</option>
+                    <option value="az">A-Z</option>
+                </select>
+            </div>
+
+            <div class="view-toggle" role="group" aria-label="View mode">
+                <button class="view-btn active" data-view="list" aria-pressed="true" title="List view">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="6" rx="1"/>
+                        <rect x="3" y="15" width="18" height="6" rx="1"/>
+                    </svg>
+                </button>
+                <button class="view-btn" data-view="compact" aria-pressed="false" title="Compact view">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="results-info">
+            <span id="results-count">Showing {total_articles} articles</span>
+            <button class="clear-filters" id="clear-filters" style="display:none;">Clear filters</button>
+        </div>
+
+        <div class="articles-grid" id="articles-grid" role="list" aria-label="Articles">
+            <!-- Articles rendered by JavaScript -->
+        </div>
+
+        <nav class="pagination" id="pagination" aria-label="Pagination">
+            <!-- Pagination rendered by JavaScript -->
+        </nav>
+
+        <div id="no-results" class="no-results" style="display:none;">
+            <h3>No articles found</h3>
+            <p>Try adjusting your search or filters</p>
+        </div>
     </div>
+
+    <script>
+    (function() {{
+        'use strict';
+
+        // Article data (server-rendered, escaped)
+        const ARTICLES = {articles_json};
+
+        // State
+        let state = {{
+            search: '',
+            dateFilter: 'all',
+            moodFilter: 'all',
+            lengthFilter: 'all',
+            sort: 'newest',
+            page: 1,
+            perPage: 20,
+            view: 'list',
+            focusedIndex: -1
+        }};
+
+        // DOM elements
+        const searchInput = document.getElementById('search-input');
+        const dateFilter = document.getElementById('date-filter');
+        const moodFilter = document.getElementById('mood-filter');
+        const lengthFilter = document.getElementById('length-filter');
+        const sortSelect = document.getElementById('sort-select');
+        const articlesGrid = document.getElementById('articles-grid');
+        const pagination = document.getElementById('pagination');
+        const resultsCount = document.getElementById('results-count');
+        const clearBtn = document.getElementById('clear-filters');
+        const noResults = document.getElementById('no-results');
+        const viewBtns = document.querySelectorAll('.view-btn');
+
+        // Initialize from URL
+        function initFromURL() {{
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('q')) state.search = params.get('q');
+            if (params.get('date')) state.dateFilter = params.get('date');
+            if (params.get('mood')) state.moodFilter = params.get('mood');
+            if (params.get('length')) state.lengthFilter = params.get('length');
+            if (params.get('sort')) state.sort = params.get('sort');
+            if (params.get('page')) state.page = parseInt(params.get('page')) || 1;
+            if (params.get('view')) state.view = params.get('view');
+
+            // Sync UI
+            searchInput.value = state.search;
+            dateFilter.value = state.dateFilter;
+            moodFilter.value = state.moodFilter;
+            lengthFilter.value = state.lengthFilter;
+            sortSelect.value = state.sort;
+
+            viewBtns.forEach(btn => {{
+                btn.classList.toggle('active', btn.dataset.view === state.view);
+                btn.setAttribute('aria-pressed', btn.dataset.view === state.view);
+            }});
+
+            if (state.view === 'compact') {{
+                articlesGrid.classList.add('compact');
+            }}
+        }}
+
+        // Update URL
+        function updateURL() {{
+            const params = new URLSearchParams();
+            if (state.search) params.set('q', state.search);
+            if (state.dateFilter !== 'all') params.set('date', state.dateFilter);
+            if (state.moodFilter !== 'all') params.set('mood', state.moodFilter);
+            if (state.lengthFilter !== 'all') params.set('length', state.lengthFilter);
+            if (state.sort !== 'newest') params.set('sort', state.sort);
+            if (state.page > 1) params.set('page', state.page);
+            if (state.view !== 'list') params.set('view', state.view);
+
+            const url = params.toString() ? '?' + params.toString() : window.location.pathname;
+            history.replaceState(null, '', url);
+        }}
+
+        // Filter articles
+        function filterArticles() {{
+            let filtered = [...ARTICLES];
+            const now = new Date();
+
+            // Search
+            if (state.search) {{
+                const q = state.search.toLowerCase();
+                filtered = filtered.filter(a =>
+                    a.title.toLowerCase().includes(q) ||
+                    a.summary.toLowerCase().includes(q) ||
+                    a.keywords.some(k => k.toLowerCase().includes(q))
+                );
+            }}
+
+            // Date filter
+            if (state.dateFilter !== 'all') {{
+                const cutoff = new Date();
+                switch (state.dateFilter) {{
+                    case 'week': cutoff.setDate(now.getDate() - 7); break;
+                    case 'month': cutoff.setMonth(now.getMonth() - 1); break;
+                    case '3months': cutoff.setMonth(now.getMonth() - 3); break;
+                    case 'year': cutoff.setFullYear(now.getFullYear() - 1); break;
+                }}
+                filtered = filtered.filter(a => new Date(a.date) >= cutoff);
+            }}
+
+            // Mood filter
+            if (state.moodFilter !== 'all') {{
+                filtered = filtered.filter(a => a.mood.toLowerCase() === state.moodFilter);
+            }}
+
+            // Length filter
+            if (state.lengthFilter !== 'all') {{
+                switch (state.lengthFilter) {{
+                    case 'short': filtered = filtered.filter(a => a.word_count < 800); break;
+                    case 'medium': filtered = filtered.filter(a => a.word_count >= 800 && a.word_count <= 1000); break;
+                    case 'long': filtered = filtered.filter(a => a.word_count > 1000); break;
+                }}
+            }}
+
+            // Sort
+            switch (state.sort) {{
+                case 'newest': filtered.sort((a, b) => b.date.localeCompare(a.date)); break;
+                case 'oldest': filtered.sort((a, b) => a.date.localeCompare(b.date)); break;
+                case 'longest': filtered.sort((a, b) => b.word_count - a.word_count); break;
+                case 'shortest': filtered.sort((a, b) => a.word_count - b.word_count); break;
+                case 'az': filtered.sort((a, b) => a.title.localeCompare(b.title)); break;
+            }}
+
+            return filtered;
+        }}
+
+        // Highlight search term
+        function highlight(text, query) {{
+            if (!query) return text;
+            const regex = new RegExp('(' + query.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&') + ')', 'gi');
+            return text.replace(regex, '<mark>$1</mark>');
+        }}
+
+        // Format date
+        function formatDate(dateStr) {{
+            const date = new Date(dateStr + 'T00:00:00');
+            return date.toLocaleDateString('en-US', {{ year: 'numeric', month: 'long', day: 'numeric' }});
+        }}
+
+        // Get month key
+        function getMonthKey(dateStr) {{
+            const date = new Date(dateStr + 'T00:00:00');
+            return date.toLocaleDateString('en-US', {{ year: 'numeric', month: 'long' }});
+        }}
+
+        // Render articles
+        function render() {{
+            const filtered = filterArticles();
+            const totalPages = Math.ceil(filtered.length / state.perPage);
+            state.page = Math.max(1, Math.min(state.page, totalPages || 1));
+
+            const start = (state.page - 1) * state.perPage;
+            const pageArticles = filtered.slice(start, start + state.perPage);
+
+            // Update results count
+            const hasFilters = state.search || state.dateFilter !== 'all' || state.moodFilter !== 'all' || state.lengthFilter !== 'all';
+            if (filtered.length === 0) {{
+                resultsCount.textContent = 'No articles found';
+            }} else if (hasFilters) {{
+                resultsCount.textContent = 'Showing ' + filtered.length + ' of ' + ARTICLES.length + ' articles';
+            }} else {{
+                resultsCount.textContent = 'Showing ' + ARTICLES.length + ' articles';
+            }}
+            clearBtn.style.display = hasFilters ? 'inline' : 'none';
+
+            // Show/hide no results
+            noResults.style.display = filtered.length === 0 ? 'block' : 'none';
+            articlesGrid.style.display = filtered.length === 0 ? 'none' : 'grid';
+            pagination.style.display = totalPages <= 1 ? 'none' : 'flex';
+
+            // Render articles with month dividers
+            let html = '';
+            let currentMonth = '';
+
+            pageArticles.forEach((article, index) => {{
+                const monthKey = getMonthKey(article.date);
+
+                // Add month divider if new month
+                if (monthKey !== currentMonth && state.sort === 'newest') {{
+                    currentMonth = monthKey;
+                    html += '<div class="month-divider" aria-hidden="true"><span>' + monthKey + '</span></div>';
+                }}
+
+                const title = highlight(article.title, state.search);
+                const summary = highlight(article.summary, state.search);
+
+                html += '<article class="article-card" role="listitem" data-index="' + index + '" tabindex="0">' +
+                    '<time datetime="' + article.date + '">' + formatDate(article.date) + '</time>' +
+                    '<h2><a href="' + article.url + '">' + title + '</a></h2>' +
+                    '<p>' + summary + '</p>' +
+                    '<div class="article-meta">' +
+                        '<span class="mood-badge">' + article.mood + '</span>' +
+                        '<span>' + article.word_count + ' words</span>' +
+                    '</div>' +
+                '</article>';
+            }});
+
+            articlesGrid.innerHTML = html;
+
+            // Render pagination
+            if (totalPages > 1) {{
+                let paginationHtml = '<button class="page-btn" data-page="prev" ' + (state.page === 1 ? 'disabled' : '') + '>Previous</button>';
+
+                // Page numbers
+                const maxVisible = 5;
+                let startPage = Math.max(1, state.page - Math.floor(maxVisible / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                if (endPage - startPage < maxVisible - 1) {{
+                    startPage = Math.max(1, endPage - maxVisible + 1);
+                }}
+
+                if (startPage > 1) {{
+                    paginationHtml += '<button class="page-btn" data-page="1">1</button>';
+                    if (startPage > 2) paginationHtml += '<span class="page-info">...</span>';
+                }}
+
+                for (let i = startPage; i <= endPage; i++) {{
+                    paginationHtml += '<button class="page-btn' + (i === state.page ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
+                }}
+
+                if (endPage < totalPages) {{
+                    if (endPage < totalPages - 1) paginationHtml += '<span class="page-info">...</span>';
+                    paginationHtml += '<button class="page-btn" data-page="' + totalPages + '">' + totalPages + '</button>';
+                }}
+
+                paginationHtml += '<button class="page-btn" data-page="next" ' + (state.page === totalPages ? 'disabled' : '') + '>Next</button>';
+
+                pagination.innerHTML = paginationHtml;
+            }}
+
+            updateURL();
+        }}
+
+        // Debounce helper
+        function debounce(fn, delay) {{
+            let timer;
+            return function(...args) {{
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            }};
+        }}
+
+        // Event handlers
+        searchInput.addEventListener('input', debounce(function() {{
+            state.search = this.value.trim();
+            state.page = 1;
+            render();
+        }}, 200));
+
+        dateFilter.addEventListener('change', function() {{
+            state.dateFilter = this.value;
+            state.page = 1;
+            render();
+        }});
+
+        moodFilter.addEventListener('change', function() {{
+            state.moodFilter = this.value;
+            state.page = 1;
+            render();
+        }});
+
+        lengthFilter.addEventListener('change', function() {{
+            state.lengthFilter = this.value;
+            state.page = 1;
+            render();
+        }});
+
+        sortSelect.addEventListener('change', function() {{
+            state.sort = this.value;
+            state.page = 1;
+            render();
+        }});
+
+        clearBtn.addEventListener('click', function() {{
+            state.search = '';
+            state.dateFilter = 'all';
+            state.moodFilter = 'all';
+            state.lengthFilter = 'all';
+            state.page = 1;
+            searchInput.value = '';
+            dateFilter.value = 'all';
+            moodFilter.value = 'all';
+            lengthFilter.value = 'all';
+            render();
+        }});
+
+        // View toggle
+        viewBtns.forEach(btn => {{
+            btn.addEventListener('click', function() {{
+                state.view = this.dataset.view;
+                viewBtns.forEach(b => {{
+                    b.classList.toggle('active', b === this);
+                    b.setAttribute('aria-pressed', b === this);
+                }});
+                articlesGrid.classList.toggle('compact', state.view === 'compact');
+                updateURL();
+            }});
+        }});
+
+        // Pagination
+        pagination.addEventListener('click', function(e) {{
+            const btn = e.target.closest('.page-btn');
+            if (!btn || btn.disabled) return;
+
+            const page = btn.dataset.page;
+            if (page === 'prev') {{
+                state.page--;
+            }} else if (page === 'next') {{
+                state.page++;
+            }} else {{
+                state.page = parseInt(page);
+            }}
+            render();
+            window.scrollTo({{ top: articlesGrid.offsetTop - 100, behavior: 'smooth' }});
+        }});
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {{
+            // Focus search with /
+            if (e.key === '/' && document.activeElement !== searchInput) {{
+                e.preventDefault();
+                searchInput.focus();
+                return;
+            }}
+
+            // Escape clears focus
+            if (e.key === 'Escape') {{
+                searchInput.blur();
+                document.activeElement.blur();
+                state.focusedIndex = -1;
+                document.querySelectorAll('.article-card.focused').forEach(el => el.classList.remove('focused'));
+                return;
+            }}
+
+            // Arrow navigation
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {{
+                const cards = document.querySelectorAll('.article-card');
+                if (cards.length === 0) return;
+
+                e.preventDefault();
+
+                // Remove current focus
+                cards.forEach(c => c.classList.remove('focused'));
+
+                if (e.key === 'ArrowDown') {{
+                    state.focusedIndex = Math.min(state.focusedIndex + 1, cards.length - 1);
+                }} else {{
+                    state.focusedIndex = Math.max(state.focusedIndex - 1, 0);
+                }}
+
+                const card = cards[state.focusedIndex];
+                card.classList.add('focused');
+                card.focus();
+                card.scrollIntoView({{ block: 'nearest', behavior: 'smooth' }});
+            }}
+
+            // Enter to open
+            if (e.key === 'Enter' && document.activeElement.classList.contains('article-card')) {{
+                const link = document.activeElement.querySelector('a');
+                if (link) window.location.href = link.href;
+            }}
+        }});
+
+        // Click card to navigate
+        articlesGrid.addEventListener('click', function(e) {{
+            const card = e.target.closest('.article-card');
+            if (card && !e.target.closest('a')) {{
+                const link = card.querySelector('a');
+                if (link) window.location.href = link.href;
+            }}
+        }});
+
+        // Initialize
+        initFromURL();
+        render();
+    }})();
+    </script>
 </body>
 </html>'''
 
@@ -1641,4 +2483,5 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
         self.articles_dir.mkdir(parents=True, exist_ok=True)
         (self.articles_dir / "index.html").write_text(html, encoding='utf-8')
 
+        logger.info(f"Generated enhanced articles index with {total_articles} articles")
         return html
