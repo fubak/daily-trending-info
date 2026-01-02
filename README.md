@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 02:52 UTC | [feat: Add rate limit checking before API calls](https://github.com/fubak/daily-trending-info/commit/42e89a4d0b7e6e09ba9abce07400b81ec54e878f) |
 | 2026-01-02 02:21 UTC | [feat: Add 3-column Daily Features layout and comprehensive mobile support](https://github.com/fubak/daily-trending-info/commit/7196ead4dfb0a6dd1a5d44e242671844cd38d00d) |
 | 2026-01-02 02:12 UTC | [feat: Comprehensive SEO improvements for better discoverability](https://github.com/fubak/daily-trending-info/commit/e133803d791af5846b9b449fc4a31544dd0aa345) |
 | 2026-01-02 02:03 UTC | [feat: Add editorial article to homepage and fix sitemap discovery](https://github.com/fubak/daily-trending-info/commit/d5666bd0ba4d10885a055857883d94176b26fca8) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 01:37 UTC | [fix: Handle JSON control characters and create articles index always](https://github.com/fubak/daily-trending-info/commit/e9fa051b014942c80ee96164c6557b440189e2e9) |
 | 2026-01-02 01:28 UTC | [fix: Prioritize OpenRouter over Groq with 3 retries @ 10s](https://github.com/fubak/daily-trending-info/commit/7be51a0f93729a3a8dd4c3a7e4251a201c59b7e7) |
 | 2026-01-02 01:19 UTC | [fix: Reduce retries to 3 and update free models](https://github.com/fubak/daily-trending-info/commit/72aa96173c25e893ee0b1c68adb799084666348b) |
-| 2026-01-02 01:16 UTC | [fix: Update OpenRouter free models list](https://github.com/fubak/daily-trending-info/commit/300a39db5354ed43199ed61db89bc6efa8eb8850) |
 <!-- CHANGELOG_END -->
 
 ## Features
