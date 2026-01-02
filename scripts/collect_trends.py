@@ -237,18 +237,18 @@ class TrendCollector:
 
         # English-only news sources
         feeds = [
-            ('AP News', 'https://rsshub.app/apnews/topics/apf-topnews'),
             ('NPR', 'https://feeds.npr.org/1001/rss.xml'),
             ('NYT', 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml'),
             ('BBC', 'https://feeds.bbci.co.uk/news/rss.xml'),
             ('BBC World', 'https://feeds.bbci.co.uk/news/world/rss.xml'),
             ('Guardian', 'https://www.theguardian.com/world/rss'),
             ('Guardian US', 'https://www.theguardian.com/us-news/rss'),
-            ('Reuters', 'https://www.reutersagency.com/feed/?taxonomy=best-sectors&post_type=best'),
             ('ABC News', 'https://abcnews.go.com/abcnews/topstories'),
             ('CBS News', 'https://www.cbsnews.com/latest/rss/main'),
             ('USA Today', 'https://rssfeeds.usatoday.com/usatoday-NewsTopStories'),
             ('Washington Post', 'https://feeds.washingtonpost.com/rss/national'),
+            ('Al Jazeera', 'https://www.aljazeera.com/xml/rss/all.xml'),
+            ('PBS NewsHour', 'https://www.pbs.org/newshour/feeds/rss/headlines'),
         ]
 
         for name, url in feeds:
@@ -388,7 +388,6 @@ class TrendCollector:
         trends = []
 
         feeds = [
-            ('Politico', 'https://www.politico.com/rss/politicopicks.xml'),
             ('The Hill', 'https://thehill.com/feed/'),
             ('Roll Call', 'https://rollcall.com/feed/'),
             ('NYT Politics', 'https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml'),
@@ -396,7 +395,8 @@ class TrendCollector:
             ('Guardian Politics', 'https://www.theguardian.com/us-news/us-politics/rss'),
             ('BBC Politics', 'https://feeds.bbci.co.uk/news/politics/rss.xml'),
             ('Axios', 'https://api.axios.com/feed/'),
-            ('Vox', 'https://www.vox.com/rss/index.xml'),
+            ('NPR Politics', 'https://feeds.npr.org/1014/rss.xml'),
+            ('Slate', 'https://slate.com/feeds/all.rss'),
         ]
 
         for name, url in feeds:
@@ -437,15 +437,15 @@ class TrendCollector:
         trends = []
 
         feeds = [
-            ('Bloomberg', 'https://feeds.bloomberg.com/markets/news.rss'),
             ('CNBC', 'https://www.cnbc.com/id/100003114/device/rss/rss.html'),
             ('MarketWatch', 'https://feeds.marketwatch.com/marketwatch/topstories/'),
             ('Financial Times', 'https://www.ft.com/rss/home'),
-            ('Reuters Business', 'https://www.reutersagency.com/feed/?best-topics=business-finance'),
             ('Yahoo Finance', 'https://finance.yahoo.com/news/rssindex'),
             ('WSJ Markets', 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml'),
             ('Economist', 'https://www.economist.com/finance-and-economics/rss.xml'),
             ('Fortune', 'https://fortune.com/feed/'),
+            ('Business Insider', 'https://www.businessinsider.com/rss'),
+            ('Seeking Alpha', 'https://seekingalpha.com/market_currents.xml'),
         ]
 
         for name, url in feeds:
@@ -683,7 +683,8 @@ class TrendCollector:
         trends = []
 
         try:
-            url = "https://lobste.rs/hottest.rss"
+            # Main RSS feed - hottest.rss was removed, use main feed
+            url = "https://lobste.rs/rss"
             response = self.session.get(url, timeout=10)
             response.raise_for_status()
 
