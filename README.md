@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 21:34 UTC | [fix: Match topic hero images to headline keywords, not just category](https://github.com/fubak/daily-trending-info/commit/73765607e526837419118a415f78db6d873fb9a4) |
 | 2026-01-02 21:13 UTC | [fix: Replace broken RSS feeds with working alternatives](https://github.com/fubak/daily-trending-info/commit/3ef1af2de119016a72994ca200abcb17258eb542) |
 | 2026-01-02 20:58 UTC | [fix: Remove broken comment fragment in rate_limiter.py](https://github.com/fubak/daily-trending-info/commit/ca48f663be76963e4a666ff2aadccada0db8ce13) |
 | 2026-01-02 20:48 UTC | [fix: Cap all API retry wait times to 10 seconds max](https://github.com/fubak/daily-trending-info/commit/55cb9b5b4a6088bd3f084e10f43d26ba6bdf550c) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 18:42 UTC | [feat: Add Mistral AI provider for improved fallback chain](https://github.com/fubak/daily-trending-info/commit/a3b9af95e35377ddcfc00de9110d3a151cb8bf83) |
 | 2026-01-02 18:30 UTC | [feat: Add Hugging Face AI provider for fallback](https://github.com/fubak/daily-trending-info/commit/d6038096518d5abe36582d0d56bf856503aac5cc) |
 | 2026-01-02 18:15 UTC | [feat: Add OpenCode AI provider and expand topic pages](https://github.com/fubak/daily-trending-info/commit/909df02f898ab440e8a71db723de7f64232535cf) |
-| 2026-01-02 16:22 UTC | [fix: Reduce AI retry attempts and wait times](https://github.com/fubak/daily-trending-info/commit/6a767031cd30098f6e4ef04abbe62fdbb19b2d0b) |
 <!-- CHANGELOG_END -->
 
 ## Features
