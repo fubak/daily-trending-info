@@ -121,6 +121,7 @@ class ContentEnricher:
 
     # Rate limiting: minimum seconds between API calls to stay under 30 req/min
     MIN_CALL_INTERVAL = 3.0
+    MAX_RETRY_WAIT = 10  # Cap retry waits to prevent long delays
 
     def __init__(self, groq_key: Optional[str] = None, openrouter_key: Optional[str] = None, google_key: Optional[str] = None):
         self.groq_key = groq_key or os.getenv('GROQ_API_KEY')
@@ -291,9 +292,9 @@ class ContentEnricher:
                     # Temporary rate limit - wait and retry
                     retry_after = response.headers.get('Retry-After', '10')
                     try:
-                        wait_time = float(retry_after)
+                        wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                     except ValueError:
-                        wait_time = 10.0
+                        wait_time = self.MAX_RETRY_WAIT
                     logger.warning(f"Google AI rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                     time.sleep(wait_time)
                     continue
@@ -392,9 +393,9 @@ class ContentEnricher:
                     # Temporary rate limit - wait and retry
                     retry_after = response.headers.get('Retry-After', '10')
                     try:
-                        wait_time = float(retry_after)
+                        wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                     except ValueError:
-                        wait_time = 10.0
+                        wait_time = self.MAX_RETRY_WAIT
                     logger.warning(f"Google AI rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                     time.sleep(wait_time)
                     continue
@@ -469,9 +470,9 @@ class ContentEnricher:
                         # Parse retry-after header if available
                         retry_after = response.headers.get('Retry-After', '10')
                         try:
-                            wait_time = float(retry_after)
+                            wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                         except ValueError:
-                            wait_time = 10.0
+                            wait_time = self.MAX_RETRY_WAIT
                         logger.warning(f"OpenRouter {model} rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                         time.sleep(wait_time)
                         continue
@@ -534,9 +535,9 @@ class ContentEnricher:
                     # Parse retry-after header if available
                     retry_after = response.headers.get('Retry-After', '10')
                     try:
-                        wait_time = float(retry_after)
+                        wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                     except ValueError:
-                        wait_time = 10.0
+                        wait_time = self.MAX_RETRY_WAIT
                     logger.warning(f"Groq rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                     time.sleep(wait_time)
                     continue
@@ -609,9 +610,9 @@ class ContentEnricher:
                     if response.status_code == 429:
                         retry_after = response.headers.get('Retry-After', '10')
                         try:
-                            wait_time = float(retry_after)
+                            wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                         except ValueError:
-                            wait_time = 10.0
+                            wait_time = self.MAX_RETRY_WAIT
                         logger.warning(f"OpenCode rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                         time.sleep(wait_time)
                         continue
@@ -692,16 +693,16 @@ class ContentEnricher:
                     if response.status_code == 429:
                         retry_after = response.headers.get('Retry-After', '10')
                         try:
-                            wait_time = float(retry_after)
+                            wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                         except ValueError:
-                            wait_time = 10.0
+                            wait_time = self.MAX_RETRY_WAIT
                         logger.warning(f"Hugging Face rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                         time.sleep(wait_time)
                         continue
                     elif response.status_code == 503:
                         # Model is loading, wait and retry
-                        logger.warning(f"Hugging Face model {model} is loading, waiting...")
-                        time.sleep(20)
+                        logger.warning(f"Hugging Face model {model} is loading, waiting {self.MAX_RETRY_WAIT}s...")
+                        time.sleep(self.MAX_RETRY_WAIT)
                         continue
                     logger.warning(f"Hugging Face API error with {model}: {e}")
                     break  # Try next model
@@ -775,9 +776,9 @@ class ContentEnricher:
                     if response.status_code == 429:
                         retry_after = response.headers.get('Retry-After', '10')
                         try:
-                            wait_time = float(retry_after)
+                            wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                         except ValueError:
-                            wait_time = 10.0
+                            wait_time = self.MAX_RETRY_WAIT
                         logger.warning(f"Mistral rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                         time.sleep(wait_time)
                         continue

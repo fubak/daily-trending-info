@@ -836,6 +836,7 @@ class DesignGenerator:
 
     # Rate limiting: minimum seconds between API calls to stay under 30 req/min
     MIN_CALL_INTERVAL = 3.0
+    MAX_RETRY_WAIT = 10  # Cap retry waits to prevent long delays
 
     def __init__(
         self,
@@ -1406,9 +1407,9 @@ Respond with ONLY a valid JSON object:
                     # Temporary rate limit - wait and retry
                     retry_after = response.headers.get('Retry-After', '10')
                     try:
-                        wait_time = float(retry_after)
+                        wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                     except ValueError:
-                        wait_time = 10.0
+                        wait_time = self.MAX_RETRY_WAIT
                     print(f"    Google AI rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                     time.sleep(wait_time)
                     continue
@@ -1480,9 +1481,9 @@ Respond with ONLY a valid JSON object:
                         # Parse retry-after header if available
                         retry_after = response.headers.get('Retry-After', '10')
                         try:
-                            wait_time = float(retry_after)
+                            wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                         except ValueError:
-                            wait_time = 10.0
+                            wait_time = self.MAX_RETRY_WAIT
                         print(f"    OpenRouter {model} rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                         time.sleep(wait_time)
                         continue
@@ -1545,9 +1546,9 @@ Respond with ONLY a valid JSON object:
                     # Parse retry-after header if available
                     retry_after = response.headers.get('Retry-After', '10')
                     try:
-                        wait_time = float(retry_after)
+                        wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                     except ValueError:
-                        wait_time = 10.0
+                        wait_time = self.MAX_RETRY_WAIT
                     print(f"    Groq rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                     time.sleep(wait_time)
                     continue
@@ -1620,9 +1621,9 @@ Respond with ONLY a valid JSON object:
                     if response.status_code == 429:
                         retry_after = response.headers.get('Retry-After', '10')
                         try:
-                            wait_time = float(retry_after)
+                            wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                         except ValueError:
-                            wait_time = 10.0
+                            wait_time = self.MAX_RETRY_WAIT
                         print(f"    OpenCode rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                         time.sleep(wait_time)
                         continue
@@ -1703,16 +1704,16 @@ Respond with ONLY a valid JSON object:
                     if response.status_code == 429:
                         retry_after = response.headers.get('Retry-After', '10')
                         try:
-                            wait_time = float(retry_after)
+                            wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                         except ValueError:
-                            wait_time = 10.0
+                            wait_time = self.MAX_RETRY_WAIT
                         print(f"    Hugging Face rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                         time.sleep(wait_time)
                         continue
                     elif response.status_code == 503:
                         # Model is loading, wait and retry
-                        print(f"    Hugging Face model {model} is loading, waiting...")
-                        time.sleep(20)
+                        print(f"    Hugging Face model {model} is loading, waiting {self.MAX_RETRY_WAIT}s...")
+                        time.sleep(self.MAX_RETRY_WAIT)
                         continue
                     print(f"    Hugging Face API error with {model}: {e}")
                     break  # Try next model
@@ -1784,9 +1785,9 @@ Respond with ONLY a valid JSON object:
                     if response.status_code == 429:
                         retry_after = response.headers.get('Retry-After', '10')
                         try:
-                            wait_time = float(retry_after)
+                            wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
                         except ValueError:
-                            wait_time = 10.0
+                            wait_time = self.MAX_RETRY_WAIT
                         print(f"    Mistral rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                         time.sleep(wait_time)
                         continue

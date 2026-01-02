@@ -34,6 +34,7 @@ class RateLimiter:
 
     # Minimum wait between API calls (seconds)
     MIN_CALL_INTERVAL = 2.0  # Reduced for Google AI's generous limits
+    MAX_RETRY_WAIT = 10  # Cap retry waits to prevent long delays
 
     # Thresholds for rate limit warnings
     REQUEST_THRESHOLD_PERCENT = 10  # Warn when less than 10% requests remaining
@@ -164,7 +165,7 @@ class RateLimiter:
 
                 # Check if we're running low on requests
                 if requests_remaining is not None and requests_remaining < 5:
-                    status.wait_seconds = 60  # Wait a minute if low on requests
+                    status.wait_seconds = self.MAX_RETRY_WAIT if low on requests
                     logger.warning(f"OpenRouter: Only {requests_remaining} requests remaining")
 
                 # Check if usage is approaching limit
@@ -183,9 +184,9 @@ class RateLimiter:
                 # Already rate limited
                 retry_after = response.headers.get('Retry-After', '10')
                 try:
-                    wait_seconds = float(retry_after)
+                    wait_seconds = min(float(retry_after), self.MAX_RETRY_WAIT)
                 except ValueError:
-                    wait_seconds = 10.0
+                    wait_seconds = self.MAX_RETRY_WAIT
 
                 status = RateLimitStatus(
                     is_available=False,
@@ -476,7 +477,7 @@ class RateLimiter:
                         f"{provider}: Only {status.requests_remaining}/{status.requests_limit} "
                         f"requests remaining ({remaining_percent:.1f}%)"
                     )
-                    status.wait_seconds = 60  # Wait a minute
+                    status.wait_seconds = self.MAX_RETRY_WAIT
 
         if status.tokens_remaining is not None and status.tokens_limit is not None:
             if status.tokens_limit > 0:
