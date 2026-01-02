@@ -114,17 +114,76 @@ class ContentEnricher:
         return enriched
 
     def _call_groq(self, prompt: str, max_tokens: int = 500, max_retries: int = 3) -> Optional[str]:
-        """Call Groq API with proactive rate limiting and retry logic."""
-        if not self.groq_key:
-            # No Groq key, try OpenRouter directly
-            return self._call_openrouter(prompt, max_tokens)
+        """Call LLM API - prioritizes OpenRouter, falls back to Groq."""
+        # Try OpenRouter first (free models)
+        result = self._call_openrouter(prompt, max_tokens, max_retries)
+        if result:
+            return result
 
-        # Proactive rate limiting: wait if we're calling too fast
+        # Fall back to Groq if OpenRouter fails
+        return self._call_groq_direct(prompt, max_tokens, max_retries)
+
+    def _call_openrouter(self, prompt: str, max_tokens: int = 500, max_retries: int = 3) -> Optional[str]:
+        """Call OpenRouter API with free models (primary)."""
+        if not self.openrouter_key:
+            logger.warning("No OpenRouter API key available")
+            return None
+
+        # Free models to try in order of preference
+        free_models = [
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "deepseek/deepseek-r1-0528:free",
+            "google/gemma-3-27b-it:free",
+        ]
+
+        for model in free_models:
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"Trying OpenRouter {model} (attempt {attempt + 1}/{max_retries})")
+                    response = self.session.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {self.openrouter_key}",
+                            "Content-Type": "application/json",
+                            "HTTP-Referer": "https://dailytrending.info",
+                            "X-Title": "DailyTrending.info"
+                        },
+                        json={
+                            "model": model,
+                            "messages": [{"role": "user", "content": prompt}],
+                            "max_tokens": max_tokens,
+                            "temperature": 0.7
+                        },
+                        timeout=60
+                    )
+                    response.raise_for_status()
+                    result = response.json().get('choices', [{}])[0].get('message', {}).get('content')
+                    if result:
+                        logger.info(f"OpenRouter success with {model}")
+                        return result
+                except requests.exceptions.HTTPError as e:
+                    if response.status_code == 429:
+                        logger.warning(f"OpenRouter {model} rate limited, waiting 10s (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(10)
+                        continue
+                    logger.warning(f"OpenRouter {model} failed: {e}")
+                    break  # Try next model
+                except Exception as e:
+                    logger.warning(f"OpenRouter {model} failed: {e}")
+                    break  # Try next model
+
+        logger.warning("All OpenRouter models failed")
+        return None
+
+    def _call_groq_direct(self, prompt: str, max_tokens: int = 500, max_retries: int = 3) -> Optional[str]:
+        """Call Groq API directly (fallback)."""
+        if not self.groq_key:
+            return None
+
+        # Proactive rate limiting
         elapsed = time.time() - self._last_call_time
         if elapsed < self.MIN_CALL_INTERVAL:
-            sleep_time = self.MIN_CALL_INTERVAL - elapsed
-            logger.info(f"Rate limiting: waiting {sleep_time:.1f}s before API call")
-            time.sleep(sleep_time)
+            time.sleep(self.MIN_CALL_INTERVAL - elapsed)
 
         for attempt in range(max_retries):
             try:
@@ -147,61 +206,16 @@ class ContentEnricher:
                 return response.json().get('choices', [{}])[0].get('message', {}).get('content')
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 429:
-                    wait_time = (2 ** attempt) * 10
-                    logger.warning(f"Groq rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
-                    time.sleep(wait_time)
+                    logger.warning(f"Groq rate limited, waiting 10s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(10)
                     continue
                 logger.warning(f"Groq API error: {e}")
-                return self._call_openrouter(prompt, max_tokens)
+                return None
             except Exception as e:
                 logger.warning(f"Groq API error: {e}")
-                return self._call_openrouter(prompt, max_tokens)
+                return None
 
-        logger.warning("Groq API: Max retries exceeded, falling back to OpenRouter")
-        return self._call_openrouter(prompt, max_tokens)
-
-    def _call_openrouter(self, prompt: str, max_tokens: int = 500) -> Optional[str]:
-        """Call OpenRouter API with free models as fallback."""
-        if not self.openrouter_key:
-            logger.warning("No OpenRouter API key available for fallback")
-            return None
-
-        # Free models to try in order of preference
-        free_models = [
-            "meta-llama/llama-3.3-70b-instruct:free",
-            "deepseek/deepseek-r1-0528:free",
-            "google/gemma-3-27b-it:free",
-        ]
-
-        for model in free_models:
-            try:
-                logger.info(f"Trying OpenRouter model: {model}")
-                response = self.session.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {self.openrouter_key}",
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": "https://dailytrending.info",
-                        "X-Title": "DailyTrending.info"
-                    },
-                    json={
-                        "model": model,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "max_tokens": max_tokens,
-                        "temperature": 0.7
-                    },
-                    timeout=60
-                )
-                response.raise_for_status()
-                result = response.json().get('choices', [{}])[0].get('message', {}).get('content')
-                if result:
-                    logger.info(f"OpenRouter success with {model}")
-                    return result
-            except Exception as e:
-                logger.warning(f"OpenRouter {model} failed: {e}")
-                continue
-
-        logger.error("All OpenRouter models failed")
+        logger.warning("Groq API: Max retries exceeded")
         return None
 
     def _parse_json_response(self, response: str) -> Optional[Dict]:

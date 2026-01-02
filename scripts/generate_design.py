@@ -1270,15 +1270,76 @@ Respond with ONLY a valid JSON object:
         return False
 
     def _call_groq(self, prompt: str, max_tokens: int = 1000, max_retries: int = 3) -> Optional[str]:
+        """Call LLM API - prioritizes OpenRouter, falls back to Groq."""
+        # Try OpenRouter first (free models)
+        result = self._call_openrouter(prompt, max_tokens, max_retries)
+        if result:
+            return result
+
+        # Fall back to Groq if OpenRouter fails
+        return self._call_groq_direct(prompt, max_tokens, max_retries)
+
+    def _call_openrouter(self, prompt: str, max_tokens: int = 1000, max_retries: int = 3) -> Optional[str]:
+        """Call OpenRouter API with free models (primary)."""
+        if not self.openrouter_key:
+            print("    No OpenRouter API key available")
+            return None
+
+        # Free models to try in order of preference
+        free_models = [
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "deepseek/deepseek-r1-0528:free",
+            "google/gemma-3-27b-it:free",
+        ]
+
+        for model in free_models:
+            for attempt in range(max_retries):
+                try:
+                    print(f"    Trying OpenRouter {model} (attempt {attempt + 1}/{max_retries})")
+                    response = self.session.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {self.openrouter_key}",
+                            "Content-Type": "application/json",
+                            "HTTP-Referer": "https://dailytrending.info",
+                            "X-Title": "DailyTrending.info"
+                        },
+                        json={
+                            "model": model,
+                            "messages": [{"role": "user", "content": prompt}],
+                            "max_tokens": max_tokens,
+                            "temperature": 0.7
+                        },
+                        timeout=60
+                    )
+                    response.raise_for_status()
+                    result = response.json().get('choices', [{}])[0].get('message', {}).get('content')
+                    if result:
+                        print(f"    OpenRouter success with {model}")
+                        return result
+                except requests.exceptions.HTTPError as e:
+                    if response.status_code == 429:
+                        print(f"    OpenRouter {model} rate limited, waiting 10s (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(10)
+                        continue
+                    print(f"    OpenRouter {model} failed: {e}")
+                    break  # Try next model
+                except Exception as e:
+                    print(f"    OpenRouter {model} failed: {e}")
+                    break  # Try next model
+
+        print("    All OpenRouter models failed")
+        return None
+
+    def _call_groq_direct(self, prompt: str, max_tokens: int = 1000, max_retries: int = 3) -> Optional[str]:
+        """Call Groq API directly (fallback)."""
         if not self.groq_key:
             return None
 
-        # Proactive rate limiting: wait if we're calling too fast
+        # Proactive rate limiting
         elapsed = time.time() - self._last_call_time
         if elapsed < self.MIN_CALL_INTERVAL:
-            sleep_time = self.MIN_CALL_INTERVAL - elapsed
-            print(f"    Rate limiting: waiting {sleep_time:.1f}s before API call")
-            time.sleep(sleep_time)
+            time.sleep(self.MIN_CALL_INTERVAL - elapsed)
 
         for attempt in range(max_retries):
             try:
@@ -1301,52 +1362,16 @@ Respond with ONLY a valid JSON object:
                 return response.json().get('choices', [{}])[0].get('message', {}).get('content')
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 429:
-                    wait_time = (2 ** attempt) * 10
-                    print(f"    Groq rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
-                    time.sleep(wait_time)
+                    print(f"    Groq rate limited, waiting 10s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(10)
                     continue
-                raise
-        return None
-
-    def _call_openrouter(self, prompt: str, max_tokens: int = 1000) -> Optional[str]:
-        """Call OpenRouter API with free models as fallback."""
-        if not self.openrouter_key:
-            return None
-
-        # Free models to try in order of preference
-        free_models = [
-            "meta-llama/llama-3.3-70b-instruct:free",
-            "deepseek/deepseek-r1-0528:free",
-            "google/gemma-3-27b-it:free",
-        ]
-
-        for model in free_models:
-            try:
-                response = self.session.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {self.openrouter_key}",
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": "https://dailytrending.info",
-                        "X-Title": "DailyTrending.info"
-                    },
-                    json={
-                        "model": model,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "max_tokens": max_tokens,
-                        "temperature": 0.7
-                    },
-                    timeout=60
-                )
-                response.raise_for_status()
-                result = response.json().get('choices', [{}])[0].get('message', {}).get('content')
-                if result:
-                    print(f"    OpenRouter success with {model}")
-                    return result
+                print(f"    Groq API error: {e}")
+                return None
             except Exception as e:
-                print(f"    OpenRouter {model} failed: {e}")
-                continue
+                print(f"    Groq API error: {e}")
+                return None
 
+        print("    Groq API: Max retries exceeded")
         return None
 
     def _parse_ai_response(self, response: str) -> Optional[Dict]:
