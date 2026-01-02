@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 20:58 UTC | [fix: Remove broken comment fragment in rate_limiter.py](https://github.com/fubak/daily-trending-info/commit/ca48f663be76963e4a666ff2aadccada0db8ce13) |
 | 2026-01-02 20:48 UTC | [fix: Cap all API retry wait times to 10 seconds max](https://github.com/fubak/daily-trending-info/commit/55cb9b5b4a6088bd3f084e10f43d26ba6bdf550c) |
 | 2026-01-02 19:48 UTC | [feat: Add unique hero images for each topic page](https://github.com/fubak/daily-trending-info/commit/3151fa55f65b964289f930bd09f52eb89c4edbff) |
 | 2026-01-02 19:21 UTC | [feat: Add shared header/footer to Articles and hero images to topics](https://github.com/fubak/daily-trending-info/commit/503cdbb85230a1c9d6d6f698dd383908c81dff34) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 18:15 UTC | [feat: Add OpenCode AI provider and expand topic pages](https://github.com/fubak/daily-trending-info/commit/909df02f898ab440e8a71db723de7f64232535cf) |
 | 2026-01-02 16:22 UTC | [fix: Reduce AI retry attempts and wait times](https://github.com/fubak/daily-trending-info/commit/6a767031cd30098f6e4ef04abbe62fdbb19b2d0b) |
 | 2026-01-02 15:45 UTC | [chore: Add generated articles index with enhanced UI](https://github.com/fubak/daily-trending-info/commit/dbe17e14d4cf6c457b1436bdde267585544cde43) |
-| 2026-01-02 14:54 UTC | [feat: Enhanced articles index with search, filter, sort, pagination](https://github.com/fubak/daily-trending-info/commit/355bca3ce8d3e4bcaf35ee756a4fbf70ee00ac59) |
 <!-- CHANGELOG_END -->
 
 ## Features
