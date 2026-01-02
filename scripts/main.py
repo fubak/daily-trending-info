@@ -590,19 +590,31 @@ class Pipeline:
         date_str = now.strftime('%B %d, %Y')
         date_iso = now.isoformat()
 
-        # Build story cards with enhanced design
+        # Get hero image for featured story (first available image)
+        hero_image_url = ''
+        hero_image_alt = ''
+        if images:
+            hero_img = images[0] if isinstance(images[0], dict) else {}
+            hero_image_url = hero_img.get('url_large', hero_img.get('url_medium', hero_img.get('url', '')))
+            hero_image_alt = hero_img.get('alt', hero_img.get('description', 'Featured story image'))
+
+        # Get featured story info
+        featured_story = trends[0] if trends else {}
+        featured_title = html_module.escape(featured_story.get('title', '')[:100])
+        featured_url = html_module.escape(featured_story.get('url', '#'))
+        featured_source = html_module.escape(featured_story.get('source', '').replace('_', ' ').title())
+        featured_desc = html_module.escape((featured_story.get('description', '') or '')[:200])
+
+        # Build story cards with enhanced design (skip first since it's in hero)
         cards = []
-        for i, t in enumerate(trends[:20]):
+        for i, t in enumerate(trends[1:20]):  # Start from index 1, skip featured
             title = html_module.escape(t.get('title', '')[:100])
             url = html_module.escape(t.get('url', '#'))
             source = html_module.escape(t.get('source', '').replace('_', ' ').title())
             desc = html_module.escape((t.get('description', '') or '')[:150])
 
-            # First card is featured
-            featured_class = ' featured' if i == 0 else ''
-
             cards.append(f'''
-            <article class="story-card{featured_class}">
+            <article class="story-card">
                 <span class="source-badge">{source}</span>
                 <h3><a href="{url}" target="_blank" rel="noopener">{title}</a></h3>
                 {'<p class="story-desc">' + desc + '</p>' if desc else ''}
@@ -751,43 +763,127 @@ class Pipeline:
             transition: transform 0.3s;
         }}
 
-        /* Hero Header */
+        /* Hero Header with Featured Story */
         .topic-hero {{
-            padding: 4rem 2rem 3rem;
-            text-align: center;
-            background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.3) 100%);
+            position: relative;
+            min-height: 500px;
+            display: flex;
+            align-items: flex-end;
+            overflow: hidden;
             border-bottom: 1px solid var(--color-border);
         }}
 
-        .topic-hero h1 {{
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: clamp(2.5rem, 6vw, 4rem);
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            background: linear-gradient(135deg, var(--color-text) 0%, var(--color-accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .hero-image {{
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            z-index: 0;
         }}
 
-        .topic-hero p {{
-            font-size: 1.1rem;
-            color: var(--color-muted);
-            max-width: 600px;
-            margin: 0 auto 1rem;
+        .hero-image::after {{
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.3) 100%);
         }}
 
-        .topic-stats {{
+        .hero-content {{
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }}
+
+        .topic-label {{
             display: inline-flex;
-            gap: 1.5rem;
-            font-size: 0.9rem;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--color-accent);
+            color: #000;
+            padding: 0.4rem 1rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+        }}
+
+        .hero-title {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(1.75rem, 4vw, 2.75rem);
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            max-width: 800px;
+        }}
+
+        .hero-title a {{
+            color: var(--color-text);
+            text-decoration: none;
+            transition: color var(--transition);
+        }}
+
+        .hero-title a:hover {{
             color: var(--color-accent);
         }}
 
-        .topic-stats span {{
+        .hero-desc {{
+            font-size: 1.1rem;
+            color: var(--color-muted);
+            max-width: 600px;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }}
+
+        .hero-meta {{
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }}
+
+        .hero-source {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--color-accent);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }}
+
+        .hero-stats {{
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.9rem;
+            color: var(--color-muted);
+        }}
+
+        .hero-stats span {{
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }}
+
+        .hero-cta {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--color-accent);
+            color: #000;
+            font-weight: 600;
+            border-radius: var(--radius);
+            text-decoration: none;
+            transition: transform var(--transition), box-shadow var(--transition);
+        }}
+
+        .hero-cta:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
         }}
 
         /* Main Content */
@@ -940,7 +1036,25 @@ class Pipeline:
             }}
 
             .topic-hero {{
+                min-height: 400px;
+            }}
+
+            .hero-content {{
                 padding: 2rem 1rem;
+            }}
+
+            .hero-title {{
+                font-size: 1.5rem;
+            }}
+
+            .hero-desc {{
+                font-size: 1rem;
+            }}
+
+            .hero-meta {{
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
             }}
 
             .main-content {{
@@ -979,17 +1093,27 @@ class Pipeline:
     </nav>
 
     <header class="topic-hero">
-        <h1>{config['title']}</h1>
-        <p>{config['description']}</p>
-        <div class="topic-stats">
-            <span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
-                {len(trends)} stories
-            </span>
-            <span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Updated {date_str}
-            </span>
+        <div class="hero-image" style="background-image: url('{hero_image_url}');" role="img" aria-label="{hero_image_alt}"></div>
+        <div class="hero-content">
+            <span class="topic-label">{config['title']}</span>
+            <h1 class="hero-title"><a href="{featured_url}" target="_blank" rel="noopener">{featured_title}</a></h1>
+            {f'<p class="hero-desc">{featured_desc}</p>' if featured_desc else ''}
+            <div class="hero-meta">
+                <span class="hero-source">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    {featured_source}
+                </span>
+                <div class="hero-stats">
+                    <span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+                        {len(trends)} stories
+                    </span>
+                    <span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        {date_str}
+                    </span>
+                </div>
+            </div>
         </div>
     </header>
 

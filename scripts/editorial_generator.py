@@ -2261,17 +2261,181 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
             clip: rect(0,0,0,0);
             border: 0;
         }}
+
+        /* Navigation */
+        .nav {{
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }}
+
+        .nav-logo {{
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--text);
+            text-decoration: none;
+        }}
+
+        .nav-links {{
+            display: flex;
+            gap: 0.25rem;
+            list-style: none;
+        }}
+
+        .nav-links a {{
+            padding: 0.5rem 1rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 0.5rem;
+            transition: color 0.2s, background 0.2s;
+        }}
+
+        .nav-links a:hover {{
+            color: var(--text);
+            background: rgba(255,255,255,0.05);
+        }}
+
+        .nav-links a.active {{
+            color: var(--accent);
+            background: rgba(255,255,255,0.08);
+        }}
+
+        .nav-date {{
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }}
+
+        .mobile-menu-toggle {{
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+        }}
+
+        .hamburger-line {{
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--text);
+            margin: 5px 0;
+            transition: transform 0.3s;
+        }}
+
+        /* Footer */
+        .footer {{
+            margin-top: 4rem;
+            padding: 3rem 2rem;
+            background: rgba(255,255,255,0.02);
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }}
+
+        .footer-content {{
+            max-width: 800px;
+            margin: 0 auto;
+        }}
+
+        .footer-logo {{
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }}
+
+        .footer-tagline {{
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }}
+
+        .footer-links {{
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }}
+
+        .footer-links a {{
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }}
+
+        .footer-links a:hover {{
+            color: var(--accent);
+        }}
+
+        .footer-bottom {{
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }}
+
+        @media (max-width: 768px) {{
+            .mobile-menu-toggle {{
+                display: block;
+            }}
+
+            .nav-links {{
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                flex-direction: column;
+                background: var(--bg);
+                border-bottom: 1px solid var(--border);
+                padding: 1rem;
+            }}
+
+            .nav-links.active {{
+                display: flex;
+            }}
+
+            .nav-date {{
+                display: none;
+            }}
+
+            .footer-links {{
+                flex-direction: column;
+                gap: 1rem;
+            }}
+        }}
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="/" class="back-link">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-            Back to Today's Trends
-        </a>
+    <nav class="nav">
+        <a href="/" class="nav-logo">DailyTrending.info</a>
+        <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+        </button>
+        <ul class="nav-links" id="nav-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="/tech/">Tech</a></li>
+            <li><a href="/world/">World</a></li>
+            <li><a href="/science/">Science</a></li>
+            <li><a href="/politics/">Politics</a></li>
+            <li><a href="/finance/">Finance</a></li>
+            <li><a href="/articles/" class="active">Articles</a></li>
+        </ul>
+        <div class="nav-actions">
+            <span class="nav-date">{datetime.now().strftime('%B %d, %Y')}</span>
+        </div>
+    </nav>
 
+    <div class="container">
         <header class="page-header">
             <h1>Editorial Articles</h1>
             <p>Daily analysis and insights from DailyTrending.info</p>
@@ -2756,8 +2920,37 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
         // Initialize
         initFromURL();
         render();
+
+        // Mobile menu toggle
+        const menuToggle = document.getElementById('mobile-menu-toggle');
+        const navLinksEl = document.getElementById('nav-links');
+        if (menuToggle && navLinksEl) {{
+            menuToggle.addEventListener('click', () => {{
+                navLinksEl.classList.toggle('active');
+            }});
+        }}
     }})();
     </script>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-logo">DailyTrending.info</div>
+            <p class="footer-tagline">Curated trends from across the web, updated daily.</p>
+            <div class="footer-links">
+                <a href="/">Home</a>
+                <a href="/tech/">Tech</a>
+                <a href="/world/">World</a>
+                <a href="/science/">Science</a>
+                <a href="/politics/">Politics</a>
+                <a href="/finance/">Finance</a>
+                <a href="/articles/">Articles</a>
+                <a href="/feed.xml">RSS Feed</a>
+            </div>
+            <div class="footer-bottom">
+                &copy; {datetime.now().year} DailyTrending.info &bull; Regenerated daily at 6 AM EST
+            </div>
+        </div>
+    </footer>
 </body>
 </html>'''
 
