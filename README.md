@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 15:45 UTC | [chore: Add generated articles index with enhanced UI](https://github.com/fubak/daily-trending-info/commit/dbe17e14d4cf6c457b1436bdde267585544cde43) |
 | 2026-01-02 14:54 UTC | [feat: Enhanced articles index with search, filter, sort, pagination](https://github.com/fubak/daily-trending-info/commit/355bca3ce8d3e4bcaf35ee756a4fbf70ee00ac59) |
 | 2026-01-02 13:42 UTC | [fix: Prevent duplicate editorial articles on same day](https://github.com/fubak/daily-trending-info/commit/47eb5e548d2862a8a794c11392fd799cb68cb1c6) |
 | 2026-01-02 13:39 UTC | [fix: Mobile UI issues - header overlap, menu visibility, PWA icons](https://github.com/fubak/daily-trending-info/commit/b49c55f20bc12c6272e816be31103404be2d2423) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 03:54 UTC | [fix: Improve Daily Features 3-column layout with placeholders](https://github.com/fubak/daily-trending-info/commit/3c6449b0fb88d941d8e8c7db9e000c94f6ec9130) |
 | 2026-01-02 03:36 UTC | [fix: Use gemini-2.5-flash-lite model for higher rate limits](https://github.com/fubak/daily-trending-info/commit/9794d0ecfd48c4cc84ec8abf928e2a60f91f7a23) |
 | 2026-01-02 03:27 UTC | [fix: Add GOOGLE_AI_API_KEY to workflow environment](https://github.com/fubak/daily-trending-info/commit/8a581e77f0841e56e268ae92089ce74f31641c1a) |
-| 2026-01-02 03:23 UTC | [feat: Add Google AI (Gemini) as primary LLM provider](https://github.com/fubak/daily-trending-info/commit/4bb7b7ca6b2ac0416d19d172c8854b78b2a24fad) |
 <!-- CHANGELOG_END -->
 
 ## Features
