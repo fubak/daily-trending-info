@@ -26,6 +26,39 @@ except ImportError:
 
 logger = logging.getLogger("pipeline")
 
+# JSON Schemas for Gemini Structured Outputs
+EDITORIAL_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string", "description": "Compelling headline (6-12 words)"},
+        "slug": {"type": "string", "description": "URL-friendly slug with dashes"},
+        "summary": {"type": "string", "description": "1-2 sentence meta description for SEO"},
+        "mood": {"type": "string", "description": "One word describing tone (hopeful, concerned, transformative, etc.)"},
+        "content": {"type": "string", "description": "Full article content with HTML formatting"},
+        "key_themes": {"type": "array", "items": {"type": "string"}, "description": "3-5 key themes"},
+        "predictions": {"type": "array", "items": {"type": "string"}, "description": "2-3 specific predictions"}
+    },
+    "required": ["title", "slug", "summary", "mood", "content", "key_themes"]
+}
+
+STORY_SUMMARIES_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "stories": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "explanation": {"type": "string", "description": "2-3 sentence explanation of why this matters"},
+                    "impact_areas": {"type": "array", "items": {"type": "string"}, "description": "Areas of impact"}
+                },
+                "required": ["explanation"]
+            }
+        }
+    },
+    "required": ["stories"]
+}
+
 
 @dataclass
 class EditorialArticle:
@@ -204,8 +237,14 @@ Respond with ONLY a valid JSON object:
 }}"""
 
         try:
-            response = self._call_groq(prompt, max_tokens=2000)  # Increased for longer format
-            data = self._parse_json_response(response)
+            # Try structured output first (guaranteed valid JSON from Gemini)
+            data = self._call_google_ai_structured(prompt, EDITORIAL_SCHEMA, max_tokens=2000)
+
+            # Fall back to regular LLM call + JSON parsing if structured output fails
+            if not data:
+                logger.info("Structured output unavailable, falling back to regular LLM call")
+                response = self._call_groq(prompt, max_tokens=2000)
+                data = self._parse_json_response(response)
 
             if not data or not data.get('content'):
                 logger.warning("Failed to parse editorial response")
@@ -302,8 +341,14 @@ Respond with ONLY a valid JSON object:
 }}"""
 
         try:
-            response = self._call_groq(prompt, max_tokens=600)
-            data = self._parse_json_response(response)
+            # Try structured output first (guaranteed valid JSON from Gemini)
+            data = self._call_google_ai_structured(prompt, STORY_SUMMARIES_SCHEMA, max_tokens=600)
+
+            # Fall back to regular LLM call + JSON parsing if structured output fails
+            if not data:
+                logger.info("Structured output unavailable for story summaries, falling back")
+                response = self._call_groq(prompt, max_tokens=600)
+                data = self._parse_json_response(response)
 
             results = []
             if data and data.get('stories'):
@@ -1031,6 +1076,102 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                 return None
 
         logger.warning("Google AI: Max retries exceeded")
+        return None
+
+    def _call_google_ai_structured(
+        self,
+        prompt: str,
+        schema: dict,
+        max_tokens: int = 2000,
+        max_retries: int = 3
+    ) -> Optional[Dict]:
+        """
+        Call Google AI with structured output (guaranteed valid JSON).
+
+        Uses Gemini's response_mime_type and response_schema to ensure
+        the response matches the provided JSON schema.
+        """
+        if not self.google_key:
+            logger.info("No Google AI API key available, skipping structured output")
+            return None
+
+        # Check rate limits before calling
+        rate_limiter = get_rate_limiter()
+        status = check_before_call('google')
+
+        if not status.is_available:
+            logger.warning(f"Google AI not available: {status.error}")
+            return None
+
+        if status.wait_seconds > 0:
+            logger.info(f"Waiting {status.wait_seconds:.1f}s for Google AI rate limit...")
+            time.sleep(status.wait_seconds)
+
+        # Use Gemini 2.5 Flash Lite with structured output
+        model = "gemini-2.5-flash-lite"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Trying Google AI {model} with structured output (attempt {attempt + 1}/{max_retries})")
+                response = self.session.post(
+                    url,
+                    headers={
+                        "x-goog-api-key": self.google_key,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {
+                            "maxOutputTokens": max_tokens,
+                            "temperature": 0.7,
+                            "response_mime_type": "application/json",
+                            "response_schema": schema
+                        }
+                    },
+                    timeout=90  # Longer timeout for structured output
+                )
+                response.raise_for_status()
+
+                # Update rate limiter tracking
+                rate_limiter._last_call_time['google'] = time.time()
+
+                # Parse response - should be valid JSON
+                data = response.json()
+                candidates = data.get('candidates', [])
+                if candidates:
+                    content = candidates[0].get('content', {})
+                    parts = content.get('parts', [])
+                    if parts:
+                        text = parts[0].get('text', '')
+                        if text:
+                            try:
+                                result = json.loads(text)
+                                logger.info(f"Google AI structured output success with {model}")
+                                return result
+                            except json.JSONDecodeError as e:
+                                # Shouldn't happen with structured output, but fallback to repair
+                                logger.warning(f"Structured output JSON parse error (unexpected): {e}")
+                                repaired = self._repair_json(text)
+                                return json.loads(repaired)
+
+            except requests.exceptions.HTTPError as e:
+                if response.status_code == 429:
+                    retry_after = response.headers.get('Retry-After', '60')
+                    try:
+                        wait_time = float(retry_after)
+                    except ValueError:
+                        wait_time = 60.0
+                    logger.warning(f"Google AI rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                logger.error(f"Google AI structured output failed: {e}")
+                return None
+            except Exception as e:
+                logger.error(f"Google AI structured output failed: {e}")
+                return None
+
+        logger.warning("Google AI structured output: Max retries exceeded")
         return None
 
     def _call_openrouter(self, prompt: str, max_tokens: int = 800, max_retries: int = 3) -> Optional[str]:

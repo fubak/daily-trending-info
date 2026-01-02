@@ -26,6 +26,51 @@ logger = logging.getLogger("pipeline")
 # Grokipedia API endpoint (unofficial API wrapper)
 GROKIPEDIA_API_URL = "https://grokipedia-api.com/page"
 
+# JSON Schemas for Gemini structured outputs (guarantees valid JSON)
+WORD_OF_DAY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "word": {"type": "string", "description": "The selected word"},
+        "part_of_speech": {"type": "string", "description": "Part of speech (noun/verb/adjective/adverb/etc)"},
+        "definition": {"type": "string", "description": "Clear, concise definition in 1-2 sentences"},
+        "example_usage": {"type": "string", "description": "Example sentence using the word"},
+        "origin": {"type": "string", "description": "Brief etymology or origin (1 sentence)"},
+        "why_chosen": {"type": "string", "description": "1 sentence explaining why this word is interesting today"},
+        "related_trend": {"type": "string", "description": "The headline this word relates to"}
+    },
+    "required": ["word", "part_of_speech", "definition", "example_usage"]
+}
+
+GROKIPEDIA_TOPIC_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "topic": {"type": "string", "description": "Article Title in Title Case"},
+        "slug": {"type": "string", "description": "article_title_with_underscores"},
+        "reason": {"type": "string", "description": "1 sentence explaining why this topic is relevant today"},
+        "related_trend": {"type": "string", "description": "The headline this relates to"}
+    },
+    "required": ["topic", "slug"]
+}
+
+STORY_SUMMARIES_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summaries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Original title"},
+                    "summary": {"type": "string", "description": "15-25 word summary"},
+                    "source": {"type": "string", "description": "Source name"}
+                },
+                "required": ["title", "summary"]
+            }
+        }
+    },
+    "required": ["summaries"]
+}
+
 
 @dataclass
 class WordOfTheDay:
@@ -208,6 +253,98 @@ class ContentEnricher:
                 return None
 
         logger.warning("Google AI: Max retries exceeded")
+        return None
+
+    def _call_google_ai_structured(
+        self,
+        prompt: str,
+        schema: Dict,
+        max_tokens: int = 500,
+        max_retries: int = 3
+    ) -> Optional[Dict]:
+        """
+        Call Google AI with structured output (guaranteed valid JSON).
+
+        Uses Gemini's response_schema parameter to ensure the response
+        conforms to the provided JSON schema.
+        """
+        if not self.google_key:
+            logger.info("No Google AI API key available for structured output")
+            return None
+
+        # Check rate limits before calling
+        rate_limiter = get_rate_limiter()
+        status = check_before_call('google')
+
+        if not status.is_available:
+            logger.warning(f"Google AI not available for structured output: {status.error}")
+            return None
+
+        if status.wait_seconds > 0:
+            logger.info(f"Waiting {status.wait_seconds:.1f}s for Google AI rate limit...")
+            time.sleep(status.wait_seconds)
+
+        model = "gemini-2.5-flash-lite"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Trying Google AI structured output (attempt {attempt + 1}/{max_retries})")
+                response = self.session.post(
+                    url,
+                    headers={
+                        "x-goog-api-key": self.google_key,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {
+                            "maxOutputTokens": max_tokens,
+                            "temperature": 0.7,
+                            "responseMimeType": "application/json",
+                            "responseSchema": schema
+                        }
+                    },
+                    timeout=60
+                )
+                response.raise_for_status()
+
+                # Update rate limiter tracking
+                rate_limiter._last_call_time['google'] = time.time()
+
+                # Parse response
+                data = response.json()
+                candidates = data.get('candidates', [])
+                if candidates:
+                    content = candidates[0].get('content', {})
+                    parts = content.get('parts', [])
+                    if parts:
+                        text = parts[0].get('text', '')
+                        if text:
+                            logger.info("Google AI structured output success")
+                            # Parse the JSON - should be valid due to structured output
+                            return json.loads(text)
+
+            except requests.exceptions.HTTPError as e:
+                if response.status_code == 429:
+                    retry_after = response.headers.get('Retry-After', '60')
+                    try:
+                        wait_time = float(retry_after)
+                    except ValueError:
+                        wait_time = 60.0
+                    logger.warning(f"Google AI rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                logger.warning(f"Google AI structured output failed: {e}")
+                return None
+            except json.JSONDecodeError as e:
+                logger.warning(f"Google AI structured output JSON parse error: {e}")
+                return None
+            except Exception as e:
+                logger.warning(f"Google AI structured output failed: {e}")
+                return None
+
+        logger.warning("Google AI structured output: Max retries exceeded")
         return None
 
     def _call_openrouter(self, prompt: str, max_tokens: int = 500, max_retries: int = 3) -> Optional[str]:
@@ -508,8 +645,17 @@ SELECTION CRITERIA:
 - Choose words that readers might want to learn more about
 - The word should connect to today's news in some way
 
+Return a JSON object with word, part_of_speech, definition, example_usage, origin, why_chosen, and related_trend."""
+
+        # Try structured output first (guaranteed valid JSON)
+        data = self._call_google_ai_structured(prompt, WORD_OF_DAY_SCHEMA, max_tokens=400)
+
+        # Fallback to regular LLM call with JSON parsing
+        if not data:
+            prompt_with_json = prompt + """
+
 Respond with ONLY a valid JSON object:
-{{
+{
   "word": "selected word",
   "part_of_speech": "noun/verb/adjective/adverb/etc",
   "definition": "Clear, concise definition in 1-2 sentences",
@@ -517,10 +663,9 @@ Respond with ONLY a valid JSON object:
   "origin": "Brief etymology or origin (1 sentence, optional)",
   "why_chosen": "1 sentence explaining why this word is interesting today",
   "related_trend": "The headline this word relates to"
-}}"""
-
-        response = self._call_groq(prompt, max_tokens=400)
-        data = self._parse_json_response(response)
+}"""
+            response = self._call_groq(prompt_with_json, max_tokens=400)
+            data = self._parse_json_response(response)
 
         if data and data.get('word'):
             return WordOfTheDay(
@@ -595,16 +740,24 @@ SELECTION CRITERIA:
 - The topic should provide background context for understanding today's news
 - Use Wikipedia-style article titles (e.g., "Artificial intelligence", "Climate change", "European Union")
 
+Return a JSON object with topic, slug, reason, and related_trend."""
+
+        # Try structured output first (guaranteed valid JSON)
+        data = self._call_google_ai_structured(prompt, GROKIPEDIA_TOPIC_SCHEMA, max_tokens=200)
+
+        # Fallback to regular LLM call with JSON parsing
+        if not data:
+            prompt_with_json = prompt + """
+
 Respond with ONLY a valid JSON object:
-{{
+{
   "topic": "Article Title in Title Case",
   "slug": "article_title_with_underscores",
   "reason": "1 sentence explaining why this topic is relevant today",
   "related_trend": "The headline this relates to"
-}}"""
-
-        response = self._call_groq(prompt, max_tokens=200)
-        data = self._parse_json_response(response)
+}"""
+            response = self._call_groq(prompt_with_json, max_tokens=200)
+            data = self._parse_json_response(response)
 
         if data and data.get('topic'):
             return data.get('topic')
@@ -740,16 +893,24 @@ For each story, write a concise 15-25 word summary that:
 - Works as a standalone description
 - Uses active voice
 
+Return a JSON object with a summaries array containing objects with title, summary, and source fields."""
+
+        # Try structured output first (guaranteed valid JSON)
+        data = self._call_google_ai_structured(prompt, STORY_SUMMARIES_SCHEMA, max_tokens=800)
+
+        # Fallback to regular LLM call with JSON parsing
+        if not data:
+            prompt_with_json = prompt + """
+
 Respond with ONLY a valid JSON object:
-{{
+{
   "summaries": [
-    {{"title": "Original title", "summary": "Your 15-25 word summary", "source": "Source Name"}},
+    {"title": "Original title", "summary": "Your 15-25 word summary", "source": "Source Name"},
     ...
   ]
-}}"""
-
-        response = self._call_groq(prompt, max_tokens=800)
-        data = self._parse_json_response(response)
+}"""
+            response = self._call_groq(prompt_with_json, max_tokens=800)
+            data = self._parse_json_response(response)
 
         summaries = []
         if data and data.get('summaries'):
