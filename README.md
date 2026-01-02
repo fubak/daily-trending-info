@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 03:36 UTC | [fix: Use gemini-2.5-flash-lite model for higher rate limits](https://github.com/fubak/daily-trending-info/commit/9794d0ecfd48c4cc84ec8abf928e2a60f91f7a23) |
 | 2026-01-02 03:27 UTC | [fix: Add GOOGLE_AI_API_KEY to workflow environment](https://github.com/fubak/daily-trending-info/commit/8a581e77f0841e56e268ae92089ce74f31641c1a) |
 | 2026-01-02 03:23 UTC | [feat: Add Google AI (Gemini) as primary LLM provider](https://github.com/fubak/daily-trending-info/commit/4bb7b7ca6b2ac0416d19d172c8854b78b2a24fad) |
 | 2026-01-02 02:56 UTC | [fix: Use correct OpenRouter endpoint /api/v1/key for rate limits](https://github.com/fubak/daily-trending-info/commit/00df16444744ea343e662b2a3805d3f3eff39b9b) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 02:03 UTC | [feat: Add editorial article to homepage and fix sitemap discovery](https://github.com/fubak/daily-trending-info/commit/d5666bd0ba4d10885a055857883d94176b26fca8) |
 | 2026-01-02 01:46 UTC | [fix: Add fallback JSON parsing that strips control characters](https://github.com/fubak/daily-trending-info/commit/36aad876adc08ea7e87d240e5418643b73ea3624) |
 | 2026-01-02 01:45 UTC | [fix: Remove double-escaping of backslashes in JSON parsing](https://github.com/fubak/daily-trending-info/commit/139b291064b8018c61b44f660438172b4b72a29d) |
-| 2026-01-02 01:44 UTC | [fix: Properly escape control chars in JSON strings only](https://github.com/fubak/daily-trending-info/commit/6b942a72b62a0f4d4b604bda3a04f5b42f87c33f) |
 <!-- CHANGELOG_END -->
 
 ## Features
