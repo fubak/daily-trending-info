@@ -1315,9 +1315,9 @@ Respond with ONLY a valid JSON object:
 
         # Free models to try in order of preference
         free_models = [
-            "deepseek/deepseek-r1-distill-llama-70b:free",
             "google/gemini-2.0-flash-exp:free",
-            "meta-llama/llama-4-maverick:free",
+            "nvidia/nemotron-3-nano-30b-a3b:free",
+            "mistralai/devstral-2512:free",
         ]
 
         for model in free_models:
