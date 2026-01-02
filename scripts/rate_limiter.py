@@ -30,7 +30,7 @@ class RateLimitStatus:
 
 
 class RateLimiter:
-    """Manages rate limits for Google AI, OpenRouter, Groq, OpenCode, Hugging Face, and Anthropic APIs."""
+    """Manages rate limits for Google AI, OpenRouter, Groq, OpenCode, Hugging Face, Mistral, and Anthropic APIs."""
 
     # Minimum wait between API calls (seconds)
     MIN_CALL_INTERVAL = 2.0  # Reduced for Google AI's generous limits
@@ -46,7 +46,8 @@ class RateLimiter:
         groq_key: Optional[str] = None,
         opencode_key: Optional[str] = None,
         huggingface_key: Optional[str] = None,
-        anthropic_key: Optional[str] = None
+        anthropic_key: Optional[str] = None,
+        mistral_key: Optional[str] = None
     ):
         self.google_key = google_key or os.getenv('GOOGLE_AI_API_KEY')
         self.openrouter_key = openrouter_key or os.getenv('OPENROUTER_API_KEY')
@@ -54,6 +55,7 @@ class RateLimiter:
         self.opencode_key = opencode_key or os.getenv('OPENCODE_API_KEY')
         self.huggingface_key = huggingface_key or os.getenv('HUGGINGFACE_API_KEY')
         self.anthropic_key = anthropic_key or os.getenv('ANTHROPIC_API_KEY')
+        self.mistral_key = mistral_key or os.getenv('MISTRAL_API_KEY')
         self.session = requests.Session()
 
         # Track last call times per provider
@@ -63,7 +65,8 @@ class RateLimiter:
             'groq': 0.0,
             'opencode': 0.0,
             'huggingface': 0.0,
-            'anthropic': 0.0
+            'anthropic': 0.0,
+            'mistral': 0.0
         }
 
         # Cache rate limit status
@@ -343,6 +346,41 @@ class RateLimiter:
 
         return RateLimitStatus(is_available=True)
 
+    def check_mistral_limits(self, force_refresh: bool = False) -> RateLimitStatus:
+        """
+        Check Mistral AI rate limits.
+
+        Mistral has generous free tier limits.
+        We track timing to avoid bursts.
+
+        Returns:
+            RateLimitStatus with availability info
+        """
+        if not self.mistral_key:
+            return RateLimitStatus(
+                is_available=False,
+                error="No Mistral API key configured"
+            )
+
+        # Check cache
+        cache_key = 'mistral'
+        if not force_refresh and cache_key in self._rate_limit_cache:
+            cached_status, cached_time = self._rate_limit_cache[cache_key]
+            if time.time() - cached_time < self._cache_ttl:
+                return cached_status
+
+        # For now, check if we should wait based on last call time
+        elapsed = time.time() - self._last_call_time.get('mistral', 0)
+
+        if elapsed < self.MIN_CALL_INTERVAL:
+            wait_seconds = self.MIN_CALL_INTERVAL - elapsed
+            return RateLimitStatus(
+                is_available=True,
+                wait_seconds=wait_seconds
+            )
+
+        return RateLimitStatus(is_available=True)
+
     def update_from_response_headers(
         self,
         provider: str,
@@ -352,7 +390,7 @@ class RateLimiter:
         Update rate limit status from API response headers.
 
         Args:
-            provider: 'openrouter', 'groq', or 'opencode'
+            provider: 'openrouter', 'groq', 'opencode', 'huggingface', or 'mistral'
             headers: Response headers from API call
         """
         status = RateLimitStatus(is_available=True)
@@ -419,7 +457,7 @@ class RateLimiter:
         Wait if necessary based on rate limits.
 
         Args:
-            provider: 'google', 'openrouter', 'groq', 'opencode', 'huggingface', or 'anthropic'
+            provider: 'google', 'openrouter', 'groq', 'opencode', 'huggingface', 'mistral', or 'anthropic'
         """
         if provider == 'google':
             status = self.check_google_limits()
@@ -429,6 +467,8 @@ class RateLimiter:
             status = self.check_opencode_limits()
         elif provider == 'huggingface':
             status = self.check_huggingface_limits()
+        elif provider == 'mistral':
+            status = self.check_mistral_limits()
         elif provider == 'anthropic':
             status = self.check_anthropic_limits()
         else:
@@ -442,8 +482,8 @@ class RateLimiter:
         """
         Get the best available provider based on rate limits and task complexity.
 
-        For simple tasks: OpenCode (free) > Hugging Face (free) > Groq > OpenRouter > Google AI
-        For complex tasks: Google AI > OpenRouter > OpenCode > Hugging Face > Groq
+        For simple tasks: OpenCode (free) > Mistral (free) > Hugging Face (free) > Groq > OpenRouter > Google AI
+        For complex tasks: Mistral > Google AI > OpenRouter > OpenCode > Hugging Face > Groq
 
         Note: Anthropic is disabled (no free tier) but tracking code is preserved.
 
@@ -458,6 +498,7 @@ class RateLimiter:
         groq_status = self.check_groq_limits()
         opencode_status = self.check_opencode_limits()
         huggingface_status = self.check_huggingface_limits()
+        mistral_status = self.check_mistral_limits()
 
         # Define priority order based on task complexity
         # Note: Anthropic excluded from routing (no free tier)
@@ -465,14 +506,16 @@ class RateLimiter:
             # For simple tasks, prefer free models to save quota
             priority = [
                 ('opencode', opencode_status),
+                ('mistral', mistral_status),
                 ('huggingface', huggingface_status),
                 ('groq', groq_status),
                 ('openrouter', openrouter_status),
                 ('google', google_status),
             ]
         else:
-            # For complex tasks, prefer higher quality models
+            # For complex tasks, prefer higher quality models (Mistral is high quality)
             priority = [
+                ('mistral', mistral_status),
                 ('google', google_status),
                 ('openrouter', openrouter_status),
                 ('opencode', opencode_status),
@@ -500,6 +543,7 @@ class RateLimiter:
         groq_status = self.check_groq_limits()
         opencode_status = self.check_opencode_limits()
         huggingface_status = self.check_huggingface_limits()
+        mistral_status = self.check_mistral_limits()
         anthropic_status = self.check_anthropic_limits()
 
         logger.info("=== Rate Limit Status ===")
@@ -535,6 +579,12 @@ class RateLimiter:
         else:
             logger.info("Hugging Face: not configured")
 
+        if self.mistral_key:
+            logger.info(f"Mistral: available={mistral_status.is_available}, "
+                       f"wait={mistral_status.wait_seconds:.1f}s")
+        else:
+            logger.info("Mistral: not configured")
+
         if self.anthropic_key:
             logger.info(f"Anthropic: available={anthropic_status.is_available}, "
                        f"wait={anthropic_status.wait_seconds:.1f}s")
@@ -559,7 +609,7 @@ def check_before_call(provider: str) -> RateLimitStatus:
     Check rate limits before making an API call.
 
     Args:
-        provider: 'google', 'openrouter', 'groq', 'opencode', 'huggingface', or 'anthropic'
+        provider: 'google', 'openrouter', 'groq', 'opencode', 'huggingface', 'mistral', or 'anthropic'
 
     Returns:
         RateLimitStatus indicating if call is safe to make
@@ -576,6 +626,8 @@ def check_before_call(provider: str) -> RateLimitStatus:
         return limiter.check_opencode_limits()
     elif provider == 'huggingface':
         return limiter.check_huggingface_limits()
+    elif provider == 'mistral':
+        return limiter.check_mistral_limits()
     elif provider == 'anthropic':
         return limiter.check_anthropic_limits()
     else:

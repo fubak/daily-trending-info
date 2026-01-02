@@ -1281,14 +1281,18 @@ Respond with ONLY a valid JSON object:
         """
         Call LLM API with smart provider routing based on task complexity.
 
-        For simple tasks: OpenCode (free) > Hugging Face (free) > Groq > OpenRouter > Google AI
-        For complex tasks: Google AI > OpenRouter > OpenCode > Hugging Face > Groq
+        For simple tasks: OpenCode (free) > Mistral (free) > Hugging Face (free) > Groq > OpenRouter > Google AI
+        For complex tasks: Mistral > Google AI > OpenRouter > OpenCode > Hugging Face > Groq
 
         Note: Design generation is 'simple' by default as it's a structured output task.
         """
         if task_complexity == 'simple':
             # For simple tasks, prioritize free models to save quota
             result = self._call_opencode(prompt, max_tokens, max_retries)
+            if result:
+                return result
+
+            result = self._call_mistral(prompt, max_tokens, max_retries)
             if result:
                 return result
 
@@ -1307,6 +1311,10 @@ Respond with ONLY a valid JSON object:
             return self._call_google_ai(prompt, max_tokens, max_retries)
         else:
             # For complex tasks, prioritize higher quality models
+            result = self._call_mistral(prompt, max_tokens, max_retries)
+            if result:
+                return result
+
             result = self._call_google_ai(prompt, max_tokens, max_retries)
             if result:
                 return result
@@ -1701,6 +1709,82 @@ Respond with ONLY a valid JSON object:
                     break  # Try next model
 
         print("    All Hugging Face models failed")
+        return None
+
+    def _call_mistral(self, prompt: str, max_tokens: int = 1000, max_retries: int = 1) -> Optional[str]:
+        """Call Mistral AI API - high quality free tier models."""
+        mistral_key = os.getenv('MISTRAL_API_KEY')
+        if not mistral_key:
+            return None
+
+        # Check rate limits before calling
+        rate_limiter = get_rate_limiter()
+        status = check_before_call('mistral')
+
+        if not status.is_available:
+            print(f"    Mistral not available: {status.error}")
+            return None
+
+        if status.wait_seconds > 0:
+            print(f"    Waiting {status.wait_seconds:.1f}s for Mistral rate limit...")
+            time.sleep(status.wait_seconds)
+
+        # Proactive rate limiting
+        elapsed = time.time() - self._last_call_time
+        if elapsed < self.MIN_CALL_INTERVAL:
+            time.sleep(self.MIN_CALL_INTERVAL - elapsed)
+
+        # Free tier models to try in order of preference
+        # mistral-small-latest is the best free model, open-mistral-7b as fallback
+        free_models = ["mistral-small-latest", "open-mistral-7b"]
+
+        for model in free_models:
+            for attempt in range(max_retries):
+                try:
+                    self._last_call_time = time.time()
+                    print(f"    Trying Mistral {model} (attempt {attempt + 1}/{max_retries})")
+                    response = self.session.post(
+                        "https://api.mistral.ai/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {mistral_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "model": model,
+                            "messages": [{"role": "user", "content": prompt}],
+                            "max_tokens": max_tokens,
+                            "temperature": 0.7
+                        },
+                        timeout=60
+                    )
+                    response.raise_for_status()
+
+                    # Update rate limiter from response headers
+                    rate_limiter.update_from_response_headers('mistral', dict(response.headers))
+                    rate_limiter._last_call_time['mistral'] = time.time()
+
+                    result = response.json().get('choices', [{}])[0].get('message', {}).get('content')
+                    if result:
+                        print(f"    Mistral success with {model}")
+                        return result
+
+                except requests.exceptions.HTTPError as e:
+                    if response.status_code == 429:
+                        retry_after = response.headers.get('Retry-After', '10')
+                        try:
+                            wait_time = float(retry_after)
+                        except ValueError:
+                            wait_time = 10.0
+                        print(f"    Mistral rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(wait_time)
+                        continue
+                    print(f"    Mistral API error with {model}: {e}")
+                    break  # Try next model
+                except Exception as e:
+                    print(f"    Mistral API error with {model}: {e}")
+                    break  # Try next model
+
+        print("    All Mistral models failed")
         return None
 
     def _parse_ai_response(self, response: str) -> Optional[Dict]:
