@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 13:42 UTC | [fix: Prevent duplicate editorial articles on same day](https://github.com/fubak/daily-trending-info/commit/47eb5e548d2862a8a794c11392fd799cb68cb1c6) |
 | 2026-01-02 13:39 UTC | [fix: Mobile UI issues - header overlap, menu visibility, PWA icons](https://github.com/fubak/daily-trending-info/commit/b49c55f20bc12c6272e816be31103404be2d2423) |
 | 2026-01-02 13:16 UTC | [feat: Add Gemini structured outputs for guaranteed JSON parsing](https://github.com/fubak/daily-trending-info/commit/70d0615577560f577dfa84705132df8fbe71d160) |
 | 2026-01-02 13:05 UTC | [fix: Add robust JSON repair for LLM responses](https://github.com/fubak/daily-trending-info/commit/1c18ff2ecdc4a5b8e513ea67ab8cf9b3b0bedfb3) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 03:27 UTC | [fix: Add GOOGLE_AI_API_KEY to workflow environment](https://github.com/fubak/daily-trending-info/commit/8a581e77f0841e56e268ae92089ce74f31641c1a) |
 | 2026-01-02 03:23 UTC | [feat: Add Google AI (Gemini) as primary LLM provider](https://github.com/fubak/daily-trending-info/commit/4bb7b7ca6b2ac0416d19d172c8854b78b2a24fad) |
 | 2026-01-02 02:56 UTC | [fix: Use correct OpenRouter endpoint /api/v1/key for rate limits](https://github.com/fubak/daily-trending-info/commit/00df16444744ea343e662b2a3805d3f3eff39b9b) |
-| 2026-01-02 02:52 UTC | [feat: Add rate limit checking before API calls](https://github.com/fubak/daily-trending-info/commit/42e89a4d0b7e6e09ba9abce07400b81ec54e878f) |
 <!-- CHANGELOG_END -->
 
 ## Features
