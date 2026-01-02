@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 00:21 UTC | [perf: Add proactive rate limiting to Groq API calls](https://github.com/fubak/daily-trending-info/commit/a465b10cf5de0cbfbe4afc6cd804a15b1157bae9) |
 | 2026-01-01 23:56 UTC | [perf: Batch Why This Matters API calls (3 → 1)](https://github.com/fubak/daily-trending-info/commit/f28d54ef7ca52a66e833c86085c932c70698cda4) |
 | 2026-01-01 23:53 UTC | [fix: Add retry logic with exponential backoff to Groq API calls](https://github.com/fubak/daily-trending-info/commit/54628eadaabc970f7ee40a4fc6f395d29c7de492) |
 | 2026-01-01 23:45 UTC | [fix: Improve hero text readability and add Articles nav link](https://github.com/fubak/daily-trending-info/commit/755dca984f481861c50392e374103394d6d8f0d0) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-01 21:38 UTC | [fix: Handle None values in editorial generator to prevent TypeError](https://github.com/fubak/daily-trending-info/commit/9bdf4061c4fb30a663d1e7c9bddfd849bf9baa1f) |
 | 2026-01-01 21:32 UTC | [feat: Add editorial articles, velocity indicators, sharing, and accessibility](https://github.com/fubak/daily-trending-info/commit/f1a169a4aa2b089fe8647ae20abfb3b4433049da) |
 | 2026-01-01 20:10 UTC | [fix: Optimize Top Stories layout and fix animation visibility](https://github.com/fubak/daily-trending-info/commit/6bb41c8056af87a5de5f9ac91f908d4124d4ebd2) |
-| 2026-01-01 20:02 UTC | [fix: Optimize layout space and make hero image relevant to content](https://github.com/fubak/daily-trending-info/commit/a44e958912198643bb8216c64a74560e8a35d839) |
 <!-- CHANGELOG_END -->
 
 ## Features
