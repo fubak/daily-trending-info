@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 18:45 UTC | [fix: Update header nav with Home, topic pages, and Articles](https://github.com/fubak/daily-trending-info/commit/543c35c609e1fafb07ec779d1b0f1af3727561a5) |
 | 2026-01-02 18:42 UTC | [feat: Add Mistral AI provider for improved fallback chain](https://github.com/fubak/daily-trending-info/commit/a3b9af95e35377ddcfc00de9110d3a151cb8bf83) |
 | 2026-01-02 18:30 UTC | [feat: Add Hugging Face AI provider for fallback](https://github.com/fubak/daily-trending-info/commit/d6038096518d5abe36582d0d56bf856503aac5cc) |
 | 2026-01-02 18:15 UTC | [feat: Add OpenCode AI provider and expand topic pages](https://github.com/fubak/daily-trending-info/commit/909df02f898ab440e8a71db723de7f64232535cf) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 13:42 UTC | [fix: Prevent duplicate editorial articles on same day](https://github.com/fubak/daily-trending-info/commit/47eb5e548d2862a8a794c11392fd799cb68cb1c6) |
 | 2026-01-02 13:39 UTC | [fix: Mobile UI issues - header overlap, menu visibility, PWA icons](https://github.com/fubak/daily-trending-info/commit/b49c55f20bc12c6272e816be31103404be2d2423) |
 | 2026-01-02 13:16 UTC | [feat: Add Gemini structured outputs for guaranteed JSON parsing](https://github.com/fubak/daily-trending-info/commit/70d0615577560f577dfa84705132df8fbe71d160) |
-| 2026-01-02 13:05 UTC | [fix: Add robust JSON repair for LLM responses](https://github.com/fubak/daily-trending-info/commit/1c18ff2ecdc4a5b8e513ea67ab8cf9b3b0bedfb3) |
 <!-- CHANGELOG_END -->
 
 ## Features
