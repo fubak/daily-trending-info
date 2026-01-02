@@ -1257,6 +1257,7 @@ class WebsiteBuilder:
             .nav-links.active li:nth-child(4) {{ transition-delay: 0.25s; }}
             .nav-links.active li:nth-child(5) {{ transition-delay: 0.3s; }}
             .nav-links.active li:nth-child(6) {{ transition-delay: 0.35s; }}
+            .nav-links.active li:nth-child(7) {{ transition-delay: 0.4s; }}
 
             .nav-links a {{
                 font-size: 1.5rem;
@@ -4013,21 +4014,24 @@ class WebsiteBuilder:
 
     def _build_nav(self) -> str:
         """Build the navigation bar."""
-        # Build links in same order as sections appear on page
+        # Build links: Home, Topic Pages, Articles
         links_list = []
 
-        # First: What's Trending (word cloud)
-        links_list.append('<li><a href="#whats-trending">Trending</a></li>')
+        # Home
+        links_list.append('<li><a href="/">Home</a></li>')
 
-        # Second: Top Stories
-        links_list.append('<li><a href="#top-stories">Top Stories</a></li>')
+        # Topic pages
+        topic_pages = [
+            ('Tech', '/tech/'),
+            ('World', '/world/'),
+            ('Science', '/science/'),
+            ('Politics', '/politics/'),
+            ('Finance', '/finance/'),
+        ]
+        for name, url in topic_pages:
+            links_list.append(f'<li><a href="{url}">{name}</a></li>')
 
-        # Then: Category sections (sorted by trend count, same as _build_category_sections)
-        for category, _ in self._sorted_categories[:4]:
-            section_id = category.lower().replace(' ', '-')
-            links_list.append(f'<li><a href="#{section_id}">{category}</a></li>')
-
-        # Add Articles link
+        # Articles
         links_list.append('<li><a href="/articles/">Articles</a></li>')
 
         links = '\n                '.join(links_list)

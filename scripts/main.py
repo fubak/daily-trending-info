@@ -703,8 +703,8 @@ class Pipeline:
                 except Exception:
                     pass
 
-        # Get topic page URLs
-        topic_urls = ['/tech/', '/world/', '/social/']
+        # Get topic page URLs (matching topic_configs in _step_generate_topic_pages)
+        topic_urls = ['/tech/', '/world/', '/science/', '/politics/', '/finance/']
 
         # Generate enhanced sitemap
         save_sitemap(self.public_dir, extra_urls=article_urls + topic_urls)
