@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Rate Limiter Module - Manages API rate limits for OpenRouter and Groq.
+Rate Limiter Module - Manages API rate limits for Google AI, OpenRouter, and Groq.
 
 Checks rate limits before making API calls and implements backoff strategies.
 """
@@ -30,10 +30,10 @@ class RateLimitStatus:
 
 
 class RateLimiter:
-    """Manages rate limits for OpenRouter and Groq APIs."""
+    """Manages rate limits for Google AI, OpenRouter, and Groq APIs."""
 
     # Minimum wait between API calls (seconds)
-    MIN_CALL_INTERVAL = 3.0
+    MIN_CALL_INTERVAL = 2.0  # Reduced for Google AI's generous limits
 
     # Thresholds for rate limit warnings
     REQUEST_THRESHOLD_PERCENT = 10  # Warn when less than 10% requests remaining
@@ -41,15 +41,18 @@ class RateLimiter:
 
     def __init__(
         self,
+        google_key: Optional[str] = None,
         openrouter_key: Optional[str] = None,
         groq_key: Optional[str] = None
     ):
+        self.google_key = google_key or os.getenv('GOOGLE_AI_API_KEY')
         self.openrouter_key = openrouter_key or os.getenv('OPENROUTER_API_KEY')
         self.groq_key = groq_key or os.getenv('GROQ_API_KEY')
         self.session = requests.Session()
 
         # Track last call times per provider
         self._last_call_time: Dict[str, float] = {
+            'google': 0.0,
             'openrouter': 0.0,
             'groq': 0.0
         }
@@ -57,6 +60,42 @@ class RateLimiter:
         # Cache rate limit status
         self._rate_limit_cache: Dict[str, Tuple[RateLimitStatus, float]] = {}
         self._cache_ttl = 30  # Cache for 30 seconds
+
+    def check_google_limits(self, force_refresh: bool = False) -> RateLimitStatus:
+        """
+        Check Google AI rate limits before making a call.
+
+        Google AI has very generous limits (1M tokens/min, 1500 req/day for free tier).
+        We mainly track call timing to avoid bursts.
+
+        Returns:
+            RateLimitStatus with availability info
+        """
+        if not self.google_key:
+            return RateLimitStatus(
+                is_available=False,
+                error="No Google AI API key configured"
+            )
+
+        # Check cache
+        cache_key = 'google'
+        if not force_refresh and cache_key in self._rate_limit_cache:
+            cached_status, cached_time = self._rate_limit_cache[cache_key]
+            if time.time() - cached_time < self._cache_ttl:
+                return cached_status
+
+        # Google AI doesn't have a rate limit check endpoint
+        # We track timing and rely on response headers/errors
+        elapsed = time.time() - self._last_call_time.get('google', 0)
+
+        status = RateLimitStatus(is_available=True)
+
+        # Ensure minimum interval between calls
+        if elapsed < self.MIN_CALL_INTERVAL:
+            status.wait_seconds = self.MIN_CALL_INTERVAL - elapsed
+
+        self._rate_limit_cache[cache_key] = (status, time.time())
+        return status
 
     def check_openrouter_limits(self, force_refresh: bool = False) -> RateLimitStatus:
         """
@@ -264,9 +303,11 @@ class RateLimiter:
         Wait if necessary based on rate limits.
 
         Args:
-            provider: 'openrouter' or 'groq'
+            provider: 'google', 'openrouter', or 'groq'
         """
-        if provider == 'openrouter':
+        if provider == 'google':
+            status = self.check_google_limits()
+        elif provider == 'openrouter':
             status = self.check_openrouter_limits()
         else:
             status = self.check_groq_limits()
@@ -279,39 +320,55 @@ class RateLimiter:
         """
         Get the best available provider based on rate limits.
 
+        Priority: Google AI > OpenRouter > Groq
+
         Returns:
-            'openrouter', 'groq', or None if neither available
+            'google', 'openrouter', 'groq', or None if none available
         """
+        google_status = self.check_google_limits()
         openrouter_status = self.check_openrouter_limits()
         groq_status = self.check_groq_limits()
 
-        # Prefer OpenRouter if available (free models)
+        # Prefer Google AI (most generous free tier)
+        if google_status.is_available and google_status.wait_seconds == 0:
+            return 'google'
+
+        # Fall back to OpenRouter (free models)
         if openrouter_status.is_available and openrouter_status.wait_seconds == 0:
             return 'openrouter'
 
-        # Fall back to Groq if available
+        # Fall back to Groq
         if groq_status.is_available and groq_status.wait_seconds == 0:
             return 'groq'
 
-        # If both need waiting, choose the one with shorter wait
-        if openrouter_status.is_available and groq_status.is_available:
-            if openrouter_status.wait_seconds <= groq_status.wait_seconds:
-                return 'openrouter'
-            return 'groq'
+        # If all need waiting, choose the one with shortest wait
+        providers = [
+            ('google', google_status),
+            ('openrouter', openrouter_status),
+            ('groq', groq_status)
+        ]
+        available = [(name, s) for name, s in providers if s.is_available]
 
-        if openrouter_status.is_available:
-            return 'openrouter'
-        if groq_status.is_available:
-            return 'groq'
+        if available:
+            # Sort by wait time
+            available.sort(key=lambda x: x[1].wait_seconds)
+            return available[0][0]
 
         return None
 
     def log_status(self) -> None:
         """Log current rate limit status for all providers."""
+        google_status = self.check_google_limits()
         openrouter_status = self.check_openrouter_limits()
         groq_status = self.check_groq_limits()
 
         logger.info("=== Rate Limit Status ===")
+
+        if self.google_key:
+            logger.info(f"Google AI: available={google_status.is_available}, "
+                       f"wait={google_status.wait_seconds:.1f}s")
+        else:
+            logger.info("Google AI: not configured")
 
         if self.openrouter_key:
             logger.info(f"OpenRouter: available={openrouter_status.is_available}, "
@@ -344,14 +401,16 @@ def check_before_call(provider: str) -> RateLimitStatus:
     Check rate limits before making an API call.
 
     Args:
-        provider: 'openrouter' or 'groq'
+        provider: 'google', 'openrouter', or 'groq'
 
     Returns:
         RateLimitStatus indicating if call is safe to make
     """
     limiter = get_rate_limiter()
 
-    if provider == 'openrouter':
+    if provider == 'google':
+        return limiter.check_google_limits()
+    elif provider == 'openrouter':
         return limiter.check_openrouter_limits()
     elif provider == 'groq':
         return limiter.check_groq_limits()

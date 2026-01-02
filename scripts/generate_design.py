@@ -1250,8 +1250,9 @@ Respond with ONLY a valid JSON object:
 }}"""
 
         providers = [
-            ("Groq", self._call_groq),
+            ("Google AI", self._call_google_ai),
             ("OpenRouter", self._call_openrouter),
+            ("Groq", self._call_groq_direct),
         ]
 
         for name, caller in providers:
@@ -1268,21 +1269,104 @@ Respond with ONLY a valid JSON object:
         return None
 
     def _has_key_for(self, provider: str) -> bool:
-        if provider == "Groq":
+        if provider == "Google AI":
+            return bool(self.google_key)
+        elif provider == "Groq":
             return bool(self.groq_key)
         elif provider == "OpenRouter":
             return bool(self.openrouter_key)
         return False
 
     def _call_groq(self, prompt: str, max_tokens: int = 1000, max_retries: int = 3) -> Optional[str]:
-        """Call LLM API - prioritizes OpenRouter, falls back to Groq."""
-        # Try OpenRouter first (free models)
+        """Call LLM API - prioritizes Google AI, then OpenRouter, then Groq."""
+        # Try Google AI first (most generous free tier)
+        result = self._call_google_ai(prompt, max_tokens, max_retries)
+        if result:
+            return result
+
+        # Fall back to OpenRouter (free models)
         result = self._call_openrouter(prompt, max_tokens, max_retries)
         if result:
             return result
 
-        # Fall back to Groq if OpenRouter fails
+        # Fall back to Groq if all else fails
         return self._call_groq_direct(prompt, max_tokens, max_retries)
+
+    def _call_google_ai(self, prompt: str, max_tokens: int = 1000, max_retries: int = 3) -> Optional[str]:
+        """Call Google AI (Gemini) API - primary provider with generous free tier."""
+        if not self.google_key:
+            print("    No Google AI API key available")
+            return None
+
+        # Check rate limits before calling
+        rate_limiter = get_rate_limiter()
+        status = check_before_call('google')
+
+        if not status.is_available:
+            print(f"    Google AI not available: {status.error}")
+            return None
+
+        if status.wait_seconds > 0:
+            print(f"    Waiting {status.wait_seconds:.1f}s for Google AI rate limit...")
+            time.sleep(status.wait_seconds)
+
+        # Use Gemini 2.0 Flash - best free model for speed and quality
+        model = "gemini-2.0-flash"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+        for attempt in range(max_retries):
+            try:
+                print(f"    Trying Google AI {model} (attempt {attempt + 1}/{max_retries})")
+                response = self.session.post(
+                    url,
+                    headers={
+                        "x-goog-api-key": self.google_key,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {
+                            "maxOutputTokens": max_tokens,
+                            "temperature": 0.7
+                        }
+                    },
+                    timeout=60
+                )
+                response.raise_for_status()
+
+                # Update rate limiter tracking
+                rate_limiter._last_call_time['google'] = time.time()
+
+                # Parse response
+                data = response.json()
+                candidates = data.get('candidates', [])
+                if candidates:
+                    content = candidates[0].get('content', {})
+                    parts = content.get('parts', [])
+                    if parts:
+                        text = parts[0].get('text', '')
+                        if text:
+                            print(f"    Google AI success with {model}")
+                            return text
+
+            except requests.exceptions.HTTPError as e:
+                if response.status_code == 429:
+                    retry_after = response.headers.get('Retry-After', '60')
+                    try:
+                        wait_time = float(retry_after)
+                    except ValueError:
+                        wait_time = 60.0
+                    print(f"    Google AI rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                print(f"    Google AI failed: {e}")
+                return None
+            except Exception as e:
+                print(f"    Google AI failed: {e}")
+                return None
+
+        print("    Google AI: Max retries exceeded")
+        return None
 
     def _call_openrouter(self, prompt: str, max_tokens: int = 1000, max_retries: int = 3) -> Optional[str]:
         """Call OpenRouter API with free models (primary)."""
