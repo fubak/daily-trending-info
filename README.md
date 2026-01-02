@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 13:16 UTC | [feat: Add Gemini structured outputs for guaranteed JSON parsing](https://github.com/fubak/daily-trending-info/commit/70d0615577560f577dfa84705132df8fbe71d160) |
 | 2026-01-02 13:05 UTC | [fix: Add robust JSON repair for LLM responses](https://github.com/fubak/daily-trending-info/commit/1c18ff2ecdc4a5b8e513ea67ab8cf9b3b0bedfb3) |
 | 2026-01-02 04:23 UTC | [feat: Comprehensive SEO and LLM optimization improvements](https://github.com/fubak/daily-trending-info/commit/182c515dd2c35d1594a6356a4498015422174e9b) |
 | 2026-01-02 03:54 UTC | [fix: Improve Daily Features 3-column layout with placeholders](https://github.com/fubak/daily-trending-info/commit/3c6449b0fb88d941d8e8c7db9e000c94f6ec9130) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 02:56 UTC | [fix: Use correct OpenRouter endpoint /api/v1/key for rate limits](https://github.com/fubak/daily-trending-info/commit/00df16444744ea343e662b2a3805d3f3eff39b9b) |
 | 2026-01-02 02:52 UTC | [feat: Add rate limit checking before API calls](https://github.com/fubak/daily-trending-info/commit/42e89a4d0b7e6e09ba9abce07400b81ec54e878f) |
 | 2026-01-02 02:21 UTC | [feat: Add 3-column Daily Features layout and comprehensive mobile support](https://github.com/fubak/daily-trending-info/commit/7196ead4dfb0a6dd1a5d44e242671844cd38d00d) |
-| 2026-01-02 02:12 UTC | [feat: Comprehensive SEO improvements for better discoverability](https://github.com/fubak/daily-trending-info/commit/e133803d791af5846b9b449fc4a31544dd0aa345) |
 <!-- CHANGELOG_END -->
 
 ## Features
