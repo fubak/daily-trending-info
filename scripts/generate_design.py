@@ -1378,7 +1378,18 @@ Respond with ONLY a valid JSON object:
         try:
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             payload = json_match.group() if json_match else response
-            data = json.loads(payload)
+
+            # Try parsing as-is first
+            try:
+                data = json.loads(payload)
+            except json.JSONDecodeError:
+                # Sanitize control characters that break JSON parsing
+                sanitized = payload
+                sanitized = re.sub(r'(?<!\\)\n', '\\n', sanitized)
+                sanitized = re.sub(r'(?<!\\)\r', '\\r', sanitized)
+                sanitized = re.sub(r'(?<!\\)\t', '\\t', sanitized)
+                sanitized = re.sub(r'[\x00-\x1f]', lambda m: f'\\u{ord(m.group()):04x}' if m.group() not in '\n\r\t' else m.group(), sanitized)
+                data = json.loads(sanitized)
 
             # Normalize single-variant responses
             if data and 'variants' not in data:

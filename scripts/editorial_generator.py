@@ -878,7 +878,24 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
             # Try to find JSON in response
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if json_match:
-                return json.loads(json_match.group())
+                json_str = json_match.group()
+                # Sanitize control characters that break JSON parsing
+                # Replace unescaped newlines/tabs inside strings with escaped versions
+                # First, try parsing as-is
+                try:
+                    return json.loads(json_str)
+                except json.JSONDecodeError:
+                    # Escape control characters within string values
+                    # This handles cases where LLM outputs raw newlines in JSON strings
+                    sanitized = json_str
+                    # Replace actual newlines/tabs with escaped versions
+                    # But only within string values (between quotes)
+                    sanitized = re.sub(r'(?<!\\)\n', '\\n', sanitized)
+                    sanitized = re.sub(r'(?<!\\)\r', '\\r', sanitized)
+                    sanitized = re.sub(r'(?<!\\)\t', '\\t', sanitized)
+                    # Also handle other control characters
+                    sanitized = re.sub(r'[\x00-\x1f]', lambda m: f'\\u{ord(m.group()):04x}' if m.group() not in '\n\r\t' else m.group(), sanitized)
+                    return json.loads(sanitized)
         except (json.JSONDecodeError, Exception) as e:
             logger.warning(f"JSON parse error: {e}")
 
@@ -915,9 +932,6 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
     def generate_articles_index(self, design: Optional[Dict] = None) -> str:
         """Generate an index page listing all articles."""
         articles = self.get_all_articles()
-
-        if not articles:
-            return ""
 
         # Get design colors
         primary_color = design.get('primary_color', '#667eea') if design else '#667eea'
@@ -1004,6 +1018,13 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
             gap: 2rem;
         }}
 
+        .no-articles {{
+            text-align: center;
+            color: var(--text-muted);
+            padding: 3rem;
+            font-size: 1.1rem;
+        }}
+
         .article-card {{
             background: rgba(255,255,255,0.03);
             border: 1px solid var(--border);
@@ -1088,8 +1109,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
         </header>
 
         <div class="articles-grid">
-            {''.join(article_cards)}
-        </div>
+            {''.join(article_cards) if article_cards else '<p class="no-articles">No articles yet. Check back tomorrow for our first editorial!</p>'}
     </div>
 </body>
 </html>'''

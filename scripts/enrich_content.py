@@ -231,7 +231,18 @@ class ContentEnricher:
             # Find JSON object
             json_match = re.search(r'\{.*\}', clean, re.DOTALL)
             if json_match:
-                return json.loads(json_match.group())
+                json_str = json_match.group()
+                # Try parsing as-is first
+                try:
+                    return json.loads(json_str)
+                except json.JSONDecodeError:
+                    # Sanitize control characters that break JSON parsing
+                    sanitized = json_str
+                    sanitized = re.sub(r'(?<!\\)\n', '\\n', sanitized)
+                    sanitized = re.sub(r'(?<!\\)\r', '\\r', sanitized)
+                    sanitized = re.sub(r'(?<!\\)\t', '\\t', sanitized)
+                    sanitized = re.sub(r'[\x00-\x1f]', lambda m: f'\\u{ord(m.group()):04x}' if m.group() not in '\n\r\t' else m.group(), sanitized)
+                    return json.loads(sanitized)
         except (json.JSONDecodeError, Exception) as e:
             logger.warning(f"JSON parse error: {e}")
 
