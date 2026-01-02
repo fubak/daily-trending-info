@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 02:03 UTC | [feat: Add editorial article to homepage and fix sitemap discovery](https://github.com/fubak/daily-trending-info/commit/d5666bd0ba4d10885a055857883d94176b26fca8) |
 | 2026-01-02 01:46 UTC | [fix: Add fallback JSON parsing that strips control characters](https://github.com/fubak/daily-trending-info/commit/36aad876adc08ea7e87d240e5418643b73ea3624) |
 | 2026-01-02 01:45 UTC | [fix: Remove double-escaping of backslashes in JSON parsing](https://github.com/fubak/daily-trending-info/commit/139b291064b8018c61b44f660438172b4b72a29d) |
 | 2026-01-02 01:44 UTC | [fix: Properly escape control chars in JSON strings only](https://github.com/fubak/daily-trending-info/commit/6b942a72b62a0f4d4b604bda3a04f5b42f87c33f) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 01:16 UTC | [fix: Update OpenRouter free models list](https://github.com/fubak/daily-trending-info/commit/300a39db5354ed43199ed61db89bc6efa8eb8850) |
 | 2026-01-02 01:05 UTC | [feat: Add OpenRouter fallback for LLM API calls](https://github.com/fubak/daily-trending-info/commit/40f70fcf349bc86c50a65efacfaa13e6af62a1ae) |
 | 2026-01-02 00:21 UTC | [perf: Add proactive rate limiting to Groq API calls](https://github.com/fubak/daily-trending-info/commit/a465b10cf5de0cbfbe4afc6cd804a15b1157bae9) |
-| 2026-01-01 23:56 UTC | [perf: Batch Why This Matters API calls (3 → 1)](https://github.com/fubak/daily-trending-info/commit/f28d54ef7ca52a66e833c86085c932c70698cda4) |
 <!-- CHANGELOG_END -->
 
 ## Features
