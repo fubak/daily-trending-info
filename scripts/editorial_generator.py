@@ -53,6 +53,9 @@ class EditorialGenerator:
     Uses Groq API for AI-powered content generation with rich context.
     """
 
+    # Rate limiting: minimum seconds between API calls to stay under 30 req/min
+    MIN_CALL_INTERVAL = 3.0
+
     def __init__(self, groq_key: Optional[str] = None, public_dir: Optional[Path] = None):
         self.groq_key = groq_key or os.getenv('GROQ_API_KEY')
         self.public_dir = public_dir or Path(__file__).parent.parent / "public"
@@ -61,6 +64,7 @@ class EditorialGenerator:
         self.session.headers.update({
             'User-Agent': 'DailyTrending.info/1.0 (Editorial Generator)'
         })
+        self._last_call_time = 0.0  # Track last API call for rate limiting
 
     def generate_editorial(
         self,
@@ -760,12 +764,20 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
 </html>'''
 
     def _call_groq(self, prompt: str, max_tokens: int = 800, max_retries: int = 5) -> Optional[str]:
-        """Call Groq API for content generation with retry logic."""
+        """Call Groq API for content generation with proactive rate limiting and retry logic."""
         if not self.groq_key:
             return None
 
+        # Proactive rate limiting: wait if we're calling too fast
+        elapsed = time.time() - self._last_call_time
+        if elapsed < self.MIN_CALL_INTERVAL:
+            sleep_time = self.MIN_CALL_INTERVAL - elapsed
+            logger.info(f"Rate limiting: waiting {sleep_time:.1f}s before API call")
+            time.sleep(sleep_time)
+
         for attempt in range(max_retries):
             try:
+                self._last_call_time = time.time()
                 response = self.session.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={
@@ -785,7 +797,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 429:
                     # Rate limited - exponential backoff
-                    wait_time = (2 ** attempt) * 5  # 5, 10, 20, 40, 80 seconds
+                    wait_time = (2 ** attempt) * 10  # 10, 20, 40, 80, 160 seconds
                     logger.warning(f"Groq rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
                     time.sleep(wait_time)
                     continue
