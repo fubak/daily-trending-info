@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-02 01:37 UTC | [fix: Handle JSON control characters and create articles index always](https://github.com/fubak/daily-trending-info/commit/e9fa051b014942c80ee96164c6557b440189e2e9) |
 | 2026-01-02 01:28 UTC | [fix: Prioritize OpenRouter over Groq with 3 retries @ 10s](https://github.com/fubak/daily-trending-info/commit/7be51a0f93729a3a8dd4c3a7e4251a201c59b7e7) |
 | 2026-01-02 01:19 UTC | [fix: Reduce retries to 3 and update free models](https://github.com/fubak/daily-trending-info/commit/72aa96173c25e893ee0b1c68adb799084666348b) |
 | 2026-01-02 01:16 UTC | [fix: Update OpenRouter free models list](https://github.com/fubak/daily-trending-info/commit/300a39db5354ed43199ed61db89bc6efa8eb8850) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-01 23:53 UTC | [fix: Add retry logic with exponential backoff to Groq API calls](https://github.com/fubak/daily-trending-info/commit/54628eadaabc970f7ee40a4fc6f395d29c7de492) |
 | 2026-01-01 23:45 UTC | [fix: Improve hero text readability and add Articles nav link](https://github.com/fubak/daily-trending-info/commit/755dca984f481861c50392e374103394d6d8f0d0) |
 | 2026-01-01 23:33 UTC | [fix: Use solid color for KPI stats instead of unreliable gradient text](https://github.com/fubak/daily-trending-info/commit/8ee5c140fc2566851dc80c7dc0843496b89a504e) |
-| 2026-01-01 22:56 UTC | [fix: Rename toast animation to prevent conflict with main fadeInUp](https://github.com/fubak/daily-trending-info/commit/592ab2d22fc36d683a4851faef827c45f547b61e) |
 <!-- CHANGELOG_END -->
 
 ## Features
