@@ -84,6 +84,7 @@ class Trend:
     score: float = 1.0
     keywords: List[str] = None
     timestamp: datetime = field(default_factory=datetime.now)
+    image_url: Optional[str] = None  # Article image from RSS feed
 
     def __post_init__(self):
         if self.keywords is None:
@@ -200,6 +201,62 @@ class TrendCollector:
         fresh_count = sum(1 for t in self.trends if t.is_fresh())
         return fresh_count / len(self.trends)
 
+    def _extract_image_from_entry(self, entry) -> Optional[str]:
+        """Extract image URL from RSS entry using multiple strategies.
+
+        Priority order:
+        1. media_content (highest quality - NYT, Guardian)
+        2. media_thumbnail (BBC)
+        3. enclosures with image type
+        4. Images in content:encoded or summary HTML
+        """
+        # Strategy 1: media_content (common in NYT, Guardian, etc.)
+        if hasattr(entry, 'media_content') and entry.media_content:
+            for media in entry.media_content:
+                url = media.get('url', '')
+                medium = media.get('medium', '')
+                content_type = media.get('type', '')
+                if url and (medium == 'image' or 'image' in content_type or
+                           any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif'])):
+                    return url
+
+        # Strategy 2: media_thumbnail (common in BBC)
+        if hasattr(entry, 'media_thumbnail') and entry.media_thumbnail:
+            for thumb in entry.media_thumbnail:
+                url = thumb.get('url', '')
+                if url:
+                    return url
+
+        # Strategy 3: enclosures with image type
+        if hasattr(entry, 'enclosures') and entry.enclosures:
+            for enc in entry.enclosures:
+                enc_type = enc.get('type', '')
+                url = enc.get('href', '') or enc.get('url', '')
+                if url and 'image' in enc_type:
+                    return url
+
+        # Strategy 4: Parse images from content:encoded or summary
+        content_html = ''
+        if hasattr(entry, 'content') and entry.content:
+            content_html = entry.content[0].get('value', '')
+        elif hasattr(entry, 'summary'):
+            content_html = entry.get('summary', '')
+
+        if content_html and '<img' in content_html.lower():
+            # Extract first meaningful image (skip tracking pixels)
+            img_matches = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', content_html, re.I)
+            for img_url in img_matches:
+                # Skip tracking pixels and tiny images
+                if 'pixel' in img_url.lower() or 'tracking' in img_url.lower():
+                    continue
+                if '1x1' in img_url or 'spacer' in img_url.lower():
+                    continue
+                # Return first valid image
+                if any(ext in img_url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif']):
+                    return img_url
+
+        return None
+
     def _collect_google_trends(self) -> List[Trend]:
         """Collect trends from Google Trends RSS."""
         trends = []
@@ -222,7 +279,8 @@ class TrendCollector:
                         source='google_trends',
                         url=entry.get('link'),
                         description=entry.get('summary', '').strip() if entry.get('summary') else None,
-                        score=2.0  # Google Trends gets higher base score
+                        score=2.0,  # Google Trends gets higher base score
+                        image_url=self._extract_image_from_entry(entry)
                     )
                     trends.append(trend)
 
@@ -274,7 +332,8 @@ class TrendCollector:
                             source=f'news_{name.lower().replace(" ", "_")}',
                             url=entry.get('link'),
                             description=self._clean_html(entry.get('summary', '')),
-                            score=1.8  # News sources get good score
+                            score=1.8,  # News sources get good score
+                            image_url=self._extract_image_from_entry(entry)
                         )
                         trends.append(trend)
 
@@ -325,7 +384,8 @@ class TrendCollector:
                             source=f'tech_{name.lower().replace(" ", "_")}',
                             url=entry.get('link'),
                             description=self._clean_html(entry.get('summary', '')),
-                            score=1.5
+                            score=1.5,
+                            image_url=self._extract_image_from_entry(entry)
                         )
                         trends.append(trend)
 
@@ -371,7 +431,8 @@ class TrendCollector:
                             source=f'science_{name.lower().replace(" ", "_").replace(".", "")}',
                             url=entry.get('link'),
                             description=self._clean_html(entry.get('summary', '')),
-                            score=1.5
+                            score=1.5,
+                            image_url=self._extract_image_from_entry(entry)
                         )
                         trends.append(trend)
 
@@ -420,7 +481,8 @@ class TrendCollector:
                             source=f'politics_{name.lower().replace(" ", "_").replace("-", "")}',
                             url=entry.get('link'),
                             description=self._clean_html(entry.get('summary', '')),
-                            score=1.6
+                            score=1.6,
+                            image_url=self._extract_image_from_entry(entry)
                         )
                         trends.append(trend)
 
@@ -469,7 +531,8 @@ class TrendCollector:
                             source=f'finance_{name.lower().replace(" ", "_")}',
                             url=entry.get('link'),
                             description=self._clean_html(entry.get('summary', '')),
-                            score=1.5
+                            score=1.5,
+                            image_url=self._extract_image_from_entry(entry)
                         )
                         trends.append(trend)
 
@@ -712,7 +775,8 @@ class TrendCollector:
                         source='lobsters',
                         url=entry.get('link'),
                         description=self._clean_html(entry.get('summary', '')),
-                        score=1.6  # Good quality tech content
+                        score=1.6,  # Good quality tech content
+                        image_url=self._extract_image_from_entry(entry)
                     )
                     trends.append(trend)
 
@@ -805,7 +869,8 @@ class TrendCollector:
                         source='slashdot',
                         url=entry.get('link'),
                         description=self._clean_html(entry.get('summary', '')),
-                        score=1.4
+                        score=1.4,
+                        image_url=self._extract_image_from_entry(entry)
                     )
                     trends.append(trend)
 
@@ -835,7 +900,8 @@ class TrendCollector:
                         source='ars_features',
                         url=entry.get('link'),
                         description=self._clean_html(entry.get('summary', '')),
-                        score=1.7  # High quality long-form content
+                        score=1.7,  # High quality long-form content
+                        image_url=self._extract_image_from_entry(entry)
                     )
                     trends.append(trend)
 

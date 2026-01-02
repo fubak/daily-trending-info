@@ -727,17 +727,33 @@ class Pipeline:
                 logger.info(f"  Skipping /{config['slug']}/ - only {len(topic_trends)} stories")
                 continue
 
-            # Get the top story's title to use for hero image matching
-            top_story_title = topic_trends[0].get('title', '') if topic_trends else ''
+            # Get the top story for hero image matching
+            top_story = topic_trends[0] if topic_trends else {}
+            top_story_title = top_story.get('title', '')
 
-            # Find topic-specific hero image (prioritizes headline keywords, avoids reuse)
-            hero_image = find_topic_image(
-                images_data,
-                top_story_title,
-                config.get('hero_keywords', []),
-                config.get('image_index', 0),
-                used_image_ids
-            )
+            # Priority 1: Use article image from RSS feed if available
+            article_image_url = top_story.get('image_url')
+            if article_image_url:
+                # Create hero_image dict from article image
+                hero_image = {
+                    'url_large': article_image_url,
+                    'url_medium': article_image_url,
+                    'url_original': article_image_url,
+                    'photographer': 'Article Image',
+                    'source': 'article',
+                    'alt': top_story_title,
+                    'id': f"article_{hash(article_image_url) % 100000}"
+                }
+                logger.debug(f"  Using article image for {config['slug']}: {article_image_url[:60]}...")
+            else:
+                # Priority 2: Fall back to stock photo search
+                hero_image = find_topic_image(
+                    images_data,
+                    top_story_title,
+                    config.get('hero_keywords', []),
+                    config.get('image_index', 0),
+                    used_image_ids
+                )
 
             # Create topic directory
             topic_dir = self.public_dir / config['slug']

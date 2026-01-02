@@ -97,7 +97,29 @@ class WebsiteBuilder:
         self._hero_image = self._find_relevant_hero_image()
 
     def _find_relevant_hero_image(self) -> Optional[Dict]:
-        """Find an image that matches the headline/top story content."""
+        """Find an image that matches the headline/top story content.
+
+        Priority:
+        1. Article image from top story's RSS feed (most relevant)
+        2. Stock photo matching headline keywords
+        3. First available image
+        """
+        # Priority 1: Check if top trend has an article image from RSS
+        if self.ctx.trends:
+            top_trend = self.ctx.trends[0]
+            article_image_url = top_trend.get('image_url')
+            if article_image_url:
+                return {
+                    'url_large': article_image_url,
+                    'url_medium': article_image_url,
+                    'url_original': article_image_url,
+                    'photographer': 'Article Image',
+                    'source': 'article',
+                    'alt': top_trend.get('title', 'Today\'s trending topic'),
+                    'id': f"article_{hash(article_image_url) % 100000}"
+                }
+
+        # Priority 2: Fall back to stock photo matching
         if not self.ctx.images:
             return None
 
