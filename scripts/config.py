@@ -92,9 +92,9 @@ IMAGE_CACHE_MAX_AGE_DAYS = 7
 IMAGE_CACHE_MAX_ENTRIES = 500
 
 # Fetching settings
-IMAGES_PER_KEYWORD = 2
-MAX_IMAGE_KEYWORDS = 8
-MIN_IMAGES_REQUIRED = 5
+IMAGES_PER_KEYWORD = 3      # Images to fetch per keyword (was 2)
+MAX_IMAGE_KEYWORDS = 10     # Max keywords to search for (was 8)
+MIN_IMAGES_REQUIRED = 5     # Total: 30 images (10 × 3) for better variety
 
 # ============================================================================
 # DEDUPLICATION

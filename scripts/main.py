@@ -399,15 +399,38 @@ class Pipeline:
             topic_stories = [t for t in trends_data if matches_prefix(t.get('source', ''), prefixes)]
 
             if topic_stories:
-                # Get the top story's title
-                top_title = topic_stories[0].get('title', '')
+                top_story = topic_stories[0]
+                top_title = top_story.get('title', '')
+                top_description = top_story.get('description', '') or ''
 
-                # Extract keywords from title
-                words = [w.strip('.,!?()[]{}":;\'').lower() for w in top_title.split()]
-                keywords = [w for w in words if len(w) > 3 and w not in stop_words]
+                # Extract words from title, preserving case for proper noun detection
+                title_words = top_title.split()
 
-                # Add top 2 keywords from this headline (most significant)
-                for kw in keywords[:2]:
+                # Prioritize capitalized words (proper nouns, entities) - these are more specific
+                proper_nouns = []
+                regular_words = []
+                for w in title_words:
+                    cleaned = w.strip('.,!?()[]{}":;\'')
+                    if len(cleaned) > 3 and cleaned.lower() not in stop_words:
+                        # Check if it's a proper noun (capitalized, not at start of sentence)
+                        if cleaned[0].isupper() and title_words.index(w) > 0:
+                            proper_nouns.append(cleaned.lower())
+                        else:
+                            regular_words.append(cleaned.lower())
+
+                # Combine: proper nouns first (more specific), then regular words
+                keywords = proper_nouns + regular_words
+
+                # If title keywords are too generic (less than 2), use description too
+                if len(keywords) < 2 and top_description:
+                    desc_words = [w.strip('.,!?()[]{}":;\'').lower() for w in top_description.split()]
+                    desc_keywords = [w for w in desc_words if len(w) > 4 and w not in stop_words]
+                    for kw in desc_keywords[:2]:
+                        if kw not in keywords:
+                            keywords.append(kw)
+
+                # Add top 3 keywords from this headline (increased from 2 for better matching)
+                for kw in keywords[:3]:
                     if kw not in headline_keywords:
                         headline_keywords.append(kw)
 
@@ -601,16 +624,33 @@ class Pipeline:
             }
         ]
 
-        def find_topic_image(images: list, headline: str, category_keywords: list, fallback_index: int) -> dict:
-            """Find an image matching headline content, falling back to category keywords.
+        def find_topic_image(images: list, headline: str, category_keywords: list,
+                             fallback_index: int, used_image_ids: set) -> dict:
+            """Find an image matching headline content, excluding already-used images.
 
             Priority:
             1. Match keywords from the actual headline (top story title)
             2. Fall back to generic category keywords
-            3. Use fallback index if no matches
+            3. Use fallback index if no matches (cycling through unused images)
+
+            Args:
+                images: List of available images
+                headline: The headline text to match
+                category_keywords: Fallback keywords for the category
+                fallback_index: Index for fallback selection
+                used_image_ids: Set of image IDs already used (will be modified)
+
+            Returns:
+                Best matching image dict, or empty dict if none available
             """
             if not images:
                 return {}
+
+            # Filter out already-used images to ensure each topic page gets a unique image
+            available_images = [img for img in images if img.get('id') not in used_image_ids]
+            if not available_images:
+                # If all images used, reset and allow reuse (better than no image)
+                available_images = images
 
             # Extract keywords from headline (similar to _find_relevant_hero_image)
             stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
@@ -630,7 +670,7 @@ class Pipeline:
             best_image = None
             best_score = 0
 
-            for img in images:
+            for img in available_images:
                 img_text = f"{img.get('query', '')} {img.get('description', '')} {img.get('alt', '')}".lower()
 
                 # Score based on headline keywords (weighted higher)
@@ -651,11 +691,16 @@ class Pipeline:
 
             # If found a match, use it
             if best_image and best_score > 0:
+                if best_image.get('id'):
+                    used_image_ids.add(best_image['id'])
                 return best_image
 
             # Otherwise use fallback index (cycling through available images)
-            idx = fallback_index % len(images)
-            return images[idx]
+            idx = fallback_index % len(available_images)
+            selected = available_images[idx]
+            if selected.get('id'):
+                used_image_ids.add(selected['id'])
+            return selected
 
         def matches_topic(source: str, prefixes: list) -> bool:
             """Check if a source matches any of the topic's prefixes."""
@@ -669,6 +714,8 @@ class Pipeline:
             return False
 
         pages_created = 0
+        used_image_ids = set()  # Track used images to prevent reuse across topic pages
+
         for config in topic_configs:
             # Filter trends for this topic using prefix matching
             topic_trends = [
@@ -683,12 +730,13 @@ class Pipeline:
             # Get the top story's title to use for hero image matching
             top_story_title = topic_trends[0].get('title', '') if topic_trends else ''
 
-            # Find topic-specific hero image (prioritizes headline keywords)
+            # Find topic-specific hero image (prioritizes headline keywords, avoids reuse)
             hero_image = find_topic_image(
                 images_data,
                 top_story_title,
                 config.get('hero_keywords', []),
-                config.get('image_index', 0)
+                config.get('image_index', 0),
+                used_image_ids
             )
 
             # Create topic directory

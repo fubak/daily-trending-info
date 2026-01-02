@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Image Fetcher - Fetches images from Pexels and Unsplash based on trending keywords.
-Provides fallback mechanisms and proper attribution.
+Image Fetcher - Fetches images from Pexels, Unsplash, and Pixabay based on trending keywords.
+Provides fallback mechanisms and persistent caching.
+Sources: Pexels (primary) → Unsplash → Pixabay (CC0).
 """
 
 import os
@@ -44,7 +45,7 @@ class Image:
     url_original: str
     photographer: str
     photographer_url: str
-    source: str  # 'pexels' or 'unsplash'
+    source: str  # 'pexels', 'unsplash', 'pixabay', or 'lorem_picsum'
     alt_text: str
     color: Optional[str] = None  # Dominant color
     width: int = 0
@@ -209,9 +210,10 @@ class ImageFetcher:
     """Fetches and manages images from multiple sources."""
 
     def __init__(self, pexels_key: Optional[str] = None, unsplash_key: Optional[str] = None,
-                 use_cache: bool = True):
+                 pixabay_key: Optional[str] = None, use_cache: bool = True):
         self.pexels_key = pexels_key or os.getenv('PEXELS_API_KEY')
         self.unsplash_key = unsplash_key or os.getenv('UNSPLASH_ACCESS_KEY')
+        self.pixabay_key = pixabay_key or os.getenv('PIXABAY_API_KEY')
 
         self.session = requests.Session()
         self.images: List[Image] = []
@@ -380,8 +382,106 @@ class ImageFetcher:
 
         return images
 
+    def search_pixabay(self, query: str, per_page: int = 5) -> List[Image]:
+        """Search for images on Pixabay with retry logic.
+
+        Pixabay offers CC0 licensed images with no attribution required.
+        Free tier: 100 requests per minute.
+        """
+        if not self.pixabay_key:
+            logger.debug("Pixabay API key not configured")
+            return []
+
+        images = []
+        # Pixabay uses query params for auth, not headers
+        headers = {}
+        params = {
+            'key': self.pixabay_key,
+            'q': query,
+            'image_type': 'photo',
+            'orientation': 'horizontal',
+            'per_page': per_page,
+            'safesearch': 'true'
+        }
+
+        response = self._request_with_retry(
+            'https://pixabay.com/api/',
+            headers=headers,
+            params=params,
+            service_name='Pixabay'
+        )
+
+        if not response:
+            return []
+
+        try:
+            data = response.json()
+
+            for photo in data.get('hits', []):
+                # Pixabay provides different size URLs
+                image = Image(
+                    id=f"pixabay_{photo['id']}",
+                    url_small=photo.get('previewURL', photo.get('webformatURL', '')),
+                    url_medium=photo.get('webformatURL', photo.get('largeImageURL', '')),
+                    url_large=photo.get('largeImageURL', photo.get('fullHDURL', '')),
+                    url_original=photo.get('fullHDURL', photo.get('largeImageURL', '')),
+                    photographer=photo.get('user', 'Unknown'),
+                    photographer_url=f"https://pixabay.com/users/{photo.get('user', '')}-{photo.get('user_id', '')}",
+                    source='pixabay',
+                    alt_text=photo.get('tags', query),
+                    color=None,  # Pixabay doesn't provide dominant color
+                    width=photo.get('imageWidth', 0),
+                    height=photo.get('imageHeight', 0)
+                )
+                images.append(image)
+
+        except Exception as e:
+            logger.error(f"Pixabay parse error: {e}")
+
+        return images
+
+    def get_lorem_picsum_images(self, count: int = 5) -> List[Image]:
+        """Get random stock-like images from Lorem Picsum as last resort fallback.
+
+        Lorem Picsum provides free random images. No API key required.
+        Note: Images are random, not searchable by keyword.
+        """
+        images = []
+
+        for i in range(count):
+            # Use seeded URLs for reproducibility within the same day
+            seed = f"dailytrending_{datetime.now().strftime('%Y%m%d')}_{i}"
+            base_url = f"https://picsum.photos/seed/{seed}"
+
+            try:
+                # Lorem Picsum redirects to the actual image URL
+                # We just need to construct the URLs with dimensions
+                image = Image(
+                    id=f"picsum_{seed}",
+                    url_small=f"{base_url}/400/300",
+                    url_medium=f"{base_url}/800/600",
+                    url_large=f"{base_url}/1200/800",
+                    url_original=f"{base_url}/1920/1280",
+                    photographer="Lorem Picsum",
+                    photographer_url="https://picsum.photos",
+                    source='lorem_picsum',
+                    alt_text="Stock photo from Lorem Picsum",
+                    color=None,
+                    width=1200,
+                    height=800
+                )
+                images.append(image)
+            except Exception as e:
+                logger.debug(f"Lorem Picsum fallback error: {e}")
+                continue
+
+        if images:
+            logger.info(f"Added {len(images)} Lorem Picsum fallback images")
+
+        return images
+
     def search(self, query: str, per_page: int = 5) -> List[Image]:
-        """Search for images, trying cache first, then Pexels, then Unsplash."""
+        """Search for images, trying cache first, then Pexels, Unsplash, Pixabay."""
         logger.debug(f"Searching for: '{query}'")
 
         # Check cache first
@@ -400,6 +500,10 @@ class ImageFetcher:
         # If no results, try Unsplash
         if not images:
             images = self.search_unsplash(query, per_page)
+
+        # If still no results, try Pixabay (CC0 licensed)
+        if not images:
+            images = self.search_pixabay(query, per_page)
 
         # Cache the results for future use
         if self.use_cache and self.cache and images:
@@ -441,6 +545,15 @@ class ImageFetcher:
             for img in fallback:
                 self.used_ids.add(img.id)
             logger.info(f"Added {len(fallback)} cached images as fallback")
+
+        # Last resort: Lorem Picsum random images (better than gradients)
+        if len(all_images) < MIN_IMAGES_REQUIRED:
+            logger.info(f"Still only {len(all_images)} images, trying Lorem Picsum fallback...")
+            picsum_images = self.get_lorem_picsum_images(MIN_IMAGES_REQUIRED - len(all_images))
+            picsum_images = [img for img in picsum_images if img.id not in self.used_ids]
+            all_images.extend(picsum_images)
+            for img in picsum_images:
+                self.used_ids.add(img.id)
 
         self.images = all_images
         logger.info(f"Total images fetched: {len(all_images)}")
