@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-03 00:20 UTC | [fix: Handle list-type author field from Vimeo RSS feed](https://github.com/fubak/daily-trending-info/commit/3266ed2110635c1170a7cfa689b0c8cf83242b0e) |
 | 2026-01-03 00:16 UTC | [fix: Resolve f-string syntax error in media page template](https://github.com/fubak/daily-trending-info/commit/f2964c57308e2ffa61c619cc2a458bd4bd260e1e) |
 | 2026-01-03 00:11 UTC | [feat: Add Media of the Day page and improve hero image sizing](https://github.com/fubak/daily-trending-info/commit/e49f58a033d7283a231fde6a474bac95c7ffc366) |
 | 2026-01-02 23:50 UTC | [feat: Use article images from RSS feeds for hero sections](https://github.com/fubak/daily-trending-info/commit/fc56c55d6625a6009bf5083cd7d6c85c0e95792f) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 21:13 UTC | [fix: Replace broken RSS feeds with working alternatives](https://github.com/fubak/daily-trending-info/commit/3ef1af2de119016a72994ca200abcb17258eb542) |
 | 2026-01-02 20:58 UTC | [fix: Remove broken comment fragment in rate_limiter.py](https://github.com/fubak/daily-trending-info/commit/ca48f663be76963e4a666ff2aadccada0db8ce13) |
 | 2026-01-02 20:48 UTC | [fix: Cap all API retry wait times to 10 seconds max](https://github.com/fubak/daily-trending-info/commit/55cb9b5b4a6088bd3f084e10f43d26ba6bdf550c) |
-| 2026-01-02 19:48 UTC | [feat: Add unique hero images for each topic page](https://github.com/fubak/daily-trending-info/commit/3151fa55f65b964289f930bd09f52eb89c4edbff) |
 <!-- CHANGELOG_END -->
 
 ## Features
