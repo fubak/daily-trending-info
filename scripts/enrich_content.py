@@ -373,9 +373,18 @@ class ContentEnricher:
                     if parts:
                         text = parts[0].get('text', '')
                         if text:
-                            logger.info("Google AI structured output success")
                             # Parse the JSON - should be valid due to structured output
-                            return json.loads(text)
+                            try:
+                                result = json.loads(text)
+                                logger.info("Google AI structured output success")
+                                return result
+                            except json.JSONDecodeError as je:
+                                logger.warning(f"Google AI structured output JSON parse error: {je}")
+                                # Retry with higher token limit if this was a truncation issue
+                                if attempt < max_retries - 1:
+                                    logger.info("Retrying with more tokens...")
+                                    continue
+                                return None
 
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 429:
@@ -400,9 +409,6 @@ class ContentEnricher:
                     time.sleep(wait_time)
                     continue
                 logger.warning(f"Google AI structured output failed: {e}")
-                return None
-            except json.JSONDecodeError as e:
-                logger.warning(f"Google AI structured output JSON parse error: {e}")
                 return None
             except Exception as e:
                 logger.warning(f"Google AI structured output failed: {e}")
@@ -1201,7 +1207,7 @@ For each story, write a concise 15-25 word summary that:
 Return a JSON object with a summaries array containing objects with title, summary, and source fields."""
 
         # Try structured output first (guaranteed valid JSON)
-        data = self._call_google_ai_structured(prompt, STORY_SUMMARIES_SCHEMA, max_tokens=800)
+        data = self._call_google_ai_structured(prompt, STORY_SUMMARIES_SCHEMA, max_tokens=1200, max_retries=2)
 
         # Fallback to regular LLM call with JSON parsing
         if not data:

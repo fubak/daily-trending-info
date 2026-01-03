@@ -64,7 +64,7 @@ TREND_FRESHNESS_HOURS = 24        # How old a trend can be to count as "fresh"
 TIMEOUTS = {
     "default": 15,
     "hackernews_story": 5,
-    "rss_feed": 10,
+    "rss_feed": 20,  # Increased for slow feeds like Washington Post
     "image_api": 15,
     "ai_api": 30,
 }

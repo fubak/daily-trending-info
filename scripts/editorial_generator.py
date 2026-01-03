@@ -139,8 +139,27 @@ class EditorialGenerator:
         if today_dir.exists() and any(today_dir.iterdir()):
             existing_articles = list(today_dir.glob("*/metadata.json"))
             if existing_articles:
-                logger.info(f"Editorial for {today} already exists ({len(existing_articles)} article(s)) - skipping generation")
-                return None
+                # Load and return the existing article instead of regenerating
+                try:
+                    metadata_path = existing_articles[0]
+                    with open(metadata_path) as f:
+                        metadata = json.load(f)
+                    logger.info(f"Loading existing editorial for {today}: {metadata.get('title', 'Unknown')}")
+                    return EditorialArticle(
+                        title=metadata.get('title', ''),
+                        slug=metadata.get('slug', ''),
+                        date=metadata.get('date', today),
+                        summary=metadata.get('summary', ''),
+                        content='',  # Content not needed for display card
+                        word_count=metadata.get('word_count', 0),
+                        top_stories=metadata.get('top_stories', []),
+                        keywords=metadata.get('keywords', []),
+                        mood=metadata.get('mood', 'informative'),
+                        url=metadata.get('url', '')
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to load existing article: {e}")
+                    return None
 
         # Build rich context from top stories
         top_stories = trends[:8]
