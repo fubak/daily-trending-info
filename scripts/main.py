@@ -1003,14 +1003,14 @@ class Pipeline:
             z-index: 0;
         }}
 
-        /* Add a blurred scaled version behind for full coverage */
+        /* Darkened scaled version behind for full coverage */
         .hero-image::before {{
             content: '';
             position: absolute;
             inset: -20px;
             background: inherit;
             background-size: cover;
-            filter: blur(20px) brightness(0.4);
+            filter: brightness(0.5);
             z-index: -1;
         }}
 
