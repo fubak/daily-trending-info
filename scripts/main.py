@@ -44,6 +44,7 @@ from pwa_generator import save_pwa_assets
 from sitemap_generator import save_sitemap
 from editorial_generator import EditorialGenerator
 from fetch_media_of_day import MediaOfDayFetcher
+from shared_components import build_header, build_footer, get_header_styles, get_footer_styles, get_theme_script
 
 # Setup logging
 logger = setup_logging("pipeline")
@@ -840,16 +841,6 @@ class Pipeline:
                 {'<p class="story-desc">' + desc + '</p>' if desc else ''}
             </article>''')
 
-        # Build nav links
-        nav_links = '''
-            <li><a href="/">Home</a></li>
-            <li><a href="/tech/"''' + (' class="active"' if config['slug'] == 'tech' else '') + '''>Tech</a></li>
-            <li><a href="/world/"''' + (' class="active"' if config['slug'] == 'world' else '') + '''>World</a></li>
-            <li><a href="/science/"''' + (' class="active"' if config['slug'] == 'science' else '') + '''>Science</a></li>
-            <li><a href="/politics/"''' + (' class="active"' if config['slug'] == 'politics' else '') + '''>Politics</a></li>
-            <li><a href="/finance/"''' + (' class="active"' if config['slug'] == 'finance' else '') + '''>Finance</a></li>
-            <li><a href="/articles/">Articles</a></li>'''
-
         return f'''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -907,81 +898,16 @@ class Pipeline:
             min-height: 100vh;
         }}
 
-        /* Navigation */
-        .nav {{
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem 2rem;
-            background: rgba(10, 10, 10, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--color-border);
+        body.light-mode {{
+            --color-bg: #ffffff;
+            --color-card-bg: #f8f8f8;
+            --color-text: #1a1a2e;
+            --color-muted: rgba(0,0,0,0.6);
+            --color-border: rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
         }}
 
-        .nav-logo {{
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
-            font-size: 1.25rem;
-            color: var(--color-text);
-            text-decoration: none;
-        }}
-
-        .nav-links {{
-            display: flex;
-            gap: 0.25rem;
-            list-style: none;
-        }}
-
-        .nav-links a {{
-            padding: 0.5rem 1rem;
-            color: var(--color-muted);
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            border-radius: 0.5rem;
-            transition: color var(--transition), background var(--transition);
-        }}
-
-        .nav-links a:hover {{
-            color: var(--color-text);
-            background: rgba(255,255,255,0.05);
-        }}
-
-        .nav-links a.active {{
-            color: var(--color-accent);
-            background: rgba(255,255,255,0.08);
-        }}
-
-        .nav-actions {{
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }}
-
-        .nav-date {{
-            font-size: 0.85rem;
-            color: var(--color-muted);
-        }}
-
-        .mobile-menu-toggle {{
-            display: none;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 0.5rem;
-        }}
-
-        .hamburger-line {{
-            display: block;
-            width: 24px;
-            height: 2px;
-            background: var(--color-text);
-            margin: 5px 0;
-            transition: transform 0.3s;
-        }}
+        {get_header_styles()}
 
         /* Hero Header with Featured Story */
         .topic-hero {{
@@ -1192,82 +1118,10 @@ class Pipeline:
             line-height: 1.5;
         }}
 
-        /* Footer */
-        .footer {{
-            margin-top: 4rem;
-            padding: 3rem 2rem;
-            background: var(--color-card-bg);
-            border-top: 1px solid var(--color-border);
-            text-align: center;
-        }}
-
-        .footer-content {{
-            max-width: 800px;
-            margin: 0 auto;
-        }}
-
-        .footer-logo {{
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
-            font-size: 1.5rem;
-            color: var(--color-text);
-            margin-bottom: 1rem;
-        }}
-
-        .footer-tagline {{
-            color: var(--color-muted);
-            margin-bottom: 1.5rem;
-        }}
-
-        .footer-links {{
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-bottom: 1.5rem;
-        }}
-
-        .footer-links a {{
-            color: var(--color-muted);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color var(--transition);
-        }}
-
-        .footer-links a:hover {{
-            color: var(--color-accent);
-        }}
-
-        .footer-bottom {{
-            font-size: 0.8rem;
-            color: var(--color-muted);
-        }}
+        {get_footer_styles()}
 
         /* Mobile responsive */
         @media (max-width: 768px) {{
-            .mobile-menu-toggle {{
-                display: block;
-            }}
-
-            .nav-links {{
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                flex-direction: column;
-                background: var(--color-bg);
-                border-bottom: 1px solid var(--color-border);
-                padding: 1rem;
-            }}
-
-            .nav-links.active {{
-                display: flex;
-            }}
-
-            .nav-date {{
-                display: none;
-            }}
-
             .topic-hero {{
                 min-height: 400px;
             }}
@@ -1301,29 +1155,11 @@ class Pipeline:
             .story-card.featured {{
                 grid-column: 1;
             }}
-
-            .footer-links {{
-                flex-direction: column;
-                gap: 1rem;
-            }}
         }}
     </style>
 </head>
-<body>
-    <nav class="nav">
-        <a href="/" class="nav-logo">DailyTrending.info</a>
-        <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
-            <span class="hamburger-line"></span>
-            <span class="hamburger-line"></span>
-            <span class="hamburger-line"></span>
-        </button>
-        <ul class="nav-links" id="nav-links">
-            {nav_links}
-        </ul>
-        <div class="nav-actions">
-            <span class="nav-date">{date_str}</span>
-        </div>
-    </nav>
+<body class="dark-mode">
+    {build_header(config['slug'], date_str)}
 
     <header class="topic-hero">
         <div class="hero-image" style="background-image: url('{hero_image_url}');" role="img" aria-label="{hero_image_alt}"></div>
@@ -1356,36 +1192,9 @@ class Pipeline:
         </div>
     </main>
 
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-logo">DailyTrending.info</div>
-            <p class="footer-tagline">Curated trends from across the web, updated daily.</p>
-            <div class="footer-links">
-                <a href="/">Home</a>
-                <a href="/tech/">Tech</a>
-                <a href="/world/">World</a>
-                <a href="/science/">Science</a>
-                <a href="/politics/">Politics</a>
-                <a href="/finance/">Finance</a>
-                <a href="/articles/">Articles</a>
-                <a href="/feed.xml">RSS Feed</a>
-            </div>
-            <div class="footer-bottom">
-                &copy; {now.year} DailyTrending.info &bull; Regenerated daily at 6 AM EST
-            </div>
-        </div>
-    </footer>
+    {build_footer(date_str)}
 
-    <script>
-        // Mobile menu toggle
-        const toggle = document.getElementById('mobile-menu-toggle');
-        const navLinks = document.getElementById('nav-links');
-        if (toggle && navLinks) {{
-            toggle.addEventListener('click', () => {{
-                navLinks.classList.toggle('active');
-            }});
-        }}
-    </script>
+    {get_theme_script()}
 </body>
 </html>'''
 
@@ -1618,17 +1427,6 @@ class Pipeline:
         else:
             video_section = '<p style="color: var(--color-muted); text-align: center; padding: 2rem;">Video of the Day is temporarily unavailable.</p>'
 
-        # Build nav links
-        nav_links = '''
-            <li><a href="/">Home</a></li>
-            <li><a href="/tech/">Tech</a></li>
-            <li><a href="/world/">World</a></li>
-            <li><a href="/science/">Science</a></li>
-            <li><a href="/politics/">Politics</a></li>
-            <li><a href="/finance/">Finance</a></li>
-            <li><a href="/media/" class="active">Media</a></li>
-            <li><a href="/articles/">Articles</a></li>'''
-
         return f'''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1673,81 +1471,16 @@ class Pipeline:
             min-height: 100vh;
         }}
 
-        /* Navigation */
-        .nav {{
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem 2rem;
-            background: rgba(10, 10, 10, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--color-border);
+        body.light-mode {{
+            --color-bg: #ffffff;
+            --color-card-bg: #f8f8f8;
+            --color-text: #1a1a2e;
+            --color-muted: rgba(0,0,0,0.6);
+            --color-border: rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
         }}
 
-        .nav-logo {{
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
-            font-size: 1.25rem;
-            color: var(--color-text);
-            text-decoration: none;
-        }}
-
-        .nav-links {{
-            display: flex;
-            gap: 0.25rem;
-            list-style: none;
-        }}
-
-        .nav-links a {{
-            padding: 0.5rem 1rem;
-            color: var(--color-muted);
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            border-radius: 0.5rem;
-            transition: color var(--transition), background var(--transition);
-        }}
-
-        .nav-links a:hover {{
-            color: var(--color-text);
-            background: rgba(255,255,255,0.05);
-        }}
-
-        .nav-links a.active {{
-            color: var(--color-accent);
-            background: rgba(255,255,255,0.08);
-        }}
-
-        .nav-actions {{
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }}
-
-        .nav-date {{
-            font-size: 0.85rem;
-            color: var(--color-muted);
-        }}
-
-        .mobile-menu-toggle {{
-            display: none;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 0.5rem;
-        }}
-
-        .hamburger-line {{
-            display: block;
-            width: 24px;
-            height: 2px;
-            background: var(--color-text);
-            margin: 5px 0;
-            transition: transform 0.3s;
-        }}
+        {get_header_styles()}
 
         /* Page Header */
         .page-header {{
@@ -2016,83 +1749,10 @@ class Pipeline:
             color: var(--color-muted);
         }}
 
-        /* Footer */
-        .footer {{
-            margin-top: 4rem;
-            padding: 3rem 2rem;
-            background: var(--color-card-bg);
-            border-top: 1px solid var(--color-border);
-            text-align: center;
-        }}
-
-        .footer-content {{
-            max-width: 800px;
-            margin: 0 auto;
-        }}
-
-        .footer-logo {{
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
-            font-size: 1.5rem;
-            color: var(--color-text);
-            margin-bottom: 1rem;
-        }}
-
-        .footer-tagline {{
-            color: var(--color-muted);
-            margin-bottom: 1.5rem;
-        }}
-
-        .footer-links {{
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }}
-
-        .footer-links a {{
-            color: var(--color-muted);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color var(--transition);
-        }}
-
-        .footer-links a:hover {{
-            color: var(--color-accent);
-        }}
-
-        .footer-bottom {{
-            font-size: 0.8rem;
-            color: var(--color-muted);
-        }}
+        {get_footer_styles()}
 
         /* Mobile responsive */
         @media (max-width: 768px) {{
-            .mobile-menu-toggle {{
-                display: block;
-            }}
-
-            .nav-links {{
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                flex-direction: column;
-                background: var(--color-bg);
-                border-bottom: 1px solid var(--color-border);
-                padding: 1rem;
-            }}
-
-            .nav-links.active {{
-                display: flex;
-            }}
-
-            .nav-date {{
-                display: none;
-            }}
-
             .page-header {{
                 padding: 3rem 1rem 2rem;
             }}
@@ -2110,29 +1770,11 @@ class Pipeline:
             .image-actions {{
                 flex-direction: column;
             }}
-
-            .footer-links {{
-                flex-direction: column;
-                gap: 1rem;
-            }}
         }}
     </style>
 </head>
-<body>
-    <nav class="nav">
-        <a href="/" class="nav-logo">DailyTrending.info</a>
-        <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
-            <span class="hamburger-line"></span>
-            <span class="hamburger-line"></span>
-            <span class="hamburger-line"></span>
-        </button>
-        <ul class="nav-links" id="nav-links">
-            {nav_links}
-        </ul>
-        <div class="nav-actions">
-            <span class="nav-date">{date_str}</span>
-        </div>
-    </nav>
+<body class="dark-mode">
+    {build_header('media', date_str)}
 
     <header class="page-header">
         <h1 class="page-title">Media of the Day</h1>
@@ -2167,37 +1809,9 @@ class Pipeline:
         </div>
     </main>
 
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-logo">DailyTrending.info</div>
-            <p class="footer-tagline">Curated trends and media from across the web, updated daily.</p>
-            <div class="footer-links">
-                <a href="/">Home</a>
-                <a href="/tech/">Tech</a>
-                <a href="/world/">World</a>
-                <a href="/science/">Science</a>
-                <a href="/politics/">Politics</a>
-                <a href="/finance/">Finance</a>
-                <a href="/media/">Media</a>
-                <a href="/articles/">Articles</a>
-                <a href="/feed.xml">RSS Feed</a>
-            </div>
-            <div class="footer-bottom">
-                &copy; {now.year} DailyTrending.info &bull; Regenerated daily at 6 AM EST
-            </div>
-        </div>
-    </footer>
+    {build_footer(date_str)}
 
-    <script>
-        // Mobile menu toggle
-        const toggle = document.getElementById('mobile-menu-toggle');
-        const navLinks = document.getElementById('nav-links');
-        if (toggle && navLinks) {{
-            toggle.addEventListener('click', () => {{
-                navLinks.classList.toggle('active');
-            }});
-        }}
-    </script>
+    {get_theme_script()}
 </body>
 </html>'''
 
