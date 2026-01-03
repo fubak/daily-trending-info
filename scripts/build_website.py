@@ -4360,7 +4360,10 @@ class WebsiteBuilder:
             # Use AI summary if available, otherwise use description
             raw_title = trend.get('title', '')
             ai_summary = summaries.get(raw_title, '')
-            desc = html.escape(ai_summary) if ai_summary else html.escape((trend.get('description') or '')[:150])
+            if ai_summary:
+                desc = f'<strong>Summary:</strong> {html.escape(ai_summary)}'
+            else:
+                desc = html.escape((trend.get('description') or '')[:150])
 
             # Add image to first few cards
             image = images[i] if i < len(images) else None
