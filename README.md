@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-03 14:03 UTC | [feat: Update articles index page with shared header/footer](https://github.com/fubak/daily-trending-info/commit/b6d4f793fafad81d0f8fd7f7513b21e02507045f) |
 | 2026-01-03 13:18 UTC | [feat: Update homepage to use shared header/footer components](https://github.com/fubak/daily-trending-info/commit/cf6bc6ef85dcced5a0ae843a099ef05ce5c3bbb2) |
 | 2026-01-03 12:53 UTC | [feat: Unify header/footer across all pages with shared components](https://github.com/fubak/daily-trending-info/commit/f2b96d048c3eae4aba0f9774061ba174aeb92b55) |
 | 2026-01-03 12:23 UTC | [feat: Move story summaries below cards instead of inside](https://github.com/fubak/daily-trending-info/commit/4bca85bf782c2acfb0f8e31811af2fa32d51b084) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-03 00:20 UTC | [fix: Handle list-type author field from Vimeo RSS feed](https://github.com/fubak/daily-trending-info/commit/3266ed2110635c1170a7cfa689b0c8cf83242b0e) |
 | 2026-01-03 00:16 UTC | [fix: Resolve f-string syntax error in media page template](https://github.com/fubak/daily-trending-info/commit/f2964c57308e2ffa61c619cc2a458bd4bd260e1e) |
 | 2026-01-03 00:11 UTC | [feat: Add Media of the Day page and improve hero image sizing](https://github.com/fubak/daily-trending-info/commit/e49f58a033d7283a231fde6a474bac95c7ffc366) |
-| 2026-01-02 23:50 UTC | [feat: Use article images from RSS feeds for hero sections](https://github.com/fubak/daily-trending-info/commit/fc56c55d6625a6009bf5083cd7d6c85c0e95792f) |
 <!-- CHANGELOG_END -->
 
 ## Features
