@@ -496,6 +496,11 @@ class Pipeline:
             logger.info(f"  Editorial: {self.editorial_article.title} ({self.editorial_article.word_count} words)")
             logger.info(f"  URL: {self.editorial_article.url}")
 
+        # Regenerate HTML for all existing articles (updates header/footer styling)
+        regenerated_count = self.editorial_generator.regenerate_all_article_pages(design_data)
+        if regenerated_count > 0:
+            logger.info(f"  Regenerated {regenerated_count} existing article pages")
+
         # Generate Why This Matters for top 3 stories
         self.why_this_matters = self.editorial_generator.generate_why_this_matters(
             trends_data,

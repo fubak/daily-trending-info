@@ -1793,6 +1793,70 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
         articles.sort(key=lambda x: x.get('date', ''), reverse=True)
         return articles
 
+    def regenerate_all_article_pages(self, design: Optional[Dict] = None) -> int:
+        """
+        Regenerate HTML pages for all existing articles from their metadata.
+
+        This updates the HTML (header, footer, styling) without regenerating
+        the AI-written content.
+
+        Args:
+            design: Optional design spec for colors
+
+        Returns:
+            Number of articles regenerated
+        """
+        if not self.articles_dir.exists():
+            logger.info("No articles directory found")
+            return 0
+
+        # Get design colors (fallback to defaults)
+        primary_color = design.get('primary_color', '#667eea') if design else '#667eea'
+        accent_color = design.get('accent_color', '#4facfe') if design else '#4facfe'
+        bg_color = design.get('background_color', '#0f0f23') if design else '#0f0f23'
+        text_color = design.get('text_color', '#ffffff') if design else '#ffffff'
+
+        count = 0
+        for metadata_file in self.articles_dir.rglob("metadata.json"):
+            try:
+                with open(metadata_file) as f:
+                    metadata = json.load(f)
+
+                # Reconstruct EditorialArticle from metadata
+                article = EditorialArticle(
+                    title=metadata.get('title', ''),
+                    slug=metadata.get('slug', ''),
+                    date=metadata.get('date', ''),
+                    summary=metadata.get('summary', ''),
+                    content=metadata.get('content', ''),
+                    word_count=metadata.get('word_count', 0),
+                    top_stories=metadata.get('top_stories', []),
+                    keywords=metadata.get('keywords', []),
+                    mood=metadata.get('mood', 'informative'),
+                    url=metadata.get('url', '')
+                )
+
+                # Get related articles for internal linking
+                related_articles = self._get_related_articles(article.date, article.slug, limit=3)
+
+                # Generate new HTML
+                html = self._generate_article_html(
+                    article, primary_color, accent_color, bg_color, text_color, related_articles
+                )
+
+                # Save to index.html in same directory as metadata.json
+                article_dir = metadata_file.parent
+                (article_dir / "index.html").write_text(html, encoding='utf-8')
+
+                logger.info(f"Regenerated: {article.title}")
+                count += 1
+
+            except Exception as e:
+                logger.warning(f"Failed to regenerate {metadata_file}: {e}")
+
+        logger.info(f"Regenerated {count} article pages")
+        return count
+
     def _get_related_articles(self, current_date: str, current_slug: str, limit: int = 3) -> List[Dict]:
         """Get related articles for internal linking (excludes current article)."""
         all_articles = self.get_all_articles()
@@ -2871,3 +2935,32 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
 
         logger.info(f"Generated enhanced articles index with {total_articles} articles")
         return html
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Editorial Generator CLI")
+    parser.add_argument(
+        "--regenerate-html",
+        action="store_true",
+        help="Regenerate HTML for all existing articles (updates header/footer without re-running AI)"
+    )
+    parser.add_argument(
+        "--regenerate-index",
+        action="store_true",
+        help="Regenerate the articles index page"
+    )
+
+    args = parser.parse_args()
+
+    gen = EditorialGenerator()
+
+    if args.regenerate_html:
+        count = gen.regenerate_all_article_pages()
+        print(f"Regenerated {count} article pages")
+    elif args.regenerate_index:
+        gen.generate_articles_index()
+        print("Regenerated articles index")
+    else:
+        parser.print_help()
