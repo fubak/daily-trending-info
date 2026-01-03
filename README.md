@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-03 11:56 UTC | [fix: Multiple pipeline improvements](https://github.com/fubak/daily-trending-info/commit/b1da2f8f3f84f59128e497e14e49247f35511fac) |
 | 2026-01-03 00:32 UTC | [fix: Remove blur from topic page hero images](https://github.com/fubak/daily-trending-info/commit/84c0dd49eb5258f5c59be5ef92e7e73573acd6e6) |
 | 2026-01-03 00:20 UTC | [fix: Handle list-type author field from Vimeo RSS feed](https://github.com/fubak/daily-trending-info/commit/3266ed2110635c1170a7cfa689b0c8cf83242b0e) |
 | 2026-01-03 00:16 UTC | [fix: Resolve f-string syntax error in media page template](https://github.com/fubak/daily-trending-info/commit/f2964c57308e2ffa61c619cc2a458bd4bd260e1e) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-02 21:42 UTC | [fix: Include headline keywords when fetching images for topic pages](https://github.com/fubak/daily-trending-info/commit/0e943a29b9521e78050b397c6c7404875cf1590f) |
 | 2026-01-02 21:34 UTC | [fix: Match topic hero images to headline keywords, not just category](https://github.com/fubak/daily-trending-info/commit/73765607e526837419118a415f78db6d873fb9a4) |
 | 2026-01-02 21:13 UTC | [fix: Replace broken RSS feeds with working alternatives](https://github.com/fubak/daily-trending-info/commit/3ef1af2de119016a72994ca200abcb17258eb542) |
-| 2026-01-02 20:58 UTC | [fix: Remove broken comment fragment in rate_limiter.py](https://github.com/fubak/daily-trending-info/commit/ca48f663be76963e4a666ff2aadccada0db8ce13) |
 <!-- CHANGELOG_END -->
 
 ## Features
