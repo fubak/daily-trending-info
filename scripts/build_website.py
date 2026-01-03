@@ -2108,6 +2108,12 @@ class WebsiteBuilder:
             max-height: 200px;
         }}
 
+        /* Story wrapper in grid */
+        .top-stories .story-wrapper {{
+            display: flex;
+            flex-direction: column;
+        }}
+
         /* Layout variants for top stories - all optimized for horizontal display */
         .layout-newspaper .top-stories {{
             grid-template-columns: repeat(4, 1fr);
@@ -2151,6 +2157,25 @@ class WebsiteBuilder:
         .layout-mosaic .top-stories .story-card:nth-child(4) {{
             grid-column: span 1;
             grid-row: span 1;
+        }}
+
+        /* ===== STORY WRAPPER & SUMMARY ===== */
+        .story-wrapper {{
+            display: flex;
+            flex-direction: column;
+        }}
+
+        .story-summary {{
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: var(--color-muted);
+            padding: 0.75rem 0.5rem;
+            margin: 0;
+        }}
+
+        .story-summary strong {{
+            color: var(--color-accent);
+            font-weight: 600;
         }}
 
         /* ===== STORY CARDS ===== */
@@ -4447,28 +4472,33 @@ class WebsiteBuilder:
                     <div class="related-links">{related_items}</div>
                 </div>'''
 
+            # Build summary HTML (shown below card)
+            summary_html = f'<p class="story-summary">{desc}</p>' if desc else ''
+
             cards_html.append(f'''
-            <article class="story-card {extra_class}" {image_style} {img_attrs}>
-                <div class="story-badges">
-                    {comparison_html}
-                    {velocity_html}
-                </div>
-                <div class="story-content">
-                    <div class="story-meta">
-                        <span class="story-source">{source}</span>
-                        {timestamp_html}
-                        {discussion_html}
+            <div class="story-wrapper">
+                <article class="story-card {extra_class}" {image_style} {img_attrs}>
+                    <div class="story-badges">
+                        {comparison_html}
+                        {velocity_html}
                     </div>
-                    <h3 class="story-title">{title}</h3>
-                    {f'<p class="story-description">{desc}</p>' if desc else ''}
-                    {related_html}
-                </div>
-                <div class="story-actions">
-                    {save_btn}
-                    {share_btn}
-                </div>
-                <a href="{html.escape(url)}" class="story-link" target="_blank" rel="noopener" aria-label="Read more about {title[:50]}"></a>
-            </article>''')
+                    <div class="story-content">
+                        <div class="story-meta">
+                            <span class="story-source">{source}</span>
+                            {timestamp_html}
+                            {discussion_html}
+                        </div>
+                        <h3 class="story-title">{title}</h3>
+                        {related_html}
+                    </div>
+                    <div class="story-actions">
+                        {save_btn}
+                        {share_btn}
+                    </div>
+                    <a href="{html.escape(url)}" class="story-link" target="_blank" rel="noopener" aria-label="Read more about {title[:50]}"></a>
+                </article>
+                {summary_html}
+            </div>''')
 
         reading_time = self._get_total_reading_time()
 
