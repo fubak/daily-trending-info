@@ -43,6 +43,7 @@ from keyword_tracker import KeywordTracker
 from pwa_generator import save_pwa_assets
 from sitemap_generator import save_sitemap
 from editorial_generator import EditorialGenerator
+from fetch_media_of_day import MediaOfDayFetcher
 
 # Setup logging
 logger = setup_logging("pipeline")
@@ -68,6 +69,7 @@ class Pipeline:
         self.keyword_tracker = KeywordTracker()
         self.content_enricher = ContentEnricher()
         self.editorial_generator = EditorialGenerator(public_dir=self.public_dir)
+        self.media_fetcher = MediaOfDayFetcher()
 
         # Pipeline data
         self.trends = []
@@ -79,6 +81,7 @@ class Pipeline:
         self.editorial_article = None
         self.why_this_matters = []
         self.yesterday_trends = []
+        self.media_data = None
 
     def _validate_environment(self) -> List[str]:
         """
@@ -190,23 +193,30 @@ class Pipeline:
             if not dry_run:
                 self._step_generate_topic_pages()
 
-            # Step 10: Generate RSS feed
+            # Step 10: Fetch media of the day
+            self._step_fetch_media_of_day()
+
+            # Step 11: Generate media page
+            if not dry_run:
+                self._step_generate_media_page()
+
+            # Step 12: Generate RSS feed
             if not dry_run:
                 self._step_generate_rss()
 
-            # Step 11: Generate PWA assets
+            # Step 13: Generate PWA assets
             if not dry_run:
                 self._step_generate_pwa()
 
-            # Step 12: Generate sitemap
+            # Step 14: Generate sitemap
             if not dry_run:
                 self._step_generate_sitemap()
 
-            # Step 13: Cleanup old archives (not articles - those are permanent)
+            # Step 15: Cleanup old archives (not articles - those are permanent)
             if archive and not dry_run:
                 self._step_cleanup()
 
-            # Step 14: Save pipeline data
+            # Step 16: Save pipeline data
             self._save_data()
 
             logger.info("=" * 60)
@@ -229,7 +239,7 @@ class Pipeline:
 
     def _step_archive(self):
         """Archive the previous website."""
-        logger.info("[1/14] Archiving previous website...")
+        logger.info("[1/16] Archiving previous website...")
 
         # Try to load previous design metadata
         previous_design = None
@@ -245,7 +255,7 @@ class Pipeline:
 
     def _step_load_yesterday(self):
         """Load yesterday's trends for comparison feature."""
-        logger.info("[2/14] Loading yesterday's trends...")
+        logger.info("[2/16] Loading yesterday's trends...")
 
         # Try to load from most recent archive
         archive_dir = self.public_dir / "archive"
@@ -268,7 +278,7 @@ class Pipeline:
 
     def _step_collect_trends(self):
         """Collect trends from all sources."""
-        logger.info("[3/14] Collecting trends...")
+        logger.info("[3/16] Collecting trends...")
 
         self.trends = self.trend_collector.collect_all()
         self.keywords = self.trend_collector.get_all_keywords()
@@ -314,7 +324,7 @@ class Pipeline:
 
     def _step_fetch_images(self):
         """Fetch images based on trending keywords."""
-        logger.info("[4/14] Fetching images...")
+        logger.info("[4/16] Fetching images...")
 
         # Prioritize global keywords (meta-trends) for image search
         # These are words appearing in 3+ stories, more likely to be relevant
@@ -438,7 +448,7 @@ class Pipeline:
 
     def _step_enrich_content(self):
         """Enrich content with Word of Day, Grokipedia article, and story summaries."""
-        logger.info("[5/14] Enriching content...")
+        logger.info("[5/16] Enriching content...")
 
         # Convert trends to dict format
         trends_data = [asdict(t) if hasattr(t, '__dataclass_fields__') else t for t in self.trends]
@@ -455,7 +465,7 @@ class Pipeline:
 
     def _step_generate_design(self):
         """Generate the design specification."""
-        logger.info("[6/14] Generating design...")
+        logger.info("[6/16] Generating design...")
 
         # Convert trends to dict format for the generator
         trends_data = [asdict(t) if hasattr(t, '__dataclass_fields__') else t for t in self.trends]
@@ -468,7 +478,7 @@ class Pipeline:
 
     def _step_generate_editorial(self):
         """Generate editorial article and Why This Matters context."""
-        logger.info("[7/14] Generating editorial content...")
+        logger.info("[7/16] Generating editorial content...")
 
         # Convert trends to dict format
         trends_data = [asdict(t) if hasattr(t, '__dataclass_fields__') else t for t in self.trends]
@@ -498,7 +508,7 @@ class Pipeline:
 
     def _step_build_website(self):
         """Build the final HTML website."""
-        logger.info("[8/14] Building website...")
+        logger.info("[8/16] Building website...")
         logger.info(f"Building with {len(self.trends)} trends, {len(self.images)} images")
 
         # Convert data to proper format
@@ -571,7 +581,7 @@ class Pipeline:
 
     def _step_generate_topic_pages(self):
         """Generate topic-specific sub-pages (/tech, /world, /science, etc.)."""
-        logger.info("[9/14] Generating topic sub-pages...")
+        logger.info("[9/16] Generating topic sub-pages...")
 
         # Convert data to proper format
         trends_data = [asdict(t) if hasattr(t, '__dataclass_fields__') else t for t in self.trends]
@@ -986,16 +996,29 @@ class Pipeline:
         .hero-image {{
             position: absolute;
             inset: 0;
-            background-size: cover;
-            background-position: center;
+            background-size: contain;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-color: #0a0a0a;
             z-index: 0;
+        }}
+
+        /* Add a blurred scaled version behind for full coverage */
+        .hero-image::before {{
+            content: '';
+            position: absolute;
+            inset: -20px;
+            background: inherit;
+            background-size: cover;
+            filter: blur(20px) brightness(0.4);
+            z-index: -1;
         }}
 
         .hero-image::after {{
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.3) 100%);
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.2) 100%);
         }}
 
         .hero-content {{
@@ -1366,9 +1389,798 @@ class Pipeline:
 </body>
 </html>'''
 
+    def _step_fetch_media_of_day(self):
+        """Fetch image and video of the day from curated sources."""
+        logger.info("[10/16] Fetching Media of the Day...")
+
+        try:
+            self.media_data = self.media_fetcher.fetch_all()
+
+            if self.media_data.get('image_of_day'):
+                logger.info(f"  Image: {self.media_data['image_of_day']['title']}")
+            else:
+                logger.warning("  No Image of the Day available")
+
+            if self.media_data.get('video_of_day'):
+                logger.info(f"  Video: {self.media_data['video_of_day']['title']}")
+            else:
+                logger.warning("  No Video of the Day available")
+
+        except Exception as e:
+            logger.warning(f"Media of the Day fetch failed: {e}")
+            self.media_data = None
+
+    def _step_generate_media_page(self):
+        """Generate the Media of the Day page."""
+        logger.info("[11/16] Generating Media of the Day page...")
+
+        if not self.media_data:
+            logger.warning("No media data available, skipping media page")
+            return
+
+        # Get design data for styling
+        design_data = asdict(self.design) if hasattr(self.design, '__dataclass_fields__') else self.design
+
+        # Create media directory
+        media_dir = self.public_dir / "media"
+        media_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build media page HTML
+        html = self._build_media_page(self.media_data, design_data)
+
+        # Save
+        (media_dir / "index.html").write_text(html, encoding='utf-8')
+        logger.info(f"Media page saved to {media_dir / 'index.html'}")
+
+    def _build_media_page(self, media_data: dict, design: dict) -> str:
+        """Build HTML for the Media of the Day page."""
+        from datetime import datetime
+        import html as html_module
+
+        now = datetime.now()
+        date_str = now.strftime('%B %d, %Y')
+        date_iso = now.isoformat()
+
+        # Get image data
+        image = media_data.get('image_of_day') or {}
+        image_title = html_module.escape(image.get('title', 'Image of the Day'))
+        image_url = html_module.escape(image.get('url', ''))
+        image_hd_url = html_module.escape(image.get('url_hd', ''))
+        image_explanation = html_module.escape(image.get('explanation', ''))
+        image_source = image.get('source', '')
+        image_source_url = html_module.escape(image.get('source_url', ''))
+        image_copyright = html_module.escape(image.get('copyright', ''))
+        image_date = image.get('date', '')
+
+        # Get video data
+        video = media_data.get('video_of_day') or {}
+        video_title = html_module.escape(video.get('title', 'Video of the Day'))
+        video_description = html_module.escape(video.get('description', ''))
+        video_embed_url = html_module.escape(video.get('embed_url', ''))
+        video_url = html_module.escape(video.get('video_url', ''))
+        video_thumbnail = html_module.escape(video.get('thumbnail_url', ''))
+        video_author = html_module.escape(video.get('author', ''))
+        video_author_url = html_module.escape(video.get('author_url', ''))
+        video_duration = video.get('duration', '')
+
+        # Source display names
+        source_names = {
+            'nasa_apod': 'NASA Astronomy Picture of the Day',
+            'bing': 'Bing Image of the Day',
+            'vimeo_staff_picks': 'Vimeo Staff Picks'
+        }
+
+        image_source_name = source_names.get(image_source, image_source)
+        video_source_name = source_names.get(video.get('source', ''), 'Vimeo Staff Picks')
+
+        # Build conditional HTML parts to avoid nested f-string issues
+        copyright_html = ""
+        if image_copyright:
+            copyright_html = f'''<span class="meta-item">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M14.31 8l5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94M9.69 16L3.95 6.06M14.31 16H2.83M16.62 12l-5.74 9.94"/>
+                            </svg>
+                            © {image_copyright}
+                        </span>'''
+
+        hd_link_html = ""
+        if image_hd_url:
+            hd_link_html = f'''<a href="{image_hd_url}" target="_blank" rel="noopener" class="action-btn secondary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            HD Version
+                        </a>'''
+
+        author_html = ""
+        if video_author:
+            author_initial = video_author[0].upper() if video_author else "V"
+            author_html = f'''<div class="author-info">
+                        <div class="author-avatar">{author_initial}</div>
+                        <div>
+                            <span class="author-name">{video_author}</span>
+                        </div>
+                    </div>'''
+
+        # Build nav links
+        nav_links = '''
+            <li><a href="/">Home</a></li>
+            <li><a href="/tech/">Tech</a></li>
+            <li><a href="/world/">World</a></li>
+            <li><a href="/science/">Science</a></li>
+            <li><a href="/politics/">Politics</a></li>
+            <li><a href="/finance/">Finance</a></li>
+            <li><a href="/media/" class="active">Media</a></li>
+            <li><a href="/articles/">Articles</a></li>'''
+
+        return f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media of the Day | DailyTrending.info</title>
+    <meta name="description" content="Daily curated image and video content - featuring NASA's Astronomy Picture of the Day and Vimeo Staff Picks.">
+    <link rel="canonical" href="https://dailytrending.info/media/">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+    <meta property="og:title" content="Media of the Day | DailyTrending.info">
+    <meta property="og:description" content="Daily curated image and video content">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://dailytrending.info/media/">
+    {f'<meta property="og:image" content="{image_url}">' if image_url else ''}
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Media of the Day | DailyTrending.info">
+    <meta name="twitter:description" content="Daily curated image and video content">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {{
+            --color-bg: #0a0a0a;
+            --color-card-bg: #18181b;
+            --color-text: #ffffff;
+            --color-muted: #a1a1aa;
+            --color-border: #27272a;
+            --color-accent: #6366f1;
+            --color-accent-secondary: #8b5cf6;
+            --radius: 1rem;
+            --transition: 200ms ease;
+        }}
+
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+
+        body {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%);
+            color: var(--color-text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }}
+
+        /* Navigation */
+        .nav {{
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--color-border);
+        }}
+
+        .nav-logo {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--color-text);
+            text-decoration: none;
+        }}
+
+        .nav-links {{
+            display: flex;
+            gap: 0.25rem;
+            list-style: none;
+        }}
+
+        .nav-links a {{
+            padding: 0.5rem 1rem;
+            color: var(--color-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 0.5rem;
+            transition: color var(--transition), background var(--transition);
+        }}
+
+        .nav-links a:hover {{
+            color: var(--color-text);
+            background: rgba(255,255,255,0.05);
+        }}
+
+        .nav-links a.active {{
+            color: var(--color-accent);
+            background: rgba(255,255,255,0.08);
+        }}
+
+        .nav-actions {{
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }}
+
+        .nav-date {{
+            font-size: 0.85rem;
+            color: var(--color-muted);
+        }}
+
+        .mobile-menu-toggle {{
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+        }}
+
+        .hamburger-line {{
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--color-text);
+            margin: 5px 0;
+            transition: transform 0.3s;
+        }}
+
+        /* Page Header */
+        .page-header {{
+            text-align: center;
+            padding: 4rem 2rem 3rem;
+            border-bottom: 1px solid var(--color-border);
+        }}
+
+        .page-title {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }}
+
+        .page-subtitle {{
+            font-size: 1.1rem;
+            color: var(--color-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }}
+
+        /* Main Content */
+        .main-content {{
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }}
+
+        /* Media Sections */
+        .media-section {{
+            margin-bottom: 4rem;
+        }}
+
+        .section-header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--color-border);
+        }}
+
+        .section-title {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }}
+
+        .section-icon {{
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-accent);
+            border-radius: 8px;
+        }}
+
+        .source-link {{
+            font-size: 0.85rem;
+            color: var(--color-accent);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color var(--transition);
+        }}
+
+        .source-link:hover {{
+            color: var(--color-accent-secondary);
+        }}
+
+        /* Image of the Day */
+        .image-container {{
+            background: var(--color-card-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }}
+
+        .featured-image {{
+            width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            background: #000;
+            display: block;
+        }}
+
+        .image-info {{
+            padding: 1.5rem;
+        }}
+
+        .media-title {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }}
+
+        .media-description {{
+            color: var(--color-muted);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }}
+
+        .media-meta {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            font-size: 0.85rem;
+            color: var(--color-muted);
+        }}
+
+        .meta-item {{
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }}
+
+        .image-actions {{
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }}
+
+        .action-btn {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            background: var(--color-accent);
+            color: #000;
+            font-weight: 600;
+            border-radius: var(--radius);
+            text-decoration: none;
+            transition: transform var(--transition), box-shadow var(--transition);
+        }}
+
+        .action-btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }}
+
+        .action-btn.secondary {{
+            background: var(--color-card-bg);
+            color: var(--color-text);
+            border: 1px solid var(--color-border);
+        }}
+
+        /* Video of the Day */
+        .video-container {{
+            background: var(--color-card-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }}
+
+        .video-embed {{
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+        }}
+
+        .video-embed iframe {{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }}
+
+        .video-info {{
+            padding: 1.5rem;
+        }}
+
+        .author-info {{
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }}
+
+        .author-avatar {{
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }}
+
+        .author-name {{
+            color: var(--color-text);
+            text-decoration: none;
+            font-weight: 500;
+        }}
+
+        .author-name:hover {{
+            color: var(--color-accent);
+        }}
+
+        /* About Section */
+        .about-section {{
+            background: var(--color-card-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin-top: 3rem;
+        }}
+
+        .about-title {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }}
+
+        .about-text {{
+            color: var(--color-muted);
+            line-height: 1.7;
+        }}
+
+        .about-text a {{
+            color: var(--color-accent);
+            text-decoration: none;
+        }}
+
+        .about-text a:hover {{
+            text-decoration: underline;
+        }}
+
+        .source-list {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }}
+
+        .source-card {{
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--color-border);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+        }}
+
+        .source-card h4 {{
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }}
+
+        .source-card p {{
+            font-size: 0.85rem;
+            color: var(--color-muted);
+        }}
+
+        /* Footer */
+        .footer {{
+            margin-top: 4rem;
+            padding: 3rem 2rem;
+            background: var(--color-card-bg);
+            border-top: 1px solid var(--color-border);
+            text-align: center;
+        }}
+
+        .footer-content {{
+            max-width: 800px;
+            margin: 0 auto;
+        }}
+
+        .footer-logo {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--color-text);
+            margin-bottom: 1rem;
+        }}
+
+        .footer-tagline {{
+            color: var(--color-muted);
+            margin-bottom: 1.5rem;
+        }}
+
+        .footer-links {{
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }}
+
+        .footer-links a {{
+            color: var(--color-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color var(--transition);
+        }}
+
+        .footer-links a:hover {{
+            color: var(--color-accent);
+        }}
+
+        .footer-bottom {{
+            font-size: 0.8rem;
+            color: var(--color-muted);
+        }}
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {{
+            .mobile-menu-toggle {{
+                display: block;
+            }}
+
+            .nav-links {{
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                flex-direction: column;
+                background: var(--color-bg);
+                border-bottom: 1px solid var(--color-border);
+                padding: 1rem;
+            }}
+
+            .nav-links.active {{
+                display: flex;
+            }}
+
+            .nav-date {{
+                display: none;
+            }}
+
+            .page-header {{
+                padding: 3rem 1rem 2rem;
+            }}
+
+            .main-content {{
+                padding: 2rem 1rem;
+            }}
+
+            .section-header {{
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }}
+
+            .image-actions {{
+                flex-direction: column;
+            }}
+
+            .footer-links {{
+                flex-direction: column;
+                gap: 1rem;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a href="/" class="nav-logo">DailyTrending.info</a>
+        <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+        </button>
+        <ul class="nav-links" id="nav-links">
+            {nav_links}
+        </ul>
+        <div class="nav-actions">
+            <span class="nav-date">{date_str}</span>
+        </div>
+    </nav>
+
+    <header class="page-header">
+        <h1 class="page-title">Media of the Day</h1>
+        <p class="page-subtitle">Curated daily content featuring stunning space imagery from NASA and award-winning short films from Vimeo's finest creators.</p>
+    </header>
+
+    <main class="main-content">
+        <!-- Image of the Day Section -->
+        {f'''<section class="media-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                    </span>
+                    Image of the Day
+                </h2>
+                <a href="{image_source_url}" target="_blank" rel="noopener" class="source-link">
+                    {image_source_name}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                </a>
+            </div>
+            <div class="image-container">
+                <img src="{image_url}" alt="{image_title}" class="featured-image" loading="lazy">
+                <div class="image-info">
+                    <h3 class="media-title">{image_title}</h3>
+                    <p class="media-description">{image_explanation[:800]}{"..." if len(image_explanation) > 800 else ""}</p>
+                    <div class="media-meta">
+                        <span class="meta-item">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            {image_date}
+                        </span>
+                        {copyright_html}
+                    </div>
+                    <div class="image-actions">
+                        <a href="{image_source_url}" target="_blank" rel="noopener" class="action-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                <polyline points="15 3 21 3 21 9"/>
+                                <line x1="10" y1="14" x2="21" y2="3"/>
+                            </svg>
+                            View on {image_source_name.split()[0]}
+                        </a>
+                        {hd_link_html}
+                    </div>
+                </div>
+            </div>
+        </section>''' if image else '<p style="color: var(--color-muted); text-align: center; padding: 2rem;">Image of the Day is temporarily unavailable.</p>'}
+
+        <!-- Video of the Day Section -->
+        {f'''<section class="media-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                    </span>
+                    Video of the Day
+                </h2>
+                <a href="https://vimeo.com/channels/staffpicks" target="_blank" rel="noopener" class="source-link">
+                    {video_source_name}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                </a>
+            </div>
+            <div class="video-container">
+                <div class="video-embed">
+                    <iframe src="{video_embed_url}?title=0&byline=0&portrait=0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+                </div>
+                <div class="video-info">
+                    <h3 class="media-title">{video_title}</h3>
+                    <p class="media-description">{video_description[:500]}{"..." if len(video_description) > 500 else ""}</p>
+                    {author_html}
+                    <div class="image-actions">
+                        <a href="{video_url}" target="_blank" rel="noopener" class="action-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                <polyline points="15 3 21 3 21 9"/>
+                                <line x1="10" y1="14" x2="21" y2="3"/>
+                            </svg>
+                            Watch on Vimeo
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>''' if video else '<p style="color: var(--color-muted); text-align: center; padding: 2rem;">Video of the Day is temporarily unavailable.</p>'}
+
+        <!-- About Section -->
+        <div class="about-section">
+            <h3 class="about-title">About Media of the Day</h3>
+            <p class="about-text">
+                Every day, we curate the best visual content from trusted sources across the web.
+                Our selections feature stunning space imagery and thought-provoking short films
+                that inspire curiosity and creativity.
+            </p>
+            <div class="source-list">
+                <div class="source-card">
+                    <h4>🚀 NASA APOD</h4>
+                    <p>The Astronomy Picture of the Day features a different image or photograph of our universe each day, along with a brief explanation by a professional astronomer.</p>
+                </div>
+                <div class="source-card">
+                    <h4>🎬 Vimeo Staff Picks</h4>
+                    <p>Hand-picked by Vimeo's curation team, Staff Picks showcase the best short films, documentaries, and creative videos from filmmakers around the world.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-logo">DailyTrending.info</div>
+            <p class="footer-tagline">Curated trends and media from across the web, updated daily.</p>
+            <div class="footer-links">
+                <a href="/">Home</a>
+                <a href="/tech/">Tech</a>
+                <a href="/world/">World</a>
+                <a href="/science/">Science</a>
+                <a href="/politics/">Politics</a>
+                <a href="/finance/">Finance</a>
+                <a href="/media/">Media</a>
+                <a href="/articles/">Articles</a>
+                <a href="/feed.xml">RSS Feed</a>
+            </div>
+            <div class="footer-bottom">
+                &copy; {now.year} DailyTrending.info &bull; Regenerated daily at 6 AM EST
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const navLinks = document.getElementById('nav-links');
+        if (toggle && navLinks) {{
+            toggle.addEventListener('click', () => {{
+                navLinks.classList.toggle('active');
+            }});
+        }}
+    </script>
+</body>
+</html>'''
+
     def _step_generate_rss(self):
         """Generate RSS feed."""
-        logger.info("[10/14] Generating RSS feed...")
+        logger.info("[12/16] Generating RSS feed...")
 
         # Convert trends to dict format
         trends_data = [asdict(t) if hasattr(t, '__dataclass_fields__') else t for t in self.trends]
@@ -1381,14 +2193,14 @@ class Pipeline:
 
     def _step_generate_pwa(self):
         """Generate PWA assets (manifest, service worker, offline page)."""
-        logger.info("[11/14] Generating PWA assets...")
+        logger.info("[13/16] Generating PWA assets...")
 
         save_pwa_assets(self.public_dir)
         logger.info("PWA assets generated")
 
     def _step_generate_sitemap(self):
         """Generate sitemap.xml and robots.txt with articles and topic pages."""
-        logger.info("[12/14] Generating sitemap...")
+        logger.info("[14/16] Generating sitemap...")
 
         # Get all article URLs
         article_urls = []
@@ -1403,7 +2215,7 @@ class Pipeline:
                     pass
 
         # Get topic page URLs (matching topic_configs in _step_generate_topic_pages)
-        topic_urls = ['/tech/', '/world/', '/science/', '/politics/', '/finance/']
+        topic_urls = ['/tech/', '/world/', '/science/', '/politics/', '/finance/', '/media/']
 
         # Generate enhanced sitemap
         save_sitemap(self.public_dir, extra_urls=article_urls + topic_urls)
@@ -1411,7 +2223,7 @@ class Pipeline:
 
     def _step_cleanup(self):
         """Clean up old archives (NOT articles - those are permanent)."""
-        logger.info("[13/14] Cleaning up old archives...")
+        logger.info("[15/16] Cleaning up old archives...")
 
         removed = self.archive_manager.cleanup_old(keep_days=30)
         logger.info(f"Removed {removed} old archives")

@@ -922,13 +922,16 @@ class WebsiteBuilder:
         # Get hero image - use the pre-computed relevant image
         hero_image = self._hero_image
         hero_bg = ""
+        hero_bg_url = ""  # Store just the URL for the blurred background layer
         if hero_image:
             # Validate and sanitize URL for CSS injection prevention
             img_url = hero_image.get('url_large', hero_image.get('url_medium', ''))
             if img_url and img_url.startswith(('https://', 'http://')):
                 # Escape quotes and parentheses that could break CSS
                 safe_url = img_url.replace("'", "%27").replace('"', "%22").replace("(", "%28").replace(")", "%29")
-                hero_bg = f"url('{safe_url}') center/cover"
+                hero_bg_url = f"url('{safe_url}')"
+                # Use contain to show full image, centered with dark background
+                hero_bg = f"url('{safe_url}') center center / contain no-repeat #0a0a0a"
             else:
                 hero_bg = FallbackImageGenerator.get_gradient_css()
         else:
@@ -1017,6 +1020,7 @@ class WebsiteBuilder:
             --max-width: {d.get('max_width', '1400px')};
 
             --hero-bg: {hero_bg};
+            --hero-bg-url: {hero_bg_url if hero_bg_url else 'none'};
         }}
 
         /* ===== RESET & BASE ===== */
@@ -1280,6 +1284,7 @@ class WebsiteBuilder:
             .nav-links.active li:nth-child(5) {{ transition-delay: 0.3s; }}
             .nav-links.active li:nth-child(6) {{ transition-delay: 0.35s; }}
             .nav-links.active li:nth-child(7) {{ transition-delay: 0.4s; }}
+            .nav-links.active li:nth-child(8) {{ transition-delay: 0.45s; }}
 
             .nav-links a {{
                 font-size: 1.5rem;
@@ -1507,17 +1512,18 @@ class WebsiteBuilder:
             padding: 5rem 2rem 3rem;
             position: relative;
             overflow: hidden;
+            /* Dark background as base when image doesn't fill */
+            background-color: #0a0a0a;
         }}
 
-        /* Background image layer - now more visible */
+        /* Main image layer - contained to show full image centered */
         .hero::before {{
             content: '';
             position: absolute;
             inset: 0;
             background: var(--hero-bg);
-            opacity: 0.4;
+            opacity: 0.5;
             z-index: 0;
-            filter: saturate(1.2);
         }}
 
         /* Overlay for text readability */
@@ -4086,6 +4092,9 @@ class WebsiteBuilder:
         ]
         for name, url in topic_pages:
             links_list.append(f'<li><a href="{url}">{name}</a></li>')
+
+        # Media of the Day
+        links_list.append('<li><a href="/media/">Media</a></li>')
 
         # Articles
         links_list.append('<li><a href="/articles/">Articles</a></li>')
