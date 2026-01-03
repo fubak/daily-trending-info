@@ -1505,6 +1505,111 @@ class Pipeline:
                         </div>
                     </div>'''
 
+        # Build image section HTML
+        explanation_truncated = image_explanation[:800] + "..." if len(image_explanation) > 800 else image_explanation
+        image_source_short = image_source_name.split()[0] if image_source_name else "Source"
+        if image:
+            image_section = f'''<section class="media-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                    </span>
+                    Image of the Day
+                </h2>
+                <a href="{image_source_url}" target="_blank" rel="noopener" class="source-link">
+                    {image_source_name}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                </a>
+            </div>
+            <div class="image-container">
+                <img src="{image_url}" alt="{image_title}" class="featured-image" loading="lazy">
+                <div class="image-info">
+                    <h3 class="media-title">{image_title}</h3>
+                    <p class="media-description">{explanation_truncated}</p>
+                    <div class="media-meta">
+                        <span class="meta-item">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            {image_date}
+                        </span>
+                        {copyright_html}
+                    </div>
+                    <div class="image-actions">
+                        <a href="{image_source_url}" target="_blank" rel="noopener" class="action-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                <polyline points="15 3 21 3 21 9"/>
+                                <line x1="10" y1="14" x2="21" y2="3"/>
+                            </svg>
+                            View on {image_source_short}
+                        </a>
+                        {hd_link_html}
+                    </div>
+                </div>
+            </div>
+        </section>'''
+        else:
+            image_section = '<p style="color: var(--color-muted); text-align: center; padding: 2rem;">Image of the Day is temporarily unavailable.</p>'
+
+        # Build video section HTML
+        description_truncated = video_description[:500] + "..." if len(video_description) > 500 else video_description
+        if video:
+            video_section = f'''<section class="media-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                    </span>
+                    Video of the Day
+                </h2>
+                <a href="https://vimeo.com/channels/staffpicks" target="_blank" rel="noopener" class="source-link">
+                    {video_source_name}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                </a>
+            </div>
+            <div class="video-container">
+                <div class="video-embed">
+                    <iframe src="{video_embed_url}?title=0&byline=0&portrait=0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+                </div>
+                <div class="video-info">
+                    <h3 class="media-title">{video_title}</h3>
+                    <p class="media-description">{description_truncated}</p>
+                    {author_html}
+                    <div class="image-actions">
+                        <a href="{video_url}" target="_blank" rel="noopener" class="action-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                <polyline points="15 3 21 3 21 9"/>
+                                <line x1="10" y1="14" x2="21" y2="3"/>
+                            </svg>
+                            Watch on Vimeo
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>'''
+        else:
+            video_section = '<p style="color: var(--color-muted); text-align: center; padding: 2rem;">Video of the Day is temporarily unavailable.</p>'
+
         # Build nav links
         nav_links = '''
             <li><a href="/">Home</a></li>
@@ -2028,100 +2133,10 @@ class Pipeline:
 
     <main class="main-content">
         <!-- Image of the Day Section -->
-        {f'''<section class="media-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <span class="section-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                            <circle cx="8.5" cy="8.5" r="1.5"/>
-                            <polyline points="21 15 16 10 5 21"/>
-                        </svg>
-                    </span>
-                    Image of the Day
-                </h2>
-                <a href="{image_source_url}" target="_blank" rel="noopener" class="source-link">
-                    {image_source_name}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                        <polyline points="15 3 21 3 21 9"/>
-                        <line x1="10" y1="14" x2="21" y2="3"/>
-                    </svg>
-                </a>
-            </div>
-            <div class="image-container">
-                <img src="{image_url}" alt="{image_title}" class="featured-image" loading="lazy">
-                <div class="image-info">
-                    <h3 class="media-title">{image_title}</h3>
-                    <p class="media-description">{image_explanation[:800]}{"..." if len(image_explanation) > 800 else ""}</p>
-                    <div class="media-meta">
-                        <span class="meta-item">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                            </svg>
-                            {image_date}
-                        </span>
-                        {copyright_html}
-                    </div>
-                    <div class="image-actions">
-                        <a href="{image_source_url}" target="_blank" rel="noopener" class="action-btn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                <polyline points="15 3 21 3 21 9"/>
-                                <line x1="10" y1="14" x2="21" y2="3"/>
-                            </svg>
-                            View on {image_source_name.split()[0]}
-                        </a>
-                        {hd_link_html}
-                    </div>
-                </div>
-            </div>
-        </section>''' if image else '<p style="color: var(--color-muted); text-align: center; padding: 2rem;">Image of the Day is temporarily unavailable.</p>'}
+        {image_section}
 
         <!-- Video of the Day Section -->
-        {f'''<section class="media-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <span class="section-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2">
-                            <polygon points="5 3 19 12 5 21 5 3"/>
-                        </svg>
-                    </span>
-                    Video of the Day
-                </h2>
-                <a href="https://vimeo.com/channels/staffpicks" target="_blank" rel="noopener" class="source-link">
-                    {video_source_name}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                        <polyline points="15 3 21 3 21 9"/>
-                        <line x1="10" y1="14" x2="21" y2="3"/>
-                    </svg>
-                </a>
-            </div>
-            <div class="video-container">
-                <div class="video-embed">
-                    <iframe src="{video_embed_url}?title=0&byline=0&portrait=0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
-                </div>
-                <div class="video-info">
-                    <h3 class="media-title">{video_title}</h3>
-                    <p class="media-description">{video_description[:500]}{"..." if len(video_description) > 500 else ""}</p>
-                    {author_html}
-                    <div class="image-actions">
-                        <a href="{video_url}" target="_blank" rel="noopener" class="action-btn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                <polyline points="15 3 21 3 21 9"/>
-                                <line x1="10" y1="14" x2="21" y2="3"/>
-                            </svg>
-                            Watch on Vimeo
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </section>''' if video else '<p style="color: var(--color-muted); text-align: center; padding: 2rem;">Video of the Day is temporarily unavailable.</p>'}
+        {video_section}
 
         <!-- About Section -->
         <div class="about-section">
