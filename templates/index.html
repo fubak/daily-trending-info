@@ -39,8 +39,8 @@
         {% for trend in trends[:15] %}
         <div class="ticker-item">
             {# Display derived category or source part as badge #}
-            {% set source_display = story.source | replace('_', ' ') | title %}
-            {% set category_badge_class = story.source.split('_')[0] if '_' in story.source else story.source %}
+            {% set source_display = trend.source | replace('_', ' ') | title %}
+            {% set category_badge_class = trend.source.split('_')[0] if '_' in trend.source else trend.source %}
             <span class="ticker-source">{{ source_display }}</span>
             <strong><a href="{{ trend.url }}" target="_blank" rel="noopener">{{ trend.title }}</a></strong>
         </div>
