@@ -332,7 +332,8 @@ class Pipeline:
         # Priority 0: Visual queries for the Top Story (Hero Image Fix)
         if self.trends:
             top_story = self.trends[0]
-            top_title = top_story.get('title')
+            # Use attribute access for Trend dataclass, not .get()
+            top_title = top_story.title
             if top_title:
                 logger.info(f"Optimizing visual queries for top story: {top_title[:50]}...")
                 visual_queries = self.image_fetcher.optimize_query(top_title)
