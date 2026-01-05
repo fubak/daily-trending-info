@@ -149,20 +149,21 @@
     {% include "components/footer.html" %}
 
     <script>
-        // Theme Toggle
-        (function() {
-            const toggle = document.getElementById('theme-toggle');
-            const body = document.body;
-            const saved = localStorage.getItem('theme');
-            
-            if (saved === 'light') {
-                body.classList.remove('dark-mode');
-                body.classList.add('light-mode');
-            } else {
-                body.classList.remove('light-mode');
-                body.classList.add('dark-mode');
-            }
-
+                    // Theme Toggle
+                    const toggle = document.getElementById('theme-toggle');
+                    const body = document.body;
+                    const saved = localStorage.getItem('theme');
+                    
+                    // Only override default if user has a preference saved
+                    if (saved) {
+                        if (saved === 'light') {
+                            body.classList.remove('dark-mode');
+                            body.classList.add('light-mode');
+                        } else {
+                            body.classList.remove('light-mode');
+                            body.classList.add('dark-mode');
+                        }
+                    }
             if(toggle) {
                 toggle.addEventListener('click', () => {
                     // Current state check
