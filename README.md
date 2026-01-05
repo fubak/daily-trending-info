@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-05 19:07 UTC | [fix: Resolve theme initialization and layout overflow](https://github.com/fubak/daily-trending-info/commit/b6c542008f57adb5ca9f249997a08bace942a643) |
 | 2026-01-05 19:00 UTC | [fix: Resolve AttributeError for layout and hero_style in WebsiteBuilder init](https://github.com/fubak/daily-trending-info/commit/de47205574fafcb6b2c24cb836a62ac4eaa77f29) |
 | 2026-01-05 18:50 UTC | [fix: Resolve dark/light mode persistence and variable conflicts](https://github.com/fubak/daily-trending-info/commit/4cea27094171412dd2354c1cc93e590d02477dc8) |
 | 2026-01-05 17:44 UTC | [fix: Resolve home page layout breakage](https://github.com/fubak/daily-trending-info/commit/6678924788a0eeae4d95d78c55c3e3189d59b635) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-05 13:22 UTC | [design: Modernize UI/UX with CSS Grid, semantic HTML, and accessibility improvements](https://github.com/fubak/daily-trending-info/commit/fed69d95e2bc126e868c3d7cbecb3375f1b93b02) |
 | 2026-01-05 12:53 UTC | [fix: Resolve 'Trend' object attribute error in image fetch step](https://github.com/fubak/daily-trending-info/commit/189c0221e7724253ad0af204c96ed5090d5079ee) |
 | 2026-01-05 12:40 UTC | [refactor: Migrate to Jinja2, upgrade algorithm, and expand data sources](https://github.com/fubak/daily-trending-info/commit/56d9e58970e62c10d15417584f24006ab7860f88) |
-| 2026-01-03 14:26 UTC | [feat: Add article HTML regeneration to update existing articles](https://github.com/fubak/daily-trending-info/commit/e0185656fee570a92fe9047c86b4557f70510988) |
 <!-- CHANGELOG_END -->
 
 ## Features
