@@ -67,6 +67,9 @@ class WebsiteBuilder:
         timestamp_seed = datetime.now().isoformat()
         self.rng = random.Random(timestamp_seed)
 
+        self.layout = self.design.layout_style if self.design and hasattr(self.design, 'layout_style') else self.rng.choice(LAYOUT_TEMPLATES)
+        self.hero_style = self.design.hero_style if self.design and hasattr(self.design, 'hero_style') else self.rng.choice(HERO_STYLES)
+
         # Group trends by category
         self.grouped_trends = self._group_trends()
 
