@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-05 13:22 UTC | [design: Modernize UI/UX with CSS Grid, semantic HTML, and accessibility improvements](https://github.com/fubak/daily-trending-info/commit/fed69d95e2bc126e868c3d7cbecb3375f1b93b02) |
 | 2026-01-05 12:53 UTC | [fix: Resolve 'Trend' object attribute error in image fetch step](https://github.com/fubak/daily-trending-info/commit/189c0221e7724253ad0af204c96ed5090d5079ee) |
 | 2026-01-05 12:40 UTC | [refactor: Migrate to Jinja2, upgrade algorithm, and expand data sources](https://github.com/fubak/daily-trending-info/commit/56d9e58970e62c10d15417584f24006ab7860f88) |
 | 2026-01-03 14:26 UTC | [feat: Add article HTML regeneration to update existing articles](https://github.com/fubak/daily-trending-info/commit/e0185656fee570a92fe9047c86b4557f70510988) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-03 12:23 UTC | [feat: Move story summaries below cards instead of inside](https://github.com/fubak/daily-trending-info/commit/4bca85bf782c2acfb0f8e31811af2fa32d51b084) |
 | 2026-01-03 12:13 UTC | [feat: Add Summary: prefix to AI-generated story summaries](https://github.com/fubak/daily-trending-info/commit/b377b12b929940761a427b06242acbbd9400531c) |
 | 2026-01-03 11:56 UTC | [fix: Multiple pipeline improvements](https://github.com/fubak/daily-trending-info/commit/b1da2f8f3f84f59128e497e14e49247f35511fac) |
-| 2026-01-03 00:32 UTC | [fix: Remove blur from topic page hero images](https://github.com/fubak/daily-trending-info/commit/84c0dd49eb5258f5c59be5ef92e7e73573acd6e6) |
 <!-- CHANGELOG_END -->
 
 ## Features
