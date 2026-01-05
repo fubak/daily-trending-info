@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-05 17:44 UTC | [fix: Resolve home page layout breakage](https://github.com/fubak/daily-trending-info/commit/6678924788a0eeae4d95d78c55c3e3189d59b635) |
 | 2026-01-05 17:28 UTC | [fix: Resolve undefined 'story' variable in ticker template](https://github.com/fubak/daily-trending-info/commit/b7c1dac5b8d129e29843f0f5512078544846eb33) |
 | 2026-01-05 15:39 UTC | [fix: Resolve theme toggle issue](https://github.com/fubak/daily-trending-info/commit/2ee179a84824d39775a0261ff90835208ea97af9) |
 | 2026-01-05 13:33 UTC | [fix: Correct 'NONE' badge issue and compact category layout](https://github.com/fubak/daily-trending-info/commit/f6e58f3874c8158ec933c8ad98d8b1f7a6785348) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-03 14:26 UTC | [feat: Add article HTML regeneration to update existing articles](https://github.com/fubak/daily-trending-info/commit/e0185656fee570a92fe9047c86b4557f70510988) |
 | 2026-01-03 14:03 UTC | [feat: Update articles index page with shared header/footer](https://github.com/fubak/daily-trending-info/commit/b6d4f793fafad81d0f8fd7f7513b21e02507045f) |
 | 2026-01-03 13:18 UTC | [feat: Update homepage to use shared header/footer components](https://github.com/fubak/daily-trending-info/commit/cf6bc6ef85dcced5a0ae843a099ef05ce5c3bbb2) |
-| 2026-01-03 12:53 UTC | [feat: Unify header/footer across all pages with shared components](https://github.com/fubak/daily-trending-info/commit/f2b96d048c3eae4aba0f9774061ba174aeb92b55) |
 <!-- CHANGELOG_END -->
 
 ## Features
