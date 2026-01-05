@@ -59,6 +59,10 @@
     font-weight: 600;
     margin-bottom: 0.75rem;
     line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .top-stories .story-title a {
@@ -75,6 +79,10 @@
     line-height: 1.6;
     color: var(--color-muted);
     margin-bottom: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .top-stories .story-meta {
@@ -117,10 +125,18 @@
 
 .stories-grid .story-title {
     font-size: 1.1rem; /* Slightly smaller title */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .stories-grid .story-summary {
     font-size: 0.9rem; /* Smaller description */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .stories-grid .story-meta {

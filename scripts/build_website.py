@@ -316,6 +316,23 @@ class WebsiteBuilder:
     def build(self) -> str:
         """Render the website using Jinja2 templates."""
         template = self.env.get_template('index.html')
+
+        def hex_to_rgb(value: str, fallback: str = "10, 10, 10") -> str:
+            """Convert a hex color (e.g. #0a0a0a) to an RGB string."""
+            if not value:
+                return fallback
+            hex_value = value.lstrip('#')
+            if len(hex_value) == 3:
+                hex_value = ''.join([c * 2 for c in hex_value])
+            if len(hex_value) != 6:
+                return fallback
+            try:
+                r = int(hex_value[0:2], 16)
+                g = int(hex_value[2:4], 16)
+                b = int(hex_value[4:6], 16)
+                return f"{r}, {g}, {b}"
+            except ValueError:
+                return fallback
         
         # Prepare hero background CSS
         hero_bg_css = FallbackImageGenerator.get_gradient_css()
@@ -396,6 +413,7 @@ class WebsiteBuilder:
             'hero_image_url': hero_image_url,
             'colors': {
                 'bg': d.get('color_bg', '#0a0a0a'),
+                'bg_rgb': hex_to_rgb(d.get('color_bg', '#0a0a0a')),
                 'text': d.get('color_text', '#ffffff'),
                 'accent': d.get('color_accent', '#6366f1'),
                 'accent_secondary': d.get('color_accent_secondary', '#8b5cf6'),

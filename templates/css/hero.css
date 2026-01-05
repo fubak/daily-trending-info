@@ -1,6 +1,6 @@
 /* ===== HERO SECTION ===== */
 .hero {
-    min-height: 60vh;
+    min-height: clamp(28rem, 60vh, 42rem);
     display: flex;
     flex-direction: column;
     justify-content: center;

@@ -96,6 +96,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .section {
     margin-bottom: var(--section-gap);
+    scroll-margin-top: 6rem;
 }
 
 .section-header {
@@ -176,6 +177,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ===== MODE OVERRIDES ===== */
 body.light-mode {
     --color-bg: #ffffff;
+    --color-bg-rgb: 255, 255, 255;
     --color-text: #1a1a2e;
     --color-muted: #64748b;
     --color-card-bg: #f8fafc;
@@ -186,6 +188,7 @@ body.light-mode {
 
 body.dark-mode {
     --color-bg: #0a0a0a;
+    --color-bg-rgb: 10, 10, 10;
     --color-text: #ffffff;
     --color-muted: #a1a1aa;
     --color-card-bg: #18181b;

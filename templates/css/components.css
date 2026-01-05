@@ -152,11 +152,59 @@
 /* ===== MICRO-INTERACTIONS ===== */
 /* Example: Subtle hover effect on cards */
 .story-card {
+    position: relative;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 .story-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* Story actions (save/share) */
+.story-actions {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.story-card:hover .story-actions,
+.story-card:focus-within .story-actions {
+    opacity: 1;
+}
+
+.save-btn,
+.share-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.55);
+    color: var(--color-muted);
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.save-btn:hover,
+.share-btn:hover {
+    background: var(--color-accent);
+    color: #ffffff;
+    border-color: var(--color-accent);
+}
+
+.save-btn.saved,
+.share-btn[data-shared="true"] {
+    background: var(--color-accent);
+    color: #ffffff;
+    border-color: var(--color-accent);
 }
 
 /* Example: Button hover effect */
@@ -185,6 +233,13 @@
     opacity: 1;
 }
 /* Note: 'loaded' attribute needs to be set by JS after image loads */
+
+/* Reveal card actions on touch devices where hover isn't available */
+@media (hover: none), (pointer: coarse) {
+    .story-actions {
+        opacity: 1;
+    }
+}
 
 /* ===== CROSS-BROWSER COMPATIBILITY ===== */
 /* Use modern CSS features with fallbacks where necessary */

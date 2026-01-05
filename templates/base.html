@@ -68,6 +68,7 @@
         /* CSS Variables */
         :root {
             --color-bg: {{ colors.bg }};
+            --color-bg-rgb: {{ colors.bg_rgb }};
             --color-text: {{ colors.text }};
             --color-accent: {{ colors.accent }};
             --color-accent-secondary: {{ colors.accent_secondary }};
@@ -149,26 +150,28 @@
     {% include "components/footer.html" %}
 
     <script>
-                    // Theme Toggle
-                    const toggle = document.getElementById('theme-toggle');
-                    const body = document.body;
-                    const saved = localStorage.getItem('theme');
-                    
-                    // Only override default if user has a preference saved
-                    if (saved) {
-                        if (saved === 'light') {
-                            body.classList.remove('dark-mode');
-                            body.classList.add('light-mode');
-                        } else {
-                            body.classList.remove('light-mode');
-                            body.classList.add('dark-mode');
-                        }
-                    }
-            if(toggle) {
+        (function() {
+            // Theme Toggle
+            const toggle = document.getElementById('theme-toggle');
+            const body = document.body;
+            const saved = localStorage.getItem('theme');
+
+            // Only override default if user has a preference saved
+            if (saved) {
+                if (saved === 'light') {
+                    body.classList.remove('dark-mode');
+                    body.classList.add('light-mode');
+                } else {
+                    body.classList.remove('light-mode');
+                    body.classList.add('dark-mode');
+                }
+            }
+
+            if (toggle) {
                 toggle.addEventListener('click', () => {
                     // Current state check
                     const isLight = body.classList.contains('light-mode');
-                    
+
                     if (isLight) {
                         // Switch to Dark
                         body.classList.remove('light-mode');
@@ -182,16 +185,93 @@
                     }
                 });
             }
-            
+
             // Mobile Menu
             const menuBtn = document.getElementById('mobile-menu-toggle');
             const navLinks = document.getElementById('nav-links');
-            if(menuBtn && navLinks) {
+            if (menuBtn && navLinks) {
                 menuBtn.addEventListener('click', () => {
                     navLinks.classList.toggle('active');
                     menuBtn.setAttribute('aria-expanded', navLinks.classList.contains('active'));
                 });
             }
+
+            // Save and Share actions
+            const savedKey = 'dailytrending_saved';
+            const saveButtons = document.querySelectorAll('.save-btn');
+            const shareButtons = document.querySelectorAll('.share-btn');
+
+            const getSaved = () => {
+                try {
+                    return JSON.parse(localStorage.getItem(savedKey) || '[]');
+                } catch (e) {
+                    return [];
+                }
+            };
+
+            const setSaved = (items) => {
+                localStorage.setItem(savedKey, JSON.stringify(items));
+            };
+
+            const updateSaveButton = (btn, isSaved) => {
+                btn.classList.toggle('saved', isSaved);
+                btn.setAttribute('aria-pressed', isSaved ? 'true' : 'false');
+                btn.title = isSaved ? 'Saved' : 'Save for later';
+            };
+
+            const isSavedUrl = (items, url) => items.some(item => item.url === url);
+
+            saveButtons.forEach((btn) => {
+                const url = btn.dataset.url || '';
+                const savedItems = getSaved();
+                updateSaveButton(btn, url && isSavedUrl(savedItems, url));
+
+                btn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const targetUrl = btn.dataset.url || '';
+                    if (!targetUrl) {
+                        return;
+                    }
+
+                    const items = getSaved();
+                    const index = items.findIndex(item => item.url === targetUrl);
+                    if (index >= 0) {
+                        items.splice(index, 1);
+                        updateSaveButton(btn, false);
+                    } else {
+                        items.unshift({
+                            url: targetUrl,
+                            title: btn.dataset.title || '',
+                            source: btn.dataset.source || '',
+                            savedAt: new Date().toISOString()
+                        });
+                        updateSaveButton(btn, true);
+                    }
+                    setSaved(items);
+                });
+            });
+
+            shareButtons.forEach((btn) => {
+                btn.addEventListener('click', async (event) => {
+                    event.preventDefault();
+                    const url = btn.dataset.url || window.location.href;
+                    const title = btn.dataset.title || document.title;
+
+                    try {
+                        if (navigator.share) {
+                            await navigator.share({ title, url });
+                        } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                            await navigator.clipboard.writeText(url);
+                            btn.setAttribute('data-shared', 'true');
+                            setTimeout(() => btn.removeAttribute('data-shared'), 1500);
+                        } else {
+                            window.prompt('Copy this link', url);
+                        }
+                    } catch (e) {
+                        // Ignore user-cancelled share
+                    }
+                });
+            });
         })();
     </script>
 </body>
