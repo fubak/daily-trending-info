@@ -1,3 +1,5 @@
+/* ===== COMPONENT STYLES ===== */
+
 /* ===== WORD CLOUD ===== */
 .word-cloud-section {
     margin-bottom: 4rem;
@@ -6,6 +8,7 @@
     background: var(--color-card-bg);
     border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
+    min-height: 200px;
 }
 
 .word-cloud {
@@ -29,9 +32,163 @@
     text-shadow: 0 0 10px rgba(var(--color-accent-rgb), 0.5);
 }
 
+/* Sizes correspond to frequency/importance */
 .size-1 { font-size: 0.875rem; opacity: 0.6; }
 .size-2 { font-size: 1rem; opacity: 0.7; }
 .size-3 { font-size: 1.25rem; opacity: 0.8; font-weight: 500; }
 .size-4 { font-size: 1.5rem; opacity: 0.9; font-weight: 600; }
-.size-5 { font-size: 2rem; opacity: 1; font-weight: 700; color: var(--color-text); }
+.size-5 { font-size: 2rem; opacity: 1; font-weight: 700; color: var(--color-accent); }
 .size-6 { font-size: 2.5rem; opacity: 1; font-weight: 800; color: var(--color-accent); }
+
+/* ===== FOOTER ===== */
+.footer {
+    margin-top: 4rem;
+    padding: 3rem 2rem;
+    background: var(--color-card-bg);
+    border-top: 1px solid var(--color-border);
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 3rem;
+}
+
+.footer-brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--color-text);
+    margin-bottom: 1rem;
+}
+
+.footer-description {
+    color: var(--color-muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.footer-github {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+
+.footer-github:hover {
+    color: var(--color-accent);
+}
+
+.footer-section-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.footer-links {
+    list-style: none;
+    padding: 0;
+}
+
+.footer-links li {
+    margin-bottom: 0.5rem;
+}
+
+.footer-links a {
+    color: var(--color-muted);
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+
+.footer-links a:hover {
+    color: var(--color-accent);
+}
+
+.footer-bottom {
+    max-width: 1200px;
+    margin: 2rem auto 0;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: var(--color-muted);
+}
+
+.footer-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.footer-actions a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-muted);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    transition: color 0.2s ease, background 0.2s ease;
+}
+
+.footer-actions a:hover {
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* ===== MICRO-INTERACTIONS ===== */
+/* Example: Subtle hover effect on cards */
+.story-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.story-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* Example: Button hover effect */
+.hero-cta {
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+}
+.hero-cta:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* Example: Subtle loading animation on images */
+.story-image, .featured-image {
+    transition: opacity 0.5s ease-in-out;
+}
+.story-image[loading="lazy"], .featured-image[loading="lazy"] {
+    opacity: 0; /* Start invisible */
+}
+.story-image[loading="eager"], .featured-image[loading="eager"] {
+    opacity: 0;
+}
+.story-image[loading="lazy"][loaded], .featured-image[loading="lazy"][loaded] {
+    opacity: 1;
+}
+.story-image[loading="eager"][loaded] {
+    opacity: 1;
+}
+/* Note: 'loaded' attribute needs to be set by JS after image loads */
+
+/* ===== CROSS-BROWSER COMPATIBILITY ===== */
+/* Use modern CSS features with fallbacks where necessary */
+/* Flexbox and Grid are widely supported, but consider prefixes if targeting older browsers */
+/* Ensure proper doctype and character set are declared (handled in base.html) */
+/* Use rem units for scalable typography and spacing */
+/* Test on major browsers: Chrome, Firefox, Safari, Edge */

@@ -7,30 +7,29 @@
     padding: 6rem 2rem 4rem;
     position: relative;
     overflow: hidden;
-    background-color: #0a0a0a;
+    background-color: #0a0a0a; /* Fallback */
+    background: var(--hero-bg); /* Dynamic background from design spec */
 }
 
-/* Main image layer */
-.hero::before {
+.hero::before { /* Image overlay */
     content: '';
     position: absolute;
     inset: 0;
-    background: var(--hero-bg);
+    background: var(--hero-bg); /* This might be redundant if hero bg is already set */
     opacity: 0.6;
     z-index: 0;
     transition: transform 10s ease;
 }
 
-/* Overlay */
-.hero::after {
+.hero::after { /* Text overlay for readability */
     content: '';
     position: absolute;
     inset: 0;
     background: linear-gradient(
         180deg,
-        rgba(10, 10, 26, 0.4) 0%,
-        rgba(10, 10, 26, 0.6) 50%,
-        rgba(10, 10, 26, 0.95) 100%
+        rgba(10, 10, 26, 0.7) 0%,
+        rgba(10, 10, 26, 0.4) 50%,
+        rgba(10, 10, 26, 0.6) 100%
     );
     z-index: 1;
 }
@@ -55,13 +54,18 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     margin-bottom: 1.5rem;
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.hero-eyebrow span {
+    animation: pulse 2s ease-in-out infinite;
 }
 
 .hero h1 {
     margin-bottom: 1.5rem;
-    max-width: 900px;
+    max-width: 100%;
     text-wrap: balance;
     color: white;
     text-shadow: 0 2px 10px rgba(0,0,0,0.5);
@@ -81,22 +85,35 @@
     gap: 1rem;
     margin-bottom: 2rem;
     align-items: center;
+    animation: fadeInUp 0.8s ease-out 0.25s both;
 }
 
 .hero-cta {
     display: inline-flex;
     align-items: center;
     padding: 1rem 2rem;
-    background: var(--color-accent);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
     color: white;
     font-weight: 700;
+    font-size: 1.1rem;
     border-radius: var(--radius);
-    transition: transform 0.2s, box-shadow 0.2s;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 .hero-cta:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.25);
+    border-color: white;
+}
+
+.hero-cta:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 3px;
 }
 
 .hero-capsule {
@@ -104,107 +121,406 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.25rem;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius);
-    color: white;
+    color: var(--color-text);
+    max-width: 760px;
+    backdrop-filter: blur(12px);
+    animation: fadeInUp 0.8s ease-out 0.3s both;
 }
 
 .hero-meta {
     display: flex;
+    flex-wrap: wrap;
     gap: 1.5rem;
     font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    animation: fadeInUp 0.8s ease-out 0.3s both;
 }
 
-/* ===== TICKER ===== */
-.ticker-wrap {
-    overflow: hidden;
-    background: var(--color-card-bg);
-    border-bottom: 1px solid var(--color-border);
-    position: relative;
-    height: 40px;
-}
-
-.ticker-label {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    background: var(--color-accent);
-    color: white;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 0 1.5rem;
-    display: flex;
-    align-items: center;
-    z-index: 2;
-}
-
-.ticker {
-    display: flex;
-    width: fit-content;
-    animation: ticker 60s linear infinite;
-    align-items: center;
-    height: 100%;
-    padding-left: 120px;
-}
-
-.ticker:hover {
-    animation-play-state: paused;
-}
-
-.ticker-item {
-    flex-shrink: 0;
-    padding: 0 2rem;
-    font-size: 0.9rem;
-    color: var(--color-muted);
+.hero-meta span {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    border-right: 1px solid var(--color-border);
 }
 
-.ticker-source {
-    color: var(--color-accent);
-    font-weight: 600;
-    font-size: 0.75rem;
-    text-transform: uppercase;
+/* ===== HERO STYLE VARIANTS ===== */
+
+/* CINEMATIC - Dramatic movie-poster style */
+.hero-cinematic .hero::after {
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.3) 0%,
+        rgba(0, 0, 0, 0.1) 30%,
+        rgba(0, 0, 0, 0.2) 70%,
+        rgba(0, 0, 0, 0.95) 100%
+    );
 }
 
-@keyframes ticker {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-100%); }
-}
-
-/* ===== HERO VARIANTS ===== */
-/* Cinematic */
 .hero-cinematic .hero::before {
+    opacity: 0.6;
     animation: cinematicZoom 20s infinite alternate;
+}
+
+/* GLASSMORPHISM - Frosted glass effect */
+.hero-glassmorphism .hero-content {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 3rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.hero-glassmorphism .hero::before {
+    opacity: 0.5;
+}
+
+.hero-glassmorphism .hero::after {
+    background: transparent;
+}
+
+/* NEON - Cyberpunk neon glow */
+.hero-neon .hero {
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 100%);
+}
+
+.hero-neon .hero::before {
+    opacity: 0.3;
+    mix-blend-mode: screen;
+}
+
+.hero-neon .hero-content {
+    text-shadow: 0 0 10px var(--color-accent), 0 0 20px var(--color-accent), 0 0 40px var(--color-accent);
+}
+
+.hero-neon .hero h1 {
+    animation: neonFlicker 3s infinite, fadeInUp 0.8s ease-out 0.1s both;
+}
+
+.hero-neon .hero-eyebrow {
+    box-shadow: 0 0 10px var(--color-accent), 0 0 20px var(--color-accent);
+}
+
+/* DUOTONE - Two-tone color overlay */
+.hero-duotone .hero::before {
+    opacity: 0.7;
+    filter: grayscale(100%);
+}
+
+.hero-duotone .hero::after {
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-secondary) 100%);
+    mix-blend-mode: multiply;
+    opacity: 0.6;
+}
+
+/* PARTICLES - Floating particles animation */
+.hero-particles .hero {
+    background: radial-gradient(ellipse at bottom, #1a1a3e 0%, #0a0a1a 100%);
+}
+
+.hero-particles .hero::before {
+    opacity: 0.3;
+}
+
+.hero-particles .hero .hero-particles-container {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.hero-particles .hero .particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--color-accent);
+    border-radius: 50%;
+    animation: floatParticle 15s infinite ease-in-out;
+    opacity: 0.6;
+}
+
+/* WAVES - Animated wave background */
+.hero-waves .hero::after {
+    background: transparent;
+}
+
+.hero-waves .hero .wave-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 200px;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.hero-waves .hero .wave {
+    position: absolute;
+    bottom: 0;
+    left: -50%;
+    width: 200%;
+    height: 100%;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,60 C300,120 600,0 900,60 C1200,120 1200,60 1200,60 L1200,120 L0,120 Z' fill='rgba(26,26,60,0.8)'/%3E%3C/svg%3E") repeat-x;
+    background-size: 50% 100%;
+    animation: waveMove 10s linear infinite;
+}
+
+.hero-waves .hero .wave:nth-child(2) {
+    animation-delay: -5s;
+    opacity: 0.5;
+}
+
+/* GEOMETRIC - Animated geometric shapes */
+.hero-geometric .hero {
+    background: linear-gradient(135deg, #0a0a2e 0%, #1a0a3e 50%, #0a1a2e 100%);
+}
+
+.hero-geometric .hero::before {
+    opacity: 0.25;
+}
+
+.hero-geometric .hero .geo-shapes {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.hero-geometric .hero .geo-shape {
+    position: absolute;
+    border: 2px solid var(--color-accent);
+    opacity: 0.3;
+    animation: geoFloat 20s infinite ease-in-out;
+}
+
+.hero-geometric .hero .geo-shape.circle {
+    border-radius: 50%;
+}
+
+/* SPOTLIGHT - Lens flare/spotlight effect */
+.hero-spotlight .hero::after {
+    background: radial-gradient(ellipse at 30% 20%, transparent 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.9) 100%);
+}
+
+.hero-spotlight .hero::before {
+    opacity: 0.5;
+}
+
+.hero-spotlight .hero .spotlight {
+    position: absolute;
+    top: 10%;
+    left: 20%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, var(--color-accent) 0%, transparent 70%);
+    opacity: 0.3;
+    filter: blur(40px);
+    animation: spotlightMove 15s ease-in-out infinite;
+    z-index: 1;
+}
+
+/* GLITCH - Glitch art effect */
+.hero-glitch .hero h1 {
+    animation: glitchText 3s infinite, fadeInUp 0.8s ease-out 0.1s both;
+}
+
+.hero-glitch .hero::before {
+    animation: glitchBg 5s infinite;
+    opacity: 0.5;
+}
+
+/* AURORA - Northern lights effect */
+.hero-aurora .hero {
+    background: linear-gradient(180deg, #0a0a1a 0%, #0a1a2e 100%);
+}
+
+.hero-aurora .hero::before {
+    opacity: 0.3;
+}
+
+.hero-aurora .hero .aurora {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(0, 255, 150, 0.1) 20%,
+        rgba(0, 200, 255, 0.15) 40%,
+        rgba(150, 0, 255, 0.1) 60%,
+        transparent 100%
+    );
+    animation: auroraShift 8s ease-in-out infinite;
+    filter: blur(60px);
+}
+
+/* MESH - Gradient mesh background */
+.hero-mesh .hero {
+    background:
+        radial-gradient(at 40% 20%, var(--color-accent) 0%, transparent 50%),
+        radial-gradient(at 80% 0%, var(--color-accent-secondary) 0%, transparent 50%),
+        radial-gradient(at 0% 50%, rgba(100, 0, 255, 0.5) 0%, transparent 50%),
+        radial-gradient(at 80% 50%, rgba(0, 200, 255, 0.3) 0%, transparent 50%),
+        radial-gradient(at 0% 100%, var(--color-accent) 0%, transparent 50%),
+        var(--color-bg);
+    animation: meshShift 20s ease-in-out infinite;
+}
+
+.hero-mesh .hero::before {
+    opacity: 0.2;
+}
+
+.hero-mesh .hero::after {
+    background: rgba(var(--color-bg-rgb, 10, 10, 26), 0.3);
+}
+
+/* RETRO - Synthwave/retrowave style */
+.hero-retro .hero {
+    background: linear-gradient(180deg, #0a0010 0%, #1a0030 50%, #2a0050 100%);
+}
+
+.hero-retro .hero::before {
+    opacity: 0.4;
+}
+
+.hero-retro .hero .retro-grid {
+    position: absolute;
+    bottom: 0;
+    left: -50%;
+    right: -50%;
+    height: 60%;
+    background:
+        linear-gradient(transparent 0%, transparent 49%, rgba(255, 0, 128, 0.5) 50%, transparent 51%, transparent 100%),
+        linear-gradient(90deg, transparent 0%, transparent 49%, rgba(255, 0, 128, 0.3) 50%, transparent 51%, transparent 100%);
+    background-size: 60px 60px;
+    transform: perspective(500px) rotateX(60deg);
+    transform-origin: center top;
+    animation: retroGrid 2s linear infinite;
+    z-index: 1;
+}
+
+.hero-retro .hero .retro-sun {
+    position: absolute;
+    bottom: 30%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(180deg, #ff6b00 0%, #ff0066 50%, #9900ff 100%);
+    border-radius: 50%;
+    clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);
+    z-index: 1;
+}
+
+/* Light mode adjustments for hero styles */
+body.light-mode .hero::after {
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.7) 0%,
+        rgba(255, 255, 255, 0.3) 40%,
+        rgba(255, 255, 255, 0.4) 60%,
+        rgba(255, 255, 255, 0.95) 100%
+    );
+}
+
+body.light-mode .hero-glassmorphism .hero-content {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .hero-neon .hero {
+    background: linear-gradient(135deg, #f0f0ff 0%, #e0e0ff 100%);
+}
+
+body.light-mode .hero-neon .hero-content {
+    text-shadow: none;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 @keyframes cinematicZoom {
     0% { transform: scale(1); }
     100% { transform: scale(1.1); }
 }
-
-/* Glassmorphism */
-.hero-glassmorphism .hero-content {
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.1);
-    padding: 3rem;
-    border-radius: var(--radius-lg);
+@keyframes floatParticle {
+    0% { transform: translateY(0); opacity: 0.6; }
+    50% { transform: translateY(-40px); opacity: 0.4; }
+    100% { transform: translateY(0); opacity: 0.6; }
+}
+@keyframes waveMove {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-150px); }
+}
+@keyframes geoFloat {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    50% { transform: translate(20px, -20px) rotate(10deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes spotlightMove {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    50% { transform: translate(80px, -50px) rotate(15deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes glitchText {
+    0% { text-shadow: -2px -2px 0 #ff00c1, 2px 2px 0 #00fff9; transform: translate(0); }
+    2% { text-shadow: -3px -3px 0 #ff00c1, 3px 3px 0 #00fff9; transform: translate(-3px, -3px); }
+    4% { text-shadow: 3px 3px 0 #ff00c1, -3px -3px 0 #00fff9; transform: translate(3px, 3px); }
+    6% { text-shadow: -2px -2px 0 #ff00c1, 2px 2px 0 #00fff9; transform: translate(0); }
+    8% { text-shadow: -4px -4px 0 #ff00c1, 4px 4px 0 #00fff9; transform: translate(-4px, -4px); }
+    10% { text-shadow: 4px 4px 0 #ff00c1, -4px -4px 0 #00fff9; transform: translate(4px, 4px); }
+    12% { text-shadow: -2px -2px 0 #ff00c1, 2px 2px 0 #00fff9; transform: translate(0); }
+    14% { text-shadow: -5px -5px 0 #ff00c1, 5px 5px 0 #00fff9; transform: translate(-5px, -5px); }
+    16% { text-shadow: 5px 5px 0 #ff00c1, -5px -5px 0 #00fff9; transform: translate(5px, 5px); }
+    18% { text-shadow: -3px -3px 0 #ff00c1, 3px 3px 0 #00fff9; transform: translate(-3px, -3px); }
+    20% { text-shadow: 3px 3px 0 #ff00c1, -3px -3px 0 #00fff9; transform: translate(3px, 3px); }
+    22% { text-shadow: -2px -2px 0 #ff00c1, 2px 2px 0 #00fff9; transform: translate(0); }
+    100% { text-shadow: -2px -2px 0 #ff00c1, 2px 2px 0 #00fff9; transform: translate(0); }
+}
+@keyframes glitchBg {
+    0% { background-position: 0; }
+    10% { background-position: -5px 0; }
+    20% { background-position: 0; }
+    30% { background-position: 5px 0; }
+    40% { background-position: 0; }
+    50% { background-position: -3px 0; }
+    60% { background-position: 0; }
+    70% { background-position: 3px 0; }
+    80% { background-position: 0; }
+    90% { background-position: -2px 0; }
+    100% { background-position: 0; }
 }
 
-/* Minimal */
-.hero-minimal .hero {
-    min-height: 40vh;
-    text-align: center;
+/* Light mode adjustments for hero styles */
+body.light-mode .hero::after {
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.7) 0%,
+        rgba(255, 255, 255, 0.3) 40%,
+        rgba(255, 255, 255, 0.4) 60%,
+        rgba(255, 255, 255, 0.95) 100%
+    );
 }
-.hero-minimal .hero-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+
+body.light-mode .hero-glassmorphism .hero-content {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .hero-neon .hero {
+    background: linear-gradient(135deg, #f0f0ff 0%, #e0e0ff 100%);
+}
+
+body.light-mode .hero-neon .hero-content {
+    text-shadow: none;
 }

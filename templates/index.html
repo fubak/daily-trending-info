@@ -38,7 +38,10 @@
     <div class="ticker">
         {% for trend in trends[:15] %}
         <div class="ticker-item">
-            <span class="ticker-source">{{ trend.source | replace('_', ' ') | title }}</span>
+            {# Display derived category or source part as badge #}
+            {% set source_display = story.source | replace('_', ' ') | title %}
+            {% set category_badge_class = story.source.split('_')[0] if '_' in story.source else story.source %}
+            <span class="ticker-source">{{ source_display }}</span>
             <strong><a href="{{ trend.url }}" target="_blank" rel="noopener">{{ trend.title }}</a></strong>
         </div>
         {% endfor %}
@@ -71,7 +74,7 @@
                     {% if story.image_url and loop.first %}
                     <figure class="story-media">
                         <img src="{{ story.image_url }}" 
-                             alt="" 
+                             alt="{{ story.title }}" 
                              class="story-image" 
                              loading="eager" 
                              width="800" 
@@ -81,7 +84,11 @@
                     
                     <div class="story-content">
                         <header>
-                            <span class="source-badge {{ story.category | lower }}">{{ story.category }}</span>
+                            {# Use derived category or source part for badge class and display #}
+                            {% set category_display = story.category if story.category else story.source | replace('_', ' ') | title %}
+                            {% set category_class = category_display | lower | replace(' ', '-') %}
+                            <span class="source-badge {{ category_class }}">{{ category_display }}</span>
+                            
                             <h3 class="story-title">
                                 <a href="{{ story.url }}" target="_blank" rel="noopener">{{ story.title }}</a>
                             </h3>
@@ -114,6 +121,17 @@
             {% for story in stories[:4] %}
             <article class="story-card">
                 <div class="story-wrapper">
+                    {# Add image for category cards too if available and not featured already #}
+                    {% if story.image_url and not loop.first %} {# Avoid duplicate images if first story in section is also top story #}
+                    <figure class="story-media">
+                        <img src="{{ story.image_url }}" 
+                             alt="{{ story.title }}" 
+                             class="story-image" 
+                             loading="lazy" 
+                             width="400" 
+                             height="225">
+                    </figure>
+                    {% endif %}
                     <div class="story-content">
                         <h3 class="story-title" style="font-size: 1.1rem;">
                             <a href="{{ story.url }}" target="_blank" rel="noopener">{{ story.title }}</a>
