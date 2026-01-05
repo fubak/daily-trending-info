@@ -165,11 +165,18 @@
 
             if(toggle) {
                 toggle.addEventListener('click', () => {
-                    if (body.classList.contains('light-mode')) {
-                        body.classList.replace('light-mode', 'dark-mode');
+                    // Current state check
+                    const isLight = body.classList.contains('light-mode');
+                    
+                    if (isLight) {
+                        // Switch to Dark
+                        body.classList.remove('light-mode');
+                        body.classList.add('dark-mode');
                         localStorage.setItem('theme', 'dark');
                     } else {
-                        body.classList.replace('dark-mode', 'light-mode');
+                        // Switch to Light
+                        body.classList.remove('dark-mode');
+                        body.classList.add('light-mode');
                         localStorage.setItem('theme', 'light');
                     }
                 });
