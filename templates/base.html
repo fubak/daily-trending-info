@@ -328,5 +328,35 @@
             });
         })();
     </script>
+    <script>
+        (function () {
+            const markBroken = (img) => {
+                const media = img.closest('.story-media');
+                if (!media) return;
+                media.classList.add('image-broken');
+                if (img.parentElement) {
+                    img.parentElement.classList.add('has-broken-image');
+                }
+                img.remove();
+            };
+
+            const bindErrors = () => {
+                document.querySelectorAll('.story-image').forEach((img) => {
+                    if (img.dataset.boundError) return;
+                    img.dataset.boundError = 'true';
+                    img.addEventListener('error', () => markBroken(img));
+                    if (img.complete && img.naturalWidth === 0) {
+                        markBroken(img);
+                    }
+                });
+            };
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', bindErrors);
+            } else {
+                bindErrors();
+            }
+        })();
+    </script>
 </body>
 </html>

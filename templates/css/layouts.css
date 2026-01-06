@@ -1,13 +1,40 @@
 /* ===== LAYOUTS ===== */
 
 /* Top Stories Grid - Responsive Columns */
-.top-stories {
-    display: grid;
-    grid-template-columns: var(--top-stories-columns);
-    gap: var(--card-gap);
-    grid-auto-flow: dense;
-    margin-bottom: 3rem;
-    align-items: stretch;
+body.layout-split .top-stories {
+    margin-top: 0;
+}
+
+.story-media {
+    width: 100%;
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+    background: color-mix(in srgb, rgba(12, 16, 24, 0.95), rgba(34, 45, 63, 0.9));
+    background-image: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.18), transparent 40%),
+                      radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.08), transparent 55%);
+    background-size: cover;
+    background-position: center;
+    min-height: clamp(160px, 18vw, 230px);
+}
+
+.story-media.image-broken {
+    animation: placeholderPulse 0.4s ease forwards;
+}
+
+.story-media.image-broken::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, rgba(255, 255, 255, 0.08), transparent);
+}
+
+.story-media::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.25));
+    pointer-events: none;
 }
 
 .top-stories article.story-card {
@@ -22,6 +49,10 @@
     flex-direction: column;
     height: 100%;
     gap: 1rem;
+}
+
+.top-stories .story-media {
+    min-height: clamp(170px, 18vw, 240px);
 }
 
 .top-stories .story-image {
@@ -136,7 +167,7 @@ body.view-list .top-stories article.story-card.featured {
 }
 
 .stories-grid article.story-card {
-    min-height: var(--card-min-height);
+    min-height: 0;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -153,6 +184,10 @@ body.view-list .top-stories article.story-card.featured {
     object-fit: cover;
     object-position: center;
     background-color: var(--color-border);
+}
+
+.stories-grid .story-media {
+    min-height: clamp(140px, 22vw, 180px);
 }
 
 .stories-grid .story-image.placeholder {
