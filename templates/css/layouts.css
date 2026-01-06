@@ -33,8 +33,9 @@
 }
 
 .top-stories .story-image.placeholder {
-    background-color: var(--color-border);
-    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20800%20450%27%3E%0A%3Cdefs%3E%0A%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%0A%3Cstop%20offset%3D%270%25%27%20stop-color%3D%27%231b2331%27%2F%3E%0A%3Cstop%20offset%3D%27100%25%27%20stop-color%3D%27%230f141d%27%2F%3E%0A%3C%2FlinearGradient%3E%0A%3CradialGradient%20id%3D%27glow%27%20cx%3D%270.7%27%20cy%3D%270.3%27%20r%3D%270.7%27%3E%0A%3Cstop%20offset%3D%270%25%27%20stop-color%3D%27%232f3747%27%20stop-opacity%3D%270.7%27%2F%3E%0A%3Cstop%20offset%3D%27100%25%27%20stop-color%3D%27%230f141d%27%20stop-opacity%3D%270%27%2F%3E%0A%3C%2FradialGradient%3E%0A%3C%2Fdefs%3E%0A%3Crect%20width%3D%27800%27%20height%3D%27450%27%20fill%3D%27url%28%23g%29%27%2F%3E%0A%3Crect%20width%3D%27800%27%20height%3D%27450%27%20fill%3D%27url%28%23glow%29%27%2F%3E%0A%3Cpath%20d%3D%27M170%20255c120-90%20270-110%20420-65%2025%208%2034%2037%2018%2058-48%2062-156%20117-298%20121-82%202-150-17-199-54-16-12-16-36%202-60z%27%20fill%3D%27%23f6d45a%27%2F%3E%0A%3Cpath%20d%3D%27M200%20255c110-70%20240-90%20360-52%2020%207%2028%2029%2014%2046-40%2049-132%2091-250%2094-74%202-135-13-178-43-13-9-12-28%204-45z%27%20fill%3D%27%23f1c642%27%2F%3E%0A%3Cpath%20d%3D%27M160%20258c6-10%2018-16%2030-14%2012%202%2023%2010%2026%2022l7%2029-18%206-17-27-28-7z%27%20fill%3D%27%23d29f2e%27%20opacity%3D%270.8%27%2F%3E%0A%3Cpath%20d%3D%27M606%20217c10%204%2019%2012%2023%2023l7%2027-18%206-16-24-25-6z%27%20fill%3D%27%23d29f2e%27%20opacity%3D%270.7%27%2F%3E%0A%3Ctext%20x%3D%2740%27%20y%3D%27410%27%20font-family%3D%27ui-monospace%2C%20SFMono-Regular%2C%20Menlo%2C%20monospace%27%20font-size%3D%2718%27%20fill%3D%27%237c8698%27%3ENo%20image%20available%3C%2Ftext%3E%0A%3C%2Fsvg%3E");
+    background: color-mix(in srgb, rgba(15,23,33,0.95), rgba(40,52,71,0.85));
+    background-image: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.18), transparent 45%),
+                      radial-gradient(circle at 70% 75%, rgba(255,255,255,0.08), transparent 40%);
     background-size: cover;
     background-position: center;
 }
@@ -155,8 +156,9 @@ body.view-list .top-stories article.story-card.featured {
 }
 
 .stories-grid .story-image.placeholder {
-    background-color: var(--color-border);
-    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20640%20360%22%20preserveAspectRatio%3D%22xMidYMid%20slice%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%231b2331%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230b0f17%22/%3E%3C/linearGradient%3E%3CradialGradient%20id%3D%22halo%22%20cx%3D%220.35%22%20cy%3D%220.3%22%20r%3D%220.65%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23ffe066%22%20stop-opacity%3D%220.9%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23ffb347%22%20stop-opacity%3D%220%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect%20width%3D%22640%22%20height%3D%22360%22%20fill%3D%22url(%23bg)%22/%3E%3Crect%20width%3D%22640%22%20height%3D%22360%22%20fill%3D%22url(%23halo)%22%20opacity%3D%220.85%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2245%25%22%20text-anchor%3D%22middle%22%20font-family%3D%22ui-monospace%2C%20Menlo%2C%20monospace%22%20font-size%3D%2252%22%20fill%3D%22%23ffc107%22%20letter-spacing%3D%220.14em%22%3Enano%20banana%3C/text%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2260%25%22%20text-anchor%3D%22middle%22%20font-family%3D%22ui-monospace%2C%20Menlo%2C%20monospace%22%20font-size%3D%2220%22%20fill%3D%22%23cfd8dc%22%20letter-spacing%3D%220.25em%22%3EIMAGE%20PENDING%3C/text%3E%3C/svg%3E");
+    background: color-mix(in srgb, rgba(15,23,33,0.9), rgba(34,45,62,0.8));
+    background-image: radial-gradient(circle at 25% 25%, rgba(255,255,255,0.16), transparent 50%),
+                      radial-gradient(circle at 70% 70%, rgba(255,255,255,0.08), transparent 55%);
     background-size: cover;
     background-position: center;
 }
@@ -491,11 +493,13 @@ body.layout-stacked .top-stories article.story-card {
 }
 
 .top-stories .story-image.placeholder {
-    background-color: var(--color-border);
-    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20640%20360%22%20preserveAspectRatio%3D%22xMidYMid%20slice%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%231b2331%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230b0f17%22/%3E%3C/linearGradient%3E%3CradialGradient%20id%3D%22halo%22%20cx%3D%220.35%22%20cy%3D%220.3%22%20r%3D%220.65%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23ffe066%22%20stop-opacity%3D%220.9%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23ffb347%22%20stop-opacity%3D%220%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect%20width%3D%22640%22%20height%3D%22360%22%20fill%3D%22url(%23bg)%22/%3E%3Crect%20width%3D%22640%22%20height%3D%22360%22%20fill%3D%22url(%23halo)%22%20opacity%3D%220.85%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2245%25%22%20text-anchor%3D%22middle%22%20font-family%3D%22ui-monospace%2C%20Menlo%2C%20monospace%22%20font-size%3D%2252%22%20fill%3D%22%23ffc107%22%20letter-spacing%3D%220.14em%22%3Enano%20banana%3C/text%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2260%25%22%20text-anchor%3D%22middle%22%20font-family%3D%22ui-monospace%2C%20Menlo%2C%20monospace%22%20font-size%3D%2220%22%20fill%3D%22%23cfd8dc%22%20letter-spacing%3D%220.25em%22%3EIMAGE%20PENDING%3C/text%3E%3C/svg%3E");
+    background: color-mix(in srgb, rgba(15,23,33,0.95), rgba(40,52,71,0.85));
+    background-image: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.18), transparent 45%),
+                      radial-gradient(circle at 70% 75%, rgba(255,255,255,0.08), transparent 40%);
     background-size: cover;
     background-position: center;
 }
+
 
 .top-stories .story-content {
     padding: var(--card-padding);
