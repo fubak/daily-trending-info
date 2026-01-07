@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-07 00:52 UTC | [Align category grids to square layouts](https://github.com/fubak/daily-trending-info/commit/d51f91ad465be855616e6f1b81d1283a4e3d7533) |
 | 2026-01-06 22:19 UTC | [Improve story cards and placeholder image](https://github.com/fubak/daily-trending-info/commit/c0b261a0c879a55c75c8df20e96068bb9ba7f954) |
 | 2026-01-06 22:06 UTC | [Add fallback placeholder gradients](https://github.com/fubak/daily-trending-info/commit/d0c0387a80dd0f8d7d78ef657619b601e0d9cee4) |
 | 2026-01-06 21:39 UTC | [Refresh story placeholders](https://github.com/fubak/daily-trending-info/commit/5cbbe2eaad3d4c4e058771a888d6779c9cb0de2e) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-05 22:39 UTC | [Fix layout clipping and add story actions](https://github.com/fubak/daily-trending-info/commit/7e5185541a62943acb33c1beec943ac6dd4cc85c) |
 | 2026-01-05 19:07 UTC | [fix: Resolve theme initialization and layout overflow](https://github.com/fubak/daily-trending-info/commit/b6c542008f57adb5ca9f249997a08bace942a643) |
 | 2026-01-05 19:00 UTC | [fix: Resolve AttributeError for layout and hero_style in WebsiteBuilder init](https://github.com/fubak/daily-trending-info/commit/de47205574fafcb6b2c24cb836a62ac4eaa77f29) |
-| 2026-01-05 18:50 UTC | [fix: Resolve dark/light mode persistence and variable conflicts](https://github.com/fubak/daily-trending-info/commit/4cea27094171412dd2354c1cc93e590d02477dc8) |
 <!-- CHANGELOG_END -->
 
 ## Features
