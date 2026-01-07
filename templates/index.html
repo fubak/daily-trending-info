@@ -96,17 +96,14 @@
                 </div>
                 <div class="story-wrapper">
                     <figure class="story-media">
-                        {% if story.image_url %}
-                        <img src="{{ story.image_url }}" 
-                             alt="{{ story.title }}" 
-                             class="story-image" 
-                             loading="eager" 
+                        {% set img_src = story.image_url or placeholder_image_url %}
+                        <img src="{{ img_src }}"
+                             alt="{{ story.title if story.image_url else 'Placeholder image' }}"
+                             class="story-image{% if not story.image_url %} placeholder{% endif %}"
+                             loading="eager"
                              referrerpolicy="no-referrer"
-                             width="800" 
+                             width="800"
                              height="450">
-                        {% else %}
-                        <div class="story-image placeholder" role="presentation" aria-hidden="true" data-placeholder="true"></div>
-                        {% endif %}
                     </figure>
                     
                     <div class="story-content">
@@ -146,9 +143,8 @@
         </div>
         <div class="stories-grid" style="--category-columns: {{ category.columns }}">
             {% set category_stories = category.stories %}
-            {% set has_images = category_stories | selectattr('image_url') | list | length > 0 %}
             {% for story in category_stories %}
-                <article class="story-card no-summary">
+            <article class="story-card no-summary">
                 <div class="story-actions">
                     <button class="save-btn" type="button" data-url="{{ story.url }}" data-title="{{ story.title }}" data-source="{{ story.source | replace('_', ' ') | title }}" aria-label="Save story" aria-pressed="false" title="Save for later">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
@@ -158,21 +154,16 @@
                     </button>
                 </div>
                 <div class="story-wrapper">
-                    {% if has_images %}
                     <figure class="story-media">
-                        {% if story.image_url %}
-                        <img src="{{ story.image_url }}" 
-                             alt="{{ story.title }}" 
-                             class="story-image" 
-                             loading="lazy" 
+                        {% set img_src = story.image_url or placeholder_image_url %}
+                        <img src="{{ img_src }}"
+                             alt="{{ story.title if story.image_url else 'Placeholder image' }}"
+                             class="story-image{% if not story.image_url %} placeholder{% endif %}"
+                             loading="lazy"
                              referrerpolicy="no-referrer"
-                             width="400" 
+                             width="400"
                              height="225">
-                        {% else %}
-                        <div class="story-image placeholder" role="presentation" aria-hidden="true" data-placeholder="true"></div>
-                        {% endif %}
                     </figure>
-                    {% endif %}
                     <div class="story-content">
                         <h3 class="story-title" style="font-size: 1.1rem;">
                             <a href="{{ story.url }}" target="_blank" rel="noopener">{{ story.title }}</a>
