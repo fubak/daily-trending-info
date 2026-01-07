@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-07 12:32 UTC | [Fix Top Stories layout: 4-column grid with 2x2 featured card](https://github.com/fubak/daily-trending-info/commit/a3655b7d0bb71990e21aea8cf09deefb4d52f0be) |
 | 2026-01-07 12:15 UTC | [Redesign Top Stories section with compact multi-column grid layout](https://github.com/fubak/daily-trending-info/commit/83dcc6200478fb88fbbb29878d79d4a1640b451f) |
 | 2026-01-07 11:58 UTC | [Expand OG image scraping from top 5 to top 20 stories](https://github.com/fubak/daily-trending-info/commit/998fb370eead3c6cc74a1883e4455365ec4fcbe9) |
 | 2026-01-07 11:57 UTC | [Redesign top stories section with compact horizontal layout](https://github.com/fubak/daily-trending-info/commit/b9ecd628a8ae5edcb251717b9f6de86cbe15c918) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-06 22:19 UTC | [Improve story cards and placeholder image](https://github.com/fubak/daily-trending-info/commit/c0b261a0c879a55c75c8df20e96068bb9ba7f954) |
 | 2026-01-06 22:06 UTC | [Add fallback placeholder gradients](https://github.com/fubak/daily-trending-info/commit/d0c0387a80dd0f8d7d78ef657619b601e0d9cee4) |
 | 2026-01-06 21:39 UTC | [Refresh story placeholders](https://github.com/fubak/daily-trending-info/commit/5cbbe2eaad3d4c4e058771a888d6779c9cb0de2e) |
-| 2026-01-06 21:22 UTC | [Adjust story cards and placeholders](https://github.com/fubak/daily-trending-info/commit/ecb6ed2ea8ed36e0f696b02167242b6a8137e281) |
 <!-- CHANGELOG_END -->
 
 ## Features
