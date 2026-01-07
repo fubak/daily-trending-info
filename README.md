@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-07 11:58 UTC | [Expand OG image scraping from top 5 to top 20 stories](https://github.com/fubak/daily-trending-info/commit/998fb370eead3c6cc74a1883e4455365ec4fcbe9) |
 | 2026-01-07 11:57 UTC | [Redesign top stories section with compact horizontal layout](https://github.com/fubak/daily-trending-info/commit/b9ecd628a8ae5edcb251717b9f6de86cbe15c918) |
 | 2026-01-07 11:45 UTC | [Fix critical image loading bug - add load event handler](https://github.com/fubak/daily-trending-info/commit/9e0f57732d12997a705adcb121e49a6e3351065a) |
 | 2026-01-07 00:59 UTC | [Always show placeholder images in cards](https://github.com/fubak/daily-trending-info/commit/18c24801032bb7c74d75a5721a3639908bb24935) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-06 21:39 UTC | [Refresh story placeholders](https://github.com/fubak/daily-trending-info/commit/5cbbe2eaad3d4c4e058771a888d6779c9cb0de2e) |
 | 2026-01-06 21:22 UTC | [Adjust story cards and placeholders](https://github.com/fubak/daily-trending-info/commit/ecb6ed2ea8ed36e0f696b02167242b6a8137e281) |
 | 2026-01-06 15:42 UTC | [Update story card summaries and image focus](https://github.com/fubak/daily-trending-info/commit/0a3b4fb5abd5e3a468061d142379c7de8d8e77a4) |
-| 2026-01-06 01:56 UTC | [Improve layout density and adjust Matrix colors](https://github.com/fubak/daily-trending-info/commit/2b227b03c71db14b178c6dc766dd0d6cd782574e) |
 <!-- CHANGELOG_END -->
 
 ## Features
