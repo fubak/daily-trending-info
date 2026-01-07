@@ -277,21 +277,35 @@ class WebsiteBuilder:
         """
         Select top stories using the 'Diversity Mix' algorithm.
         Ensures representation from World, Tech, and Finance.
+        Enforces source diversity: max 2 stories per source.
         """
         selected_urls = set()
         top_stories = []
-        
+        source_counts = defaultdict(int)  # Track stories per source
+        MAX_PER_SOURCE = 2
+
+        def can_add_story(story: Dict) -> bool:
+            """Check if story can be added based on source diversity limits."""
+            source = story.get('source', 'unknown')
+            return source_counts[source] < MAX_PER_SOURCE
+
+        def add_story(story: Dict) -> None:
+            """Add story and update tracking."""
+            selected_urls.add(story.get('url'))
+            source_counts[story.get('source', 'unknown')] += 1
+            top_stories.append(story)
+
         # Helper to find best available story from a category
         def get_best_from_category(category_names: List[str]) -> Optional[Dict]:
             candidates = []
             for cat in category_names:
                 candidates.extend(self.grouped_trends.get(cat, []))
-            
+
             # Sort by score
             candidates.sort(key=lambda x: x.get('score', 0), reverse=True)
-            
+
             for story in candidates:
-                if story.get('url') not in selected_urls:
+                if story.get('url') not in selected_urls and can_add_story(story):
                     return story
             return None
 
@@ -303,35 +317,31 @@ class WebsiteBuilder:
                 hero_img_url = self._hero_image.get('url_large') or self._hero_image.get('url_medium') or self._hero_image.get('url_original')
                 if hero_img_url:
                     hero['image_url'] = hero_img_url
-            selected_urls.add(hero.get('url'))
-            top_stories.append(hero)
+            add_story(hero)
 
         # Slot 2: World News
         world = get_best_from_category(['World News', 'Politics', 'Current Events'])
         if world:
-            selected_urls.add(world.get('url'))
-            top_stories.append(world)
+            add_story(world)
 
         # Slot 3: Technology
         tech = get_best_from_category(['Technology', 'Hacker News', 'Science'])
         if tech:
-            selected_urls.add(tech.get('url'))
-            top_stories.append(tech)
+            add_story(tech)
 
         # Slot 4: Finance/Business
         finance = get_best_from_category(['Finance', 'Business'])
         if finance:
-            selected_urls.add(finance.get('url'))
-            top_stories.append(finance)
+            add_story(finance)
 
-        # Fill remaining slots (up to 8 total) with highest scoring remaining stories
-        remaining_slots = 8 - len(top_stories)
+        # Fill remaining slots (up to 9 total) with highest scoring remaining stories
+        # while respecting source diversity
+        remaining_slots = 9 - len(top_stories)
         if remaining_slots > 0:
             for story in self.ctx.trends:
-                if story.get('url') not in selected_urls:
-                    selected_urls.add(story.get('url'))
-                    top_stories.append(story)
-                    if len(top_stories) >= 8:
+                if story.get('url') not in selected_urls and can_add_story(story):
+                    add_story(story)
+                    if len(top_stories) >= 9:
                         break
 
         for story in top_stories:
