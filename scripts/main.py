@@ -726,6 +726,22 @@ class Pipeline:
                 'source_prefixes': ['finance_'],
                 'hero_keywords': ['finance', 'business', 'money', 'stock', 'market', 'office', 'corporate', 'economy', 'trading'],
                 'image_index': 4
+            },
+            {
+                'slug': 'business',
+                'title': 'Business',
+                'description': 'Latest business news, entrepreneurship, and corporate trends',
+                'source_prefixes': ['finance_', 'business'],
+                'hero_keywords': ['business', 'entrepreneur', 'startup', 'corporate', 'office', 'meeting', 'professional', 'commerce', 'trade'],
+                'image_index': 5
+            },
+            {
+                'slug': 'sports',
+                'title': 'Sports',
+                'description': 'Latest sports news, scores, and athletic highlights',
+                'source_prefixes': ['sports_'],
+                'hero_keywords': ['sports', 'athlete', 'game', 'stadium', 'competition', 'fitness', 'team', 'basketball', 'football'],
+                'image_index': 6
             }
         ]
 
@@ -922,25 +938,46 @@ class Pipeline:
         featured_source = html_module.escape((featured_story.get('source') or '').replace('_', ' ').title())
         featured_desc = html_module.escape((featured_story.get('summary') or featured_story.get('description') or '')[:200])
 
+        # Placeholder image URL (gradient fallback from homepage)
+        placeholder_url = '/assets/nano-banana.png'
+
         # Build story cards with enhanced design (skip first since it's in hero)
         cards = []
         for i, t in enumerate(trends[1:20]):  # Start from index 1, skip featured
             title = html_module.escape((t.get('title') or '')[:100])
             url = html_module.escape(t.get('url') or '#')
             source = html_module.escape((t.get('source') or '').replace('_', ' ').title())
-            image_url = html_module.escape(t.get('image_url') or '')
-            image_block = ""
+            image_url = t.get('image_url') or ''
+
+            # Always show an image - use placeholder if no image available
             if image_url:
-                image_block = f'''
-                <figure class="story-media">
-                    <img src="{image_url}" alt="{title}" class="story-image" loading="lazy" width="640" height="360">
-                </figure>'''
+                img_src = html_module.escape(image_url)
+                img_class = "story-image"
+                img_alt = title
+            else:
+                img_src = placeholder_url
+                img_class = "story-image placeholder"
+                img_alt = "Placeholder image"
 
             cards.append(f'''
             <article class="story-card">
-                {image_block}
-                <span class="source-badge">{source}</span>
-                <h3><a href="{url}" target="_blank" rel="noopener">{title}</a></h3>
+                <div class="story-wrapper">
+                    <figure class="story-media">
+                        <img src="{img_src}"
+                             alt="{img_alt}"
+                             class="{img_class}"
+                             loading="lazy"
+                             referrerpolicy="no-referrer"
+                             width="640"
+                             height="360">
+                    </figure>
+                    <div class="story-content">
+                        <span class="source-badge">{source}</span>
+                        <h3 class="story-title">
+                            <a href="{url}" target="_blank" rel="noopener">{title}</a>
+                        </h3>
+                    </div>
+                </div>
             </article>''')
 
         return f'''<!DOCTYPE html>
@@ -1159,15 +1196,17 @@ class Pipeline:
 
         .stories-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.25rem;
         }}
 
         .story-card {{
             background: var(--color-card-bg);
             border: 1px solid var(--color-border);
             border-radius: var(--radius);
-            padding: var(--card-padding);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
             transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
         }}
 
@@ -1177,71 +1216,106 @@ class Pipeline:
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
         }}
 
-        .story-card.featured {{
-            grid-column: 1 / -1;
-            background: var(--color-card-bg);
-            border-color: var(--color-accent);
+        .story-wrapper {{
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
         }}
 
         .story-media {{
-            margin-bottom: 0.9rem;
+            width: 100%;
+            flex-shrink: 0;
+            border-radius: 0;
+            overflow: hidden;
+            position: relative;
+            background: color-mix(in srgb, rgba(12, 16, 24, 0.95), rgba(34, 45, 63, 0.9));
+            background-image: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.18), transparent 40%),
+                              radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.08), transparent 55%);
+            min-height: 180px;
+        }}
+
+        .story-media::before {{
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.25));
+            pointer-events: none;
         }}
 
         .story-image {{
             width: 100%;
-            aspect-ratio: 16 / 9;
+            height: 180px;
+            min-height: 180px;
             object-fit: cover;
             object-position: center;
-            border-radius: calc(var(--radius) - 2px);
-            background: var(--color-border);
+            background-color: var(--color-border);
+        }}
+
+        .story-image.placeholder {{
+            opacity: 0.92;
+        }}
+
+        .story-content {{
+            padding: 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }}
 
         .source-badge {{
             display: inline-block;
-            background: var(--color-accent);
-            color: #000;
-            padding: 0.25rem 0.75rem;
-            border-radius: 999px;
             font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 0.75rem;
+            color: var(--color-accent);
+            margin-bottom: 0.4rem;
         }}
 
-        .story-card h3 {{
-            font-size: 1.15rem;
+        .story-title {{
+            font-size: 0.95rem;
             font-weight: 600;
             margin-bottom: 0.5rem;
             line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }}
 
-        .story-card.featured h3 {{
-            font-size: 1.5rem;
-        }}
-
-        .story-card h3 a {{
+        .story-title a {{
             color: var(--color-text);
             text-decoration: none;
-            transition: color var(--transition);
+            background: linear-gradient(to right, var(--color-accent), var(--color-accent)) 0 100% / 0 2px no-repeat;
+            transition: background-size 0.3s;
         }}
 
-        .story-card h3 a:hover {{
-            color: var(--color-accent);
+        .story-title a:hover {{
+            background-size: 100% 2px;
         }}
 
         .story-desc {{
             color: var(--color-muted);
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             line-height: 1.5;
+            margin-bottom: 0.75rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }}
 
         {get_footer_styles()}
 
-        /* Mobile responsive */
-        @media (max-width: 768px) {{
+        /* Responsive - Mobile (1 column) */
+        @media (max-width: 640px) {{
+            .stories-grid {{
+                grid-template-columns: 1fr;
+            }}
+
             .topic-hero {{
-                min-height: 400px;
+                min-height: 350px;
             }}
 
             .hero-content {{
@@ -1266,12 +1340,26 @@ class Pipeline:
                 padding: 2rem 1rem;
             }}
 
-            .stories-grid {{
-                grid-template-columns: 1fr;
-            }}
-
             .story-card.featured {{
                 grid-column: 1;
+            }}
+        }}
+
+        /* Responsive - Tablet (2 columns) */
+        @media (min-width: 641px) and (max-width: 1024px) {{
+            .stories-grid {{
+                grid-template-columns: repeat(2, 1fr);
+            }}
+
+            .topic-hero {{
+                min-height: 400px;
+            }}
+        }}
+
+        /* Responsive - Small Desktop (3 columns) */
+        @media (min-width: 1025px) and (max-width: 1280px) {{
+            .stories-grid {{
+                grid-template-columns: repeat(3, 1fr);
             }}
         }}
     </style>
@@ -1311,6 +1399,50 @@ class Pipeline:
     </main>
 
     {build_footer(date_str)}
+
+    <script>
+        (function () {{
+            const placeholderImage = "{placeholder_url}";
+            const markBroken = (img) => {{
+                if (!placeholderImage) return;
+                if (img.dataset.fallbackApplied) return;
+                img.dataset.fallbackApplied = 'true';
+                img.src = placeholderImage;
+                img.classList.add('placeholder');
+                img.title = 'Fallback image';
+            }};
+
+            const bindErrors = () => {{
+                document.querySelectorAll('.story-image').forEach((img) => {{
+                    if (img.dataset.boundError) return;
+                    img.dataset.boundError = 'true';
+
+                    // Handle successful image load
+                    img.addEventListener('load', () => {{
+                        img.setAttribute('loaded', '');
+                    }});
+
+                    // Handle image error
+                    img.addEventListener('error', () => markBroken(img));
+
+                    // Handle already-loaded images
+                    if (img.complete) {{
+                        if (img.naturalWidth === 0) {{
+                            markBroken(img);
+                        }} else {{
+                            img.setAttribute('loaded', '');
+                        }}
+                    }}
+                }});
+            }};
+
+            if (document.readyState === 'loading') {{
+                document.addEventListener('DOMContentLoaded', bindErrors);
+            }} else {{
+                bindErrors();
+            }}
+        }})();
+    </script>
 
     {get_theme_script()}
 </body>
@@ -1987,7 +2119,7 @@ class Pipeline:
                     pass
 
         # Get topic page URLs (matching topic_configs in _step_generate_topic_pages)
-        topic_urls = ['/tech/', '/world/', '/science/', '/politics/', '/finance/', '/media/']
+        topic_urls = ['/tech/', '/world/', '/science/', '/politics/', '/finance/', '/business/', '/sports/']
 
         # Generate enhanced sitemap
         save_sitemap(self.public_dir, extra_urls=article_urls + topic_urls)
