@@ -21,6 +21,7 @@ def get_nav_links(active_page: str = '') -> str:
         ('/finance/', 'Finance', 'finance'),
         ('/media/', 'Media', 'media'),
         ('/articles/', 'Articles', 'articles'),
+        ('/archive/', 'Archive', 'archive'),
     ]
 
     items = []
@@ -120,6 +121,7 @@ def build_footer(date_str: str = None, style_info: str = '') -> str:
                     <li><a href="/tech/">Tech</a></li>
                     <li><a href="/world/">World</a></li>
                     <li><a href="/articles/">Articles</a></li>
+                    <li><a href="/archive/">Archive</a></li>
                     <li><a href="/media/">Media</a></li>
                 </ul>
             </div>
@@ -302,6 +304,7 @@ def get_header_styles() -> str:
             .nav-links.active li:nth-child(6) { transition-delay: 0.35s; }
             .nav-links.active li:nth-child(7) { transition-delay: 0.4s; }
             .nav-links.active li:nth-child(8) { transition-delay: 0.45s; }
+            .nav-links.active li:nth-child(9) { transition-delay: 0.5s; }
 
             .nav-links a {
                 display: block;

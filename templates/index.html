@@ -97,8 +97,9 @@
                 <div class="story-wrapper">
                     <figure class="story-media">
                         {% set img_src = story.image_url or placeholder_image_url %}
+                        {% set alt_text = story.title if story.image_url else ((story.category if story.category else story.source | replace('_', ' ') | title) + ' story: ' + story.title) %}
                         <img src="{{ img_src }}"
-                             alt="{{ story.title if story.image_url else 'Placeholder image' }}"
+                             alt="{{ alt_text }}"
                              class="story-image{% if not story.image_url %} placeholder{% endif %}"
                              loading="eager"
                              referrerpolicy="no-referrer"
@@ -156,8 +157,9 @@
                 <div class="story-wrapper">
                     <figure class="story-media">
                         {% set img_src = story.image_url or placeholder_image_url %}
+                        {% set alt_text = story.title if story.image_url else ((story.category if story.category else story.source | replace('_', ' ') | title) + ' story: ' + story.title) %}
                         <img src="{{ img_src }}"
-                             alt="{{ story.title if story.image_url else 'Placeholder image' }}"
+                             alt="{{ alt_text }}"
                              class="story-image{% if not story.image_url %} placeholder{% endif %}"
                              loading="lazy"
                              referrerpolicy="no-referrer"

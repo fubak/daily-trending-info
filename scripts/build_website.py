@@ -418,16 +418,136 @@ class WebsiteBuilder:
         return result
 
     def _get_top_topic(self) -> str:
-        """Get the main topic for SEO title."""
+        """Get the main topic for SEO title - ONLY use for non-homepage pages."""
         if self.ctx.trends:
             return self.ctx.trends[0].get('title', '')[:60]
         return "Today's Top Trends"
 
+    def _build_page_title(self) -> str:
+        """Build SEO-optimized page title - static for homepage to build domain authority."""
+        return "DailyTrending.info | AI-Curated Tech & World News Aggregator"
+
     def _build_meta_description(self) -> str:
-        """Build SEO-friendly meta description."""
-        categories = list(self.grouped_trends.keys())[:4]
-        cat_str = ', '.join(categories)
-        return f"Daily trending topics for {self.ctx.generated_at}. {len(self.ctx.trends)} stories covering {cat_str}."
+        """Build SEO-optimized meta description with consistent keywords."""
+        return (
+            "Real-time dashboard of trending tech, science, and world news stories. "
+            "AI-curated daily from Hacker News, NPR, BBC, Reddit, and 12+ sources. "
+            f"Updated {self.ctx.generated_at} with {len(self.ctx.trends)} stories."
+        )
+
+    def _build_structured_data(self) -> str:
+        """Generate comprehensive JSON-LD structured data for SEO and LLMs."""
+        import json
+
+        # Base WebSite schema
+        website_schema = {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "DailyTrending.info",
+            "alternateName": "Daily Trending",
+            "url": "https://dailytrending.info/",
+            "description": "AI-curated technology and world news aggregator, updated daily",
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://dailytrending.info/?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+            },
+            "sameAs": [
+                "https://twitter.com/bradshannon"
+            ],
+            "speakable": {
+                "@type": "SpeakableSpecification",
+                "cssSelector": [".hero-content h1", ".hero-subtitle", ".story-title"]
+            }
+        }
+
+        # CollectionPage with ItemList
+        top_stories = self._select_top_stories()
+        item_list_elements = []
+
+        for idx, story in enumerate(top_stories[:10], 1):
+            item = {
+                "@type": "ListItem",
+                "position": idx,
+                "item": {
+                    "@type": "NewsArticle",
+                    "headline": story.get('title', ''),
+                    "url": story.get('url', ''),
+                    "datePublished": story.get('timestamp', datetime.now().isoformat()) if isinstance(story.get('timestamp'), str) else datetime.now().isoformat(),
+                    "publisher": {
+                        "@type": "Organization",
+                        "name": story.get('source', '').replace('_', ' ').title()
+                    }
+                }
+            }
+
+            # Add image if available
+            if story.get('image_url'):
+                item["item"]["image"] = story.get('image_url')
+
+            # Add description if available
+            if story.get('summary') or story.get('description'):
+                item["item"]["description"] = story.get('summary') or story.get('description')
+
+            item_list_elements.append(item)
+
+        collection_schema = {
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            "name": f"Daily Trending Topics - {self.ctx.generated_at}",
+            "description": self._build_meta_description(),
+            "url": "https://dailytrending.info/",
+            "datePublished": datetime.now().isoformat(),
+            "mainEntity": {
+                "@type": "ItemList",
+                "numberOfItems": len(item_list_elements),
+                "itemListElement": item_list_elements
+            }
+        }
+
+        # FAQPage schema for common questions
+        faq_schema = {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "How often is DailyTrending.info updated?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "DailyTrending.info regenerates automatically every day at 6 AM EST via GitHub Actions, aggregating the latest trending stories from 12+ sources including Hacker News, NPR, BBC, Reddit, and GitHub."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "What sources does DailyTrending.info aggregate?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "We aggregate from 12 curated sources: Hacker News, Lobsters, GitHub Trending, Reddit (r/technology, r/worldnews, r/programming), NPR, BBC, Reuters, Wikipedia Current Events, and specialized tech RSS feeds."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Is DailyTrending.info content AI-generated?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Headlines and summaries are sourced from original publishers. Our AI curates, ranks, and selects trending topics, and generates unique editorial analysis for top stories."
+                    }
+                }
+            ]
+        }
+
+        # Combine all schemas using @graph
+        combined_schema = {
+            "@context": "https://schema.org",
+            "@graph": [
+                website_schema,
+                collection_schema,
+                faq_schema
+            ]
+        }
+
+        return f'<script type="application/ld+json">\n{json.dumps(combined_schema, indent=2)}\n</script>'
 
     def build(self) -> str:
         """Render the website using Jinja2 templates."""
@@ -531,7 +651,7 @@ class WebsiteBuilder:
 
         # Build context variables for the template
         render_context = {
-            'page_title': f"DailyTrending.info - {self._get_top_topic()}",
+            'page_title': self._build_page_title(),
             'meta_description': self._build_meta_description(),
             'keywords_str': ', '.join(self.ctx.keywords[:15]),
             'canonical_url': 'https://dailytrending.info/',
@@ -579,7 +699,7 @@ class WebsiteBuilder:
             # SEO Placeholders (can be enhanced further)
             'og_image_tags': f'<meta property="og:image" content="{hero_image_url}">',
             'twitter_image_tags': f'<meta name="twitter:image" content="{hero_image_url}">',
-            'structured_data': ''  # JSON-LD generation can be moved to a helper
+            'structured_data': self._build_structured_data()
         }
 
         return template.render(render_context)
