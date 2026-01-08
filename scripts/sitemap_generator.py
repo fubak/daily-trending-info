@@ -268,6 +268,12 @@ def save_sitemap(
     sitemap_path.write_text(sitemap_index_content)
     print(f"  Created {sitemap_path} (index)")
 
+    # Create IndexNow API key file for search engine indexing
+    indexnow_key = "dailytrendinginfo85788"
+    indexnow_path = public_dir / f'{indexnow_key}.txt'
+    indexnow_path.write_text(indexnow_key)
+    print(f"  Created {indexnow_path} (IndexNow key)")
+
     # Generate and save robots.txt
     robots_content = generate_robots_txt(base_url=base_url)
     robots_path = public_dir / 'robots.txt'
