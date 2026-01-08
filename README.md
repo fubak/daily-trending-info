@@ -12,6 +12,7 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 <!-- CHANGELOG_START -->
 | Date | Change |
 |------|--------|
+| 2026-01-08 14:49 UTC | [fix: Use sitemap index format for better Google compatibility](https://github.com/fubak/daily-trending-info/commit/97bcb10da1f7630b44e9cedb9766c32f5635488f) |
 | 2026-01-08 14:33 UTC | [fix: Improve sitemap XML formatting and expand robots.txt crawler permissions](https://github.com/fubak/daily-trending-info/commit/ef1267f40621af9972a424de3487e73f21be6d98) |
 | 2026-01-08 14:06 UTC | [fix: Always regenerate archive index even when skipping archive](https://github.com/fubak/daily-trending-info/commit/d59313133c4bbf135f9c2aaf5d9395788a816242) |
 | 2026-01-08 13:24 UTC | [feat: Improve Archive page layout and story card image reliability](https://github.com/fubak/daily-trending-info/commit/bf0884462812d5a47a560cdb65ffb8b9a87aed19) |
@@ -21,7 +22,6 @@ A fully autonomous trend aggregation website that regenerates daily with unique 
 | 2026-01-07 13:08 UTC | [Add Business and Sports topic pages with 4-column grid layout](https://github.com/fubak/daily-trending-info/commit/e0dac4136d250071044720a49012108593f305d5) |
 | 2026-01-07 12:56 UTC | [Add 9th story and enforce source diversity in Top Stories](https://github.com/fubak/daily-trending-info/commit/d1b388a507a22b37d0428a78855cec19a3e31795) |
 | 2026-01-07 12:44 UTC | [Fix Top Stories grid and improve image coverage](https://github.com/fubak/daily-trending-info/commit/e813d090c3f9acdf77ae26cf8c4e28291c7d8129) |
-| 2026-01-07 12:32 UTC | [Fix Top Stories layout: 4-column grid with 2x2 featured card](https://github.com/fubak/daily-trending-info/commit/a3655b7d0bb71990e21aea8cf09deefb4d52f0be) |
 <!-- CHANGELOG_END -->
 
 ## Features
