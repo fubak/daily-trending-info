@@ -35,6 +35,18 @@
     }
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "edit|write|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/generated-file-guard.sh",
+            "description": "Guard generated pipeline output"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "edit|write",

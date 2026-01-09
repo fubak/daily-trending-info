@@ -1,5 +1,69 @@
 {
   "skills": {
+    "pr-review": {
+      "triggers": {
+        "keywords": [
+          "review pr",
+          "review pull request",
+          "pr review",
+          "check my pr",
+          "review changes",
+          "code review",
+          "review this branch"
+        ]
+      },
+      "action": "Use pr-review-toolkit for comprehensive PR review with specialized agents",
+      "enforcement": "suggest",
+      "type": "workflow"
+    },
+    "serena-analysis": {
+      "triggers": {
+        "keywords": [
+          "find all usages",
+          "where is this used",
+          "call graph",
+          "dependencies",
+          "who calls",
+          "references to",
+          "impact analysis",
+          "trace through",
+          "understand codebase",
+          "code relationships"
+        ]
+      },
+      "action": "Use Serena MCP for semantic code analysis and dependency tracing",
+      "enforcement": "suggest",
+      "type": "workflow"
+    },
+    "context7-docs": {
+      "triggers": {
+        "keywords": [
+          "how to use",
+          "api reference",
+          "library docs",
+          "framework docs",
+          "example code",
+          "tutorial",
+          "getting started",
+          "official docs",
+          "python docs",
+          "pytest docs",
+          "pydantic docs"
+        ]
+      },
+      "action": "Query Context7 MCP for up-to-date documentation",
+      "enforcement": "suggest",
+      "type": "workflow"
+    },
+    "security-scan": {
+      "triggers": {
+        "keywords": ["security", "vulnerability", "audit", "injection"],
+        "pathPatterns": ["scripts/**/*.py"]
+      },
+      "action": "Run semgrep security scan",
+      "enforcement": "suggest",
+      "type": "workflow"
+    },
     "skill-developer": {
       "triggers": {
         "keywords": ["skill", "hook", "claude code", "automation"],
