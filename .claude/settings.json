@@ -1,39 +1,6 @@
 {
   "respectGitignore": true,
-  "permissions": {
-    "bash": {
-      "allowed": [
-        "python --version",
-        "python3 --version",
-        "pip --version",
-        "pip install -r requirements.txt",
-        "pip install -r requirements-dev.txt",
-        "cd scripts && python main.py",
-        "cd scripts && python main.py --dry-run",
-        "cd scripts && python main.py --no-archive",
-        "pytest tests/",
-        "pytest tests/ --cov=scripts",
-        "pytest tests/ -v",
-        "pytest tests/test_design_system.py",
-        "python -m pytest",
-        "black scripts/ tests/",
-        "black --check scripts/ tests/",
-        "flake8 scripts/ tests/",
-        "mypy scripts/",
-        "git status",
-        "git status --short",
-        "git status --porcelain",
-        "git diff",
-        "git diff --name-only",
-        "git diff --staged",
-        "git log --oneline -5",
-        "git branch --show-current",
-        "ls -la public/",
-        "ls -la scripts/",
-        "cat .env.example"
-      ]
-    }
-  },
+  "permissions": {},
   "hooks": {
     "SessionStart": [
       {
@@ -49,7 +16,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "edit|write|Edit|Write",
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
@@ -61,7 +28,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "edit|write",
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
@@ -78,7 +45,8 @@
           {
             "type": "command",
             "command": ".claude/hooks/verify-tests.sh",
-            "description": "Run tests after changes"
+            "description": "Run tests after changes",
+            "once": true
           }
         ]
       }
