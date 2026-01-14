@@ -33,9 +33,15 @@ import feedparser
 from bs4 import BeautifulSoup
 
 from config import (
-    LIMITS, TIMEOUTS, DELAYS, MIN_TRENDS, MIN_FRESH_RATIO,
-    TREND_FRESHNESS_HOURS, DEDUP_SIMILARITY_THRESHOLD,
-    DEDUP_SEMANTIC_THRESHOLD, setup_logging
+    LIMITS,
+    TIMEOUTS,
+    DELAYS,
+    MIN_TRENDS,
+    MIN_FRESH_RATIO,
+    TREND_FRESHNESS_HOURS,
+    DEDUP_SIMILARITY_THRESHOLD,
+    DEDUP_SEMANTIC_THRESHOLD,
+    setup_logging,
 )
 
 # Setup logging
@@ -44,15 +50,15 @@ logger = setup_logging("collect_trends")
 
 # Common non-English characters and patterns
 NON_ENGLISH_PATTERNS = [
-    r'[\u4e00-\u9fff]',  # Chinese
-    r'[\u3040-\u309f\u30a0-\u30ff]',  # Japanese
-    r'[\uac00-\ud7af]',  # Korean
-    r'[\u0600-\u06ff]',  # Arabic
-    r'[\u0400-\u04ff]',  # Cyrillic (Russian, etc.)
-    r'[\u0900-\u097f]',  # Hindi/Devanagari
-    r'[\u0e00-\u0e7f]',  # Thai
-    r'[\u0590-\u05ff]',  # Hebrew
-    r'[\u1100-\u11ff]',  # Korean Jamo
+    r"[\u4e00-\u9fff]",  # Chinese
+    r"[\u3040-\u309f\u30a0-\u30ff]",  # Japanese
+    r"[\uac00-\ud7af]",  # Korean
+    r"[\u0600-\u06ff]",  # Arabic
+    r"[\u0400-\u04ff]",  # Cyrillic (Russian, etc.)
+    r"[\u0900-\u097f]",  # Hindi/Devanagari
+    r"[\u0e00-\u0e7f]",  # Thai
+    r"[\u0590-\u05ff]",  # Hebrew
+    r"[\u1100-\u11ff]",  # Korean Jamo
 ]
 
 
@@ -67,7 +73,9 @@ def is_english_text(text: str) -> bool:
             return False
 
     # Check that most characters are ASCII/Latin
-    ascii_chars = sum(1 for c in text if ord(c) < 128 or c in 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýÿ')
+    ascii_chars = sum(
+        1 for c in text if ord(c) < 128 or c in "àáâãäåæçèéêëìíîïðñòóôõöøùúûüýÿ"
+    )
     if len(text) > 0 and ascii_chars / len(text) < 0.7:
         return False
 
@@ -77,11 +85,12 @@ def is_english_text(text: str) -> bool:
 @dataclass
 class Trend:
     """Represents a single trending topic."""
+
     title: str
     source: str
     url: Optional[str] = None
     description: Optional[str] = None
-    category: Optional[str] = None # Added for explicit categorization
+    category: Optional[str] = None  # Added for explicit categorization
     score: float = 1.0
     keywords: List[str] = None
     timestamp: datetime = field(default_factory=datetime.now)
@@ -102,38 +111,211 @@ class Trend:
         """Extract meaningful keywords from title."""
         # Remove common words and extract meaningful terms
         stop_words = {
-            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-            'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been',
-            'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
-            'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need',
-            'this', 'that', 'these', 'those', 'it', 'its', 'they', 'them',
-            'what', 'which', 'who', 'whom', 'whose', 'where', 'when', 'why', 'how',
-            'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some',
-            'such', 'no', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
-            'just', 'about', 'after', 'before', 'between', 'into', 'through',
-            'during', 'above', 'below', 'up', 'down', 'out', 'off', 'over', 'under',
-            'again', 'further', 'then', 'once', 'here', 'there', 'new', 'says',
-            'said', 'get', 'got', 'getting', 'make', 'made', 'making', 'know',
-            'think', 'take', 'see', 'come', 'want', 'look', 'use', 'find', 'give',
-            'tell', 'ask', 'work', 'seem', 'feel', 'try', 'leave', 'call', 'keep',
-            'let', 'begin', 'show', 'hear', 'play', 'run', 'move', 'like', 'live',
-            'believe', 'hold', 'bring', 'happen', 'write', 'provide', 'sit', 'stand',
-            'lose', 'pay', 'meet', 'include', 'continue', 'set', 'learn', 'change',
-            'lead', 'understand', 'watch', 'follow', 'stop', 'create', 'speak',
-            'read', 'allow', 'add', 'spend', 'grow', 'open', 'walk', 'win', 'offer',
-            'remember', 'love', 'consider', 'appear', 'buy', 'wait', 'serve', 'die',
-            'send', 'expect', 'build', 'stay', 'fall', 'cut', 'reach', 'kill',
-            'remain', 'suggest', 'raise', 'pass', 'sell', 'require', 'report',
-            'decide', 'pull', 'breaking', 'update', 'latest', 'news', 'today',
+            "the",
+            "a",
+            "an",
+            "and",
+            "or",
+            "but",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+            "by",
+            "from",
+            "as",
+            "is",
+            "was",
+            "are",
+            "were",
+            "been",
+            "be",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "shall",
+            "can",
+            "need",
+            "this",
+            "that",
+            "these",
+            "those",
+            "it",
+            "its",
+            "they",
+            "them",
+            "what",
+            "which",
+            "who",
+            "whom",
+            "whose",
+            "where",
+            "when",
+            "why",
+            "how",
+            "all",
+            "each",
+            "every",
+            "both",
+            "few",
+            "more",
+            "most",
+            "other",
+            "some",
+            "such",
+            "no",
+            "not",
+            "only",
+            "own",
+            "same",
+            "so",
+            "than",
+            "too",
+            "very",
+            "just",
+            "about",
+            "after",
+            "before",
+            "between",
+            "into",
+            "through",
+            "during",
+            "above",
+            "below",
+            "up",
+            "down",
+            "out",
+            "off",
+            "over",
+            "under",
+            "again",
+            "further",
+            "then",
+            "once",
+            "here",
+            "there",
+            "new",
+            "says",
+            "said",
+            "get",
+            "got",
+            "getting",
+            "make",
+            "made",
+            "making",
+            "know",
+            "think",
+            "take",
+            "see",
+            "come",
+            "want",
+            "look",
+            "use",
+            "find",
+            "give",
+            "tell",
+            "ask",
+            "work",
+            "seem",
+            "feel",
+            "try",
+            "leave",
+            "call",
+            "keep",
+            "let",
+            "begin",
+            "show",
+            "hear",
+            "play",
+            "run",
+            "move",
+            "like",
+            "live",
+            "believe",
+            "hold",
+            "bring",
+            "happen",
+            "write",
+            "provide",
+            "sit",
+            "stand",
+            "lose",
+            "pay",
+            "meet",
+            "include",
+            "continue",
+            "set",
+            "learn",
+            "change",
+            "lead",
+            "understand",
+            "watch",
+            "follow",
+            "stop",
+            "create",
+            "speak",
+            "read",
+            "allow",
+            "add",
+            "spend",
+            "grow",
+            "open",
+            "walk",
+            "win",
+            "offer",
+            "remember",
+            "love",
+            "consider",
+            "appear",
+            "buy",
+            "wait",
+            "serve",
+            "die",
+            "send",
+            "expect",
+            "build",
+            "stay",
+            "fall",
+            "cut",
+            "reach",
+            "kill",
+            "remain",
+            "suggest",
+            "raise",
+            "pass",
+            "sell",
+            "require",
+            "report",
+            "decide",
+            "pull",
+            "breaking",
+            "update",
+            "latest",
+            "news",
+            "today",
         }
 
         # Clean and tokenize
-        text = re.sub(r'[^\w\s]', ' ', self.title.lower())
+        text = re.sub(r"[^\w\s]", " ", self.title.lower())
         words = text.split()
 
         # Filter and return meaningful keywords
         keywords = [
-            word for word in words
+            word
+            for word in words
             if word not in stop_words and len(word) > 2 and not word.isdigit()
         ]
 
@@ -149,9 +331,11 @@ class TrendCollector:
 
     def __init__(self):
         self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        })
+        self.session.headers.update(
+            {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+        )
         retries = Retry(
             total=3,
             backoff_factor=0.3,
@@ -159,11 +343,16 @@ class TrendCollector:
             allowed_methods=None,
         )
         adapter = HTTPAdapter(max_retries=retries)
-        self.session.mount('https://', adapter)
-        self.session.mount('http://', adapter)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
         self.trends: List[Trend] = []
 
-    def _fetch_rss(self, url: str, timeout: float = 10.0, allowed_status: tuple = (200, 301, 302, 404)) -> Optional[requests.Response]:
+    def _fetch_rss(
+        self,
+        url: str,
+        timeout: float = 10.0,
+        allowed_status: tuple = (200, 301, 302, 404),
+    ) -> Optional[requests.Response]:
         try:
             response = self.session.get(url, timeout=timeout)
         except Exception as exc:
@@ -171,7 +360,9 @@ class TrendCollector:
             return None
 
         if response.status_code not in allowed_status:
-            logger.warning(f"RSS fetch: unexpected status {response.status_code} for {url}")
+            logger.warning(
+                f"RSS fetch: unexpected status {response.status_code} for {url}"
+            )
             return None
 
         return response
@@ -180,45 +371,50 @@ class TrendCollector:
         """Scrape the Open Graph image from a URL."""
         if not url:
             return None
-            
+
         try:
             # Short timeout, we only want the head/meta tags
             response = self.session.get(url, timeout=5, stream=True)
-            
+
             # Read first 10KB which usually contains meta tags
-            chunk = next(response.iter_content(chunk_size=10240), b'')
-            html_content = chunk.decode('utf-8', errors='ignore')
-            
+            chunk = next(response.iter_content(chunk_size=10240), b"")
+            html_content = chunk.decode("utf-8", errors="ignore")
+
             # Fast regex search for og:image
-            match = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html_content, re.I)
+            match = re.search(
+                r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',
+                html_content,
+                re.I,
+            )
             if match:
                 img_url = match.group(1)
                 # Ensure absolute URL
-                if img_url.startswith('//'):
-                    return 'https:' + img_url
-                elif img_url.startswith('/'):
+                if img_url.startswith("//"):
+                    return "https:" + img_url
+                elif img_url.startswith("/"):
                     from urllib.parse import urlparse
+
                     parsed = urlparse(url)
                     return f"{parsed.scheme}://{parsed.netloc}{img_url}"
-                elif not img_url.startswith('http'):
-                    return None 
+                elif not img_url.startswith("http"):
+                    return None
                 return img_url
-                
+
         except Exception as e:
             logger.debug(f"Failed to scrape OG image for {url}: {e}")
-            
+
         return None
 
     def _collect_sports_rss(self) -> List[Trend]:
         """Collect trends from Sports RSS feeds."""
         trends = []
         feeds = [
-            ('ESPN', 'https://www.espn.com/espn/rss/news'),
-            ('BBC Sport', 'https://feeds.bbci.co.uk/sport/rss.xml'),
-            ('CBS Sports', 'https://www.cbssports.com/rss/headlines/'),
-            ('Yahoo Sports', 'https://sports.yahoo.com/rss/'),
+            ("ESPN", "https://www.espn.com/espn/rss/news"),
+            ("BBC Sport", "https://feeds.bbci.co.uk/sport/rss.xml"),
+            ("CBS Sports", "https://www.cbssports.com/rss/headlines/"),
+            ("Yahoo Sports", "https://sports.yahoo.com/rss/"),
         ]
-        
+
         for name, url in feeds:
             try:
                 response = self.session.get(url, timeout=10)
@@ -229,9 +425,9 @@ class TrendCollector:
                             title=entry.title,
                             source=f'sports_{name.lower().replace(" ", "")}',
                             url=entry.link,
-                            description=self._clean_html(entry.get('summary', '')),
+                            description=self._clean_html(entry.get("summary", "")),
                             score=1.4,
-                            image_url=self._extract_image_from_entry(entry)
+                            image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
             except Exception:
@@ -242,12 +438,12 @@ class TrendCollector:
         """Collect trends from Entertainment RSS feeds."""
         trends = []
         feeds = [
-            ('Variety', 'https://variety.com/feed/'),
-            ('Hollywood Reporter', 'https://www.hollywoodreporter.com/feed/'),
-            ('Billboard', 'https://www.billboard.com/feed/'),
-            ('E! Online', 'https://www.eonline.com/syndication/rss/top_stories/en_us'),
+            ("Variety", "https://variety.com/feed/"),
+            ("Hollywood Reporter", "https://www.hollywoodreporter.com/feed/"),
+            ("Billboard", "https://www.billboard.com/feed/"),
+            ("E! Online", "https://www.eonline.com/syndication/rss/top_stories/en_us"),
         ]
-        
+
         for name, url in feeds:
             try:
                 response = self.session.get(url, timeout=10)
@@ -258,9 +454,9 @@ class TrendCollector:
                             title=entry.title,
                             source=f'entertainment_{name.lower().replace(" ", "")}',
                             url=entry.link,
-                            description=self._clean_html(entry.get('summary', '')),
+                            description=self._clean_html(entry.get("summary", "")),
                             score=1.4,
-                            image_url=self._extract_image_from_entry(entry)
+                            image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
             except Exception:
@@ -310,10 +506,12 @@ class TrendCollector:
 
         # Sort by score
         self.trends.sort(key=lambda t: t.score, reverse=True)
-        
+
         # Post-processing: Scrape OG images for top stories if missing
         logger.info("Scraping OG images for top stories...")
-        scrape_limit = min(50, len(self.trends))  # Scrape up to top 50 stories to ensure coverage
+        scrape_limit = min(
+            50, len(self.trends)
+        )  # Scrape up to top 50 stories to ensure coverage
         scraped_count = 0
         for trend in self.trends[:scrape_limit]:
             if not trend.image_url:
@@ -345,48 +543,59 @@ class TrendCollector:
         4. Images in content:encoded or summary HTML
         """
         # Strategy 1: media_content (common in NYT, Guardian, etc.)
-        if hasattr(entry, 'media_content') and entry.media_content:
+        if hasattr(entry, "media_content") and entry.media_content:
             for media in entry.media_content:
-                url = media.get('url', '')
-                medium = media.get('medium', '')
-                content_type = media.get('type', '')
-                if url and (medium == 'image' or 'image' in content_type or
-                           any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif'])):
+                url = media.get("url", "")
+                medium = media.get("medium", "")
+                content_type = media.get("type", "")
+                if url and (
+                    medium == "image"
+                    or "image" in content_type
+                    or any(
+                        ext in url.lower()
+                        for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+                    )
+                ):
                     return url
 
         # Strategy 2: media_thumbnail (common in BBC)
-        if hasattr(entry, 'media_thumbnail') and entry.media_thumbnail:
+        if hasattr(entry, "media_thumbnail") and entry.media_thumbnail:
             for thumb in entry.media_thumbnail:
-                url = thumb.get('url', '')
+                url = thumb.get("url", "")
                 if url:
                     return url
 
         # Strategy 3: enclosures with image type
-        if hasattr(entry, 'enclosures') and entry.enclosures:
+        if hasattr(entry, "enclosures") and entry.enclosures:
             for enc in entry.enclosures:
-                enc_type = enc.get('type', '')
-                url = enc.get('href', '') or enc.get('url', '')
-                if url and 'image' in enc_type:
+                enc_type = enc.get("type", "")
+                url = enc.get("href", "") or enc.get("url", "")
+                if url and "image" in enc_type:
                     return url
 
         # Strategy 4: Parse images from content:encoded or summary
-        content_html = ''
-        if hasattr(entry, 'content') and entry.content:
-            content_html = entry.content[0].get('value', '')
-        elif hasattr(entry, 'summary'):
-            content_html = entry.get('summary', '')
+        content_html = ""
+        if hasattr(entry, "content") and entry.content:
+            content_html = entry.content[0].get("value", "")
+        elif hasattr(entry, "summary"):
+            content_html = entry.get("summary", "")
 
-        if content_html and '<img' in content_html.lower():
+        if content_html and "<img" in content_html.lower():
             # Extract first meaningful image (skip tracking pixels)
-            img_matches = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', content_html, re.I)
+            img_matches = re.findall(
+                r'<img[^>]+src=["\']([^"\']+)["\']', content_html, re.I
+            )
             for img_url in img_matches:
                 # Skip tracking pixels and tiny images
-                if 'pixel' in img_url.lower() or 'tracking' in img_url.lower():
+                if "pixel" in img_url.lower() or "tracking" in img_url.lower():
                     continue
-                if '1x1' in img_url or 'spacer' in img_url.lower():
+                if "1x1" in img_url or "spacer" in img_url.lower():
                     continue
                 # Return first valid image
-                if any(ext in img_url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif']):
+                if any(
+                    ext in img_url.lower()
+                    for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+                ):
                     return img_url
 
         return None
@@ -405,16 +614,20 @@ class TrendCollector:
             feed = feedparser.parse(response.content)
 
             for entry in feed.entries[:20]:
-                title = entry.get('title', '').strip()
+                title = entry.get("title", "").strip()
                 # Only include English content
                 if title and is_english_text(title):
                     trend = Trend(
                         title=title,
-                        source='google_trends',
-                        url=entry.get('link'),
-                        description=entry.get('summary', '').strip() if entry.get('summary') else None,
+                        source="google_trends",
+                        url=entry.get("link"),
+                        description=(
+                            entry.get("summary", "").strip()
+                            if entry.get("summary")
+                            else None
+                        ),
                         score=2.0,  # Google Trends gets higher base score
-                        image_url=self._extract_image_from_entry(entry)
+                        image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
 
@@ -429,23 +642,23 @@ class TrendCollector:
 
         # English-only news sources
         feeds = [
-            ('NPR', 'https://feeds.npr.org/1001/rss.xml'),
-            ('NYT', 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml'),
-            ('BBC', 'https://feeds.bbci.co.uk/news/rss.xml'),
-            ('BBC World', 'https://feeds.bbci.co.uk/news/world/rss.xml'),
-            ('Guardian', 'https://www.theguardian.com/world/rss'),
-            ('Guardian US', 'https://www.theguardian.com/us-news/rss'),
-            ('ABC News', 'https://abcnews.go.com/abcnews/topstories'),
-            ('CBS News', 'https://www.cbsnews.com/latest/rss/main'),
-            ('USA Today', 'https://rssfeeds.usatoday.com/usatoday-NewsTopStories'),
-            ('Washington Post', 'https://feeds.washingtonpost.com/rss/national'),
-            ('Al Jazeera', 'https://www.aljazeera.com/xml/rss/all.xml'),
-            ('PBS NewsHour', 'https://www.pbs.org/newshour/feeds/rss/headlines'),
+            ("NPR", "https://feeds.npr.org/1001/rss.xml"),
+            ("NYT", "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"),
+            ("BBC", "https://feeds.bbci.co.uk/news/rss.xml"),
+            ("BBC World", "https://feeds.bbci.co.uk/news/world/rss.xml"),
+            ("Guardian", "https://www.theguardian.com/world/rss"),
+            ("Guardian US", "https://www.theguardian.com/us-news/rss"),
+            ("ABC News", "https://abcnews.go.com/abcnews/topstories"),
+            ("CBS News", "https://www.cbsnews.com/latest/rss/main"),
+            ("USA Today", "https://rssfeeds.usatoday.com/usatoday-NewsTopStories"),
+            ("Washington Post", "https://feeds.washingtonpost.com/rss/national"),
+            ("Al Jazeera", "https://www.aljazeera.com/xml/rss/all.xml"),
+            ("PBS NewsHour", "https://www.pbs.org/newshour/feeds/rss/headlines"),
         ]
 
         for name, url in feeds:
             try:
-                timeout = 15 if 'washingtonpost' in url else 10
+                timeout = 15 if "washingtonpost" in url else 10
                 response = self._fetch_rss(url, timeout=timeout)
                 if not response:
                     continue
@@ -453,23 +666,30 @@ class TrendCollector:
                 feed = feedparser.parse(response.content)
 
                 for entry in feed.entries[:8]:
-                    title = entry.get('title', '').strip()
+                    title = entry.get("title", "").strip()
 
                     # Clean up common suffixes
-                    title = re.sub(r'\s+', ' ', title)
-                    for suffix in [' - The New York Times', ' - BBC News', ' | AP News',
-                                   ' - ABC News', ' | Reuters', ' - NPR', ' | The Guardian']:
-                        title = title.replace(suffix, '')
+                    title = re.sub(r"\s+", " ", title)
+                    for suffix in [
+                        " - The New York Times",
+                        " - BBC News",
+                        " | AP News",
+                        " - ABC News",
+                        " | Reuters",
+                        " - NPR",
+                        " | The Guardian",
+                    ]:
+                        title = title.replace(suffix, "")
 
                     # Only include English content
                     if title and len(title) > 10 and is_english_text(title):
                         trend = Trend(
                             title=title,
                             source=f'news_{name.lower().replace(" ", "_")}',
-                            url=entry.get('link'),
-                            description=self._clean_html(entry.get('summary', '')),
+                            url=entry.get("link"),
+                            description=self._clean_html(entry.get("summary", "")),
                             score=1.8,  # News sources get good score
-                            image_url=self._extract_image_from_entry(entry)
+                            image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
@@ -486,16 +706,16 @@ class TrendCollector:
         trends = []
 
         feeds = [
-            ('Verge', 'https://www.theverge.com/rss/index.xml'),
-            ('Ars Technica', 'https://feeds.arstechnica.com/arstechnica/index'),
-            ('Wired', 'https://www.wired.com/feed/rss'),
-            ('TechCrunch', 'https://techcrunch.com/feed/'),
-            ('Engadget', 'https://www.engadget.com/rss.xml'),
-            ('MIT Tech Review', 'https://www.technologyreview.com/feed/'),
-            ('Gizmodo', 'https://gizmodo.com/rss'),
-            ('CNET', 'https://www.cnet.com/rss/news/'),
-            ('Mashable', 'https://mashable.com/feeds/rss/all'),
-            ('VentureBeat', 'https://venturebeat.com/feed/'),
+            ("Verge", "https://www.theverge.com/rss/index.xml"),
+            ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index"),
+            ("Wired", "https://www.wired.com/feed/rss"),
+            ("TechCrunch", "https://techcrunch.com/feed/"),
+            ("Engadget", "https://www.engadget.com/rss.xml"),
+            ("MIT Tech Review", "https://www.technologyreview.com/feed/"),
+            ("Gizmodo", "https://gizmodo.com/rss"),
+            ("CNET", "https://www.cnet.com/rss/news/"),
+            ("Mashable", "https://mashable.com/feeds/rss/all"),
+            ("VentureBeat", "https://venturebeat.com/feed/"),
         ]
 
         for name, url in feeds:
@@ -506,22 +726,22 @@ class TrendCollector:
                 feed = feedparser.parse(response.content)
 
                 for entry in feed.entries[:6]:
-                    title = entry.get('title', '').strip()
+                    title = entry.get("title", "").strip()
 
                     # Clean up title
-                    title = re.sub(r'\s+', ' ', title)
-                    title = title.replace(' | Ars Technica', '')
-                    title = title.replace(' - The Verge', '')
+                    title = re.sub(r"\s+", " ", title)
+                    title = title.replace(" | Ars Technica", "")
+                    title = title.replace(" - The Verge", "")
 
                     # Only include English content
                     if title and len(title) > 10 and is_english_text(title):
                         trend = Trend(
                             title=title,
                             source=f'tech_{name.lower().replace(" ", "_")}',
-                            url=entry.get('link'),
-                            description=self._clean_html(entry.get('summary', '')),
+                            url=entry.get("link"),
+                            description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
-                            image_url=self._extract_image_from_entry(entry)
+                            image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
@@ -538,16 +758,19 @@ class TrendCollector:
         trends = []
 
         feeds = [
-            ('Science Daily', 'https://www.sciencedaily.com/rss/all.xml'),
-            ('Nature News', 'https://www.nature.com/nature.rss'),
-            ('New Scientist', 'https://www.newscientist.com/feed/home/'),
-            ('Phys.org', 'https://phys.org/rss-feed/'),
-            ('Live Science', 'https://www.livescience.com/feeds/all'),
-            ('Space.com', 'https://www.space.com/feeds/all'),
-            ('ScienceNews', 'https://www.sciencenews.org/feed'),
-            ('Ars Technica Science', 'https://feeds.arstechnica.com/arstechnica/science'),
-            ('Quanta Magazine', 'https://api.quantamagazine.org/feed/'),
-            ('MIT Tech Review', 'https://www.technologyreview.com/feed/'),
+            ("Science Daily", "https://www.sciencedaily.com/rss/all.xml"),
+            ("Nature News", "https://www.nature.com/nature.rss"),
+            ("New Scientist", "https://www.newscientist.com/feed/home/"),
+            ("Phys.org", "https://phys.org/rss-feed/"),
+            ("Live Science", "https://www.livescience.com/feeds/all"),
+            ("Space.com", "https://www.space.com/feeds/all"),
+            ("ScienceNews", "https://www.sciencenews.org/feed"),
+            (
+                "Ars Technica Science",
+                "https://feeds.arstechnica.com/arstechnica/science",
+            ),
+            ("Quanta Magazine", "https://api.quantamagazine.org/feed/"),
+            ("MIT Tech Review", "https://www.technologyreview.com/feed/"),
         ]
 
         for name, url in feeds:
@@ -558,17 +781,17 @@ class TrendCollector:
                 feed = feedparser.parse(response.content)
 
                 for entry in feed.entries[:6]:
-                    title = entry.get('title', '').strip()
-                    title = re.sub(r'\s+', ' ', title)
+                    title = entry.get("title", "").strip()
+                    title = re.sub(r"\s+", " ", title)
 
                     if title and len(title) > 10 and is_english_text(title):
                         trend = Trend(
                             title=title,
                             source=f'science_{name.lower().replace(" ", "_").replace(".", "")}',
-                            url=entry.get('link'),
-                            description=self._clean_html(entry.get('summary', '')),
+                            url=entry.get("link"),
+                            description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
-                            image_url=self._extract_image_from_entry(entry)
+                            image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
@@ -585,15 +808,21 @@ class TrendCollector:
         trends = []
 
         feeds = [
-            ('The Hill', 'https://thehill.com/feed/'),
-            ('Roll Call', 'https://rollcall.com/feed/'),
-            ('NYT Politics', 'https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml'),
-            ('WaPo Politics', 'https://feeds.washingtonpost.com/rss/politics'),
-            ('Guardian Politics', 'https://www.theguardian.com/us-news/us-politics/rss'),
-            ('BBC Politics', 'https://feeds.bbci.co.uk/news/politics/rss.xml'),
-            ('Axios', 'https://api.axios.com/feed/'),
-            ('NPR Politics', 'https://feeds.npr.org/1014/rss.xml'),
-            ('Slate', 'https://slate.com/feeds/all.rss'),
+            ("The Hill", "https://thehill.com/feed/"),
+            ("Roll Call", "https://rollcall.com/feed/"),
+            (
+                "NYT Politics",
+                "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
+            ),
+            ("WaPo Politics", "https://feeds.washingtonpost.com/rss/politics"),
+            (
+                "Guardian Politics",
+                "https://www.theguardian.com/us-news/us-politics/rss",
+            ),
+            ("BBC Politics", "https://feeds.bbci.co.uk/news/politics/rss.xml"),
+            ("Axios", "https://api.axios.com/feed/"),
+            ("NPR Politics", "https://feeds.npr.org/1014/rss.xml"),
+            ("Slate", "https://slate.com/feeds/all.rss"),
         ]
 
         for name, url in feeds:
@@ -604,21 +833,25 @@ class TrendCollector:
                 feed = feedparser.parse(response.content)
 
                 for entry in feed.entries[:6]:
-                    title = entry.get('title', '').strip()
-                    title = re.sub(r'\s+', ' ', title)
+                    title = entry.get("title", "").strip()
+                    title = re.sub(r"\s+", " ", title)
 
                     # Clean common suffixes
-                    for suffix in [' - POLITICO', ' - The Hill', ' - The New York Times']:
-                        title = title.replace(suffix, '')
+                    for suffix in [
+                        " - POLITICO",
+                        " - The Hill",
+                        " - The New York Times",
+                    ]:
+                        title = title.replace(suffix, "")
 
                     if title and len(title) > 10 and is_english_text(title):
                         trend = Trend(
                             title=title,
                             source=f'politics_{name.lower().replace(" ", "_").replace("-", "")}',
-                            url=entry.get('link'),
-                            description=self._clean_html(entry.get('summary', '')),
+                            url=entry.get("link"),
+                            description=self._clean_html(entry.get("summary", "")),
                             score=1.6,
-                            image_url=self._extract_image_from_entry(entry)
+                            image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
@@ -635,15 +868,15 @@ class TrendCollector:
         trends = []
 
         feeds = [
-            ('CNBC', 'https://www.cnbc.com/id/100003114/device/rss/rss.html'),
-            ('MarketWatch', 'https://feeds.marketwatch.com/marketwatch/topstories/'),
-            ('Financial Times', 'https://www.ft.com/rss/home'),
-            ('Yahoo Finance', 'https://finance.yahoo.com/news/rssindex'),
-            ('WSJ Markets', 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml'),
-            ('Economist', 'https://www.economist.com/finance-and-economics/rss.xml'),
-            ('Fortune', 'https://fortune.com/feed/'),
-            ('Business Insider', 'https://www.businessinsider.com/rss'),
-            ('Seeking Alpha', 'https://seekingalpha.com/market_currents.xml'),
+            ("CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
+            ("MarketWatch", "https://feeds.marketwatch.com/marketwatch/topstories/"),
+            ("Financial Times", "https://www.ft.com/rss/home"),
+            ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex"),
+            ("WSJ Markets", "https://feeds.a.dj.com/rss/RSSMarketsMain.xml"),
+            ("Economist", "https://www.economist.com/finance-and-economics/rss.xml"),
+            ("Fortune", "https://fortune.com/feed/"),
+            ("Business Insider", "https://www.businessinsider.com/rss"),
+            ("Seeking Alpha", "https://seekingalpha.com/market_currents.xml"),
         ]
 
         for name, url in feeds:
@@ -654,21 +887,21 @@ class TrendCollector:
                 feed = feedparser.parse(response.content)
 
                 for entry in feed.entries[:6]:
-                    title = entry.get('title', '').strip()
-                    title = re.sub(r'\s+', ' ', title)
+                    title = entry.get("title", "").strip()
+                    title = re.sub(r"\s+", " ", title)
 
                     # Clean common suffixes
-                    for suffix in [' - Bloomberg', ' - MarketWatch', ' - CNBC']:
-                        title = title.replace(suffix, '')
+                    for suffix in [" - Bloomberg", " - MarketWatch", " - CNBC"]:
+                        title = title.replace(suffix, "")
 
                     if title and len(title) > 10 and is_english_text(title):
                         trend = Trend(
                             title=title,
                             source=f'finance_{name.lower().replace(" ", "_")}',
-                            url=entry.get('link'),
-                            description=self._clean_html(entry.get('summary', '')),
+                            url=entry.get("link"),
+                            description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
-                            image_url=self._extract_image_from_entry(entry)
+                            image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
@@ -687,8 +920,7 @@ class TrendCollector:
         try:
             # Get top story IDs
             response = self.session.get(
-                "https://hacker-news.firebaseio.com/v0/topstories.json",
-                timeout=10
+                "https://hacker-news.firebaseio.com/v0/topstories.json", timeout=10
             )
             response.raise_for_status()
 
@@ -698,20 +930,20 @@ class TrendCollector:
                 try:
                     story_response = self.session.get(
                         f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json",
-                        timeout=5
+                        timeout=5,
                     )
                     story_response.raise_for_status()
                     story = story_response.json()
 
-                    if story and story.get('title') and is_english_text(story['title']):
-                        score = story.get('score', 0)
+                    if story and story.get("title") and is_english_text(story["title"]):
+                        score = story.get("score", 0)
                         normalized_score = min(score / 100, 3.0)  # Cap at 3x
 
                         trend = Trend(
-                            title=story['title'],
-                            source='hackernews',
-                            url=story.get('url'),
-                            score=1.0 + normalized_score
+                            title=story["title"],
+                            source="hackernews",
+                            url=story.get("url"),
+                            score=1.0 + normalized_score,
                         )
                         trends.append(trend)
 
@@ -728,25 +960,35 @@ class TrendCollector:
         trends = []
 
         # Use RSS feeds instead of JSON API - much more reliable
+        # Balanced for diverse content across all categories
         subreddit_feeds = [
-            # News & World
-            ('news', 'https://www.reddit.com/r/news/.rss'),
-            ('worldnews', 'https://www.reddit.com/r/worldnews/.rss'),
-            ('politics', 'https://www.reddit.com/r/politics/.rss'),
+            # News & World (high priority)
+            ("news", "https://www.reddit.com/r/news/.rss"),
+            ("worldnews", "https://www.reddit.com/r/worldnews/.rss"),
+            ("politics", "https://www.reddit.com/r/politics/.rss"),
+            ("upliftingnews", "https://www.reddit.com/r/upliftingnews/.rss"),
             # Tech & Science
-            ('technology', 'https://www.reddit.com/r/technology/.rss'),
-            ('science', 'https://www.reddit.com/r/science/.rss'),
-            ('programming', 'https://www.reddit.com/r/programming/.rss'),
-            ('futurology', 'https://www.reddit.com/r/futurology/.rss'),
-            # Business
-            ('business', 'https://www.reddit.com/r/business/.rss'),
-            ('economics', 'https://www.reddit.com/r/economics/.rss'),
-            # Entertainment
-            ('movies', 'https://www.reddit.com/r/movies/.rss'),
-            ('television', 'https://www.reddit.com/r/television/.rss'),
-            # General
-            ('todayilearned', 'https://www.reddit.com/r/todayilearned/.rss'),
-            ('space', 'https://www.reddit.com/r/space/.rss'),
+            ("technology", "https://www.reddit.com/r/technology/.rss"),
+            ("science", "https://www.reddit.com/r/science/.rss"),
+            ("space", "https://www.reddit.com/r/space/.rss"),
+            # Business & Finance
+            ("business", "https://www.reddit.com/r/business/.rss"),
+            ("economics", "https://www.reddit.com/r/economics/.rss"),
+            ("personalfinance", "https://www.reddit.com/r/personalfinance/.rss"),
+            # Entertainment & Culture
+            ("movies", "https://www.reddit.com/r/movies/.rss"),
+            ("television", "https://www.reddit.com/r/television/.rss"),
+            ("music", "https://www.reddit.com/r/music/.rss"),
+            ("books", "https://www.reddit.com/r/books/.rss"),
+            # Sports
+            ("sports", "https://www.reddit.com/r/sports/.rss"),
+            ("nba", "https://www.reddit.com/r/nba/.rss"),
+            ("soccer", "https://www.reddit.com/r/soccer/.rss"),
+            # Health & Lifestyle
+            ("health", "https://www.reddit.com/r/health/.rss"),
+            ("food", "https://www.reddit.com/r/food/.rss"),
+            # General Interest
+            ("todayilearned", "https://www.reddit.com/r/todayilearned/.rss"),
         ]
 
         for subreddit, url in subreddit_feeds:
@@ -757,16 +999,16 @@ class TrendCollector:
                 feed = feedparser.parse(response.content)
 
                 for entry in feed.entries[:6]:
-                    title = entry.get('title', '').strip()
+                    title = entry.get("title", "").strip()
 
                     # Only include English content
                     if title and len(title) > 15 and is_english_text(title):
                         trend = Trend(
                             title=title,
-                            source=f'reddit_{subreddit}',
-                            url=entry.get('link'),
-                            description=self._clean_html(entry.get('summary', '')),
-                            score=1.5
+                            source=f"reddit_{subreddit}",
+                            url=entry.get("link"),
+                            description=self._clean_html(entry.get("summary", "")),
+                            score=1.5,
                         )
                         trends.append(trend)
 
@@ -788,29 +1030,31 @@ class TrendCollector:
             response = self.session.get(url, timeout=15)
             response.raise_for_status()
 
-            soup = BeautifulSoup(response.text, 'html.parser')
-            repos = soup.select('article.Box-row')[:15]
+            soup = BeautifulSoup(response.text, "html.parser")
+            repos = soup.select("article.Box-row")[:15]
 
             for repo in repos:
                 # Get repo name
-                name_elem = repo.select_one('h2 a')
+                name_elem = repo.select_one("h2 a")
                 if not name_elem:
                     continue
 
-                repo_name = name_elem.get_text(strip=True).replace('\n', '').replace(' ', '')
+                repo_name = (
+                    name_elem.get_text(strip=True).replace("\n", "").replace(" ", "")
+                )
 
                 # Get description
-                desc_elem = repo.select_one('p')
-                description = desc_elem.get_text(strip=True) if desc_elem else ''
+                desc_elem = repo.select_one("p")
+                description = desc_elem.get_text(strip=True) if desc_elem else ""
 
                 # Get stars today
-                stars_elem = repo.select_one('.float-sm-right')
-                stars_text = stars_elem.get_text(strip=True) if stars_elem else '0'
-                stars = int(re.sub(r'[^\d]', '', stars_text) or 0)
+                stars_elem = repo.select_one(".float-sm-right")
+                stars_text = stars_elem.get_text(strip=True) if stars_elem else "0"
+                stars = int(re.sub(r"[^\d]", "", stars_text) or 0)
 
                 # Get language
                 lang_elem = repo.select_one('[itemprop="programmingLanguage"]')
-                language = lang_elem.get_text(strip=True) if lang_elem else ''
+                language = lang_elem.get_text(strip=True) if lang_elem else ""
 
                 title = f"{repo_name}"
                 if language:
@@ -822,10 +1066,10 @@ class TrendCollector:
                 if not description or is_english_text(description):
                     trend = Trend(
                         title=title[:120],
-                        source='github_trending',
+                        source="github_trending",
                         url=f"https://github.com{name_elem.get('href', '')}",
                         description=description,
-                        score=1.3 + min(stars / 500, 1.5)
+                        score=1.3 + min(stars / 500, 1.5),
                     )
                     trends.append(trend)
 
@@ -844,31 +1088,33 @@ class TrendCollector:
             response = self.session.get(url, timeout=15)
             response.raise_for_status()
 
-            soup = BeautifulSoup(response.text, 'html.parser')
+            soup = BeautifulSoup(response.text, "html.parser")
 
             # Find the current events content
-            content = soup.select('.current-events-content li')[:20]
+            content = soup.select(".current-events-content li")[:20]
 
             for item in content:
                 text = item.get_text(strip=True)
 
                 # Clean up the text
-                text = re.sub(r'\s+', ' ', text)
-                text = re.sub(r'\[.*?\]', '', text)  # Remove citations
+                text = re.sub(r"\s+", " ", text)
+                text = re.sub(r"\[.*?\]", "", text)  # Remove citations
 
                 # Verify content is English
-                if text and len(text) > 20 and len(text) < 200 and is_english_text(text):
+                if (
+                    text
+                    and len(text) > 20
+                    and len(text) < 200
+                    and is_english_text(text)
+                ):
                     # Get the first link if available
-                    link = item.select_one('a')
+                    link = item.select_one("a")
                     url = None
-                    if link and link.get('href', '').startswith('/wiki/'):
+                    if link and link.get("href", "").startswith("/wiki/"):
                         url = f"https://en.wikipedia.org{link.get('href')}"
 
                     trend = Trend(
-                        title=text[:150],
-                        source='wikipedia_current',
-                        url=url,
-                        score=1.4
+                        title=text[:150], source="wikipedia_current", url=url, score=1.4
                     )
                     trends.append(trend)
 
@@ -888,10 +1134,10 @@ class TrendCollector:
             response.raise_for_status()
 
             # Check if response is actually RSS/XML, not HTML
-            content_type = response.headers.get('content-type', '').lower()
+            content_type = response.headers.get("content-type", "").lower()
             content_start = response.content[:100].lower()
 
-            if b'<!doctype html' in content_start or b'<html' in content_start:
+            if b"<!doctype html" in content_start or b"<html" in content_start:
                 logger.warning(f"Lobsters returned HTML instead of RSS, skipping")
                 return trends
 
@@ -903,16 +1149,16 @@ class TrendCollector:
                 return trends
 
             for entry in feed.entries[:15]:
-                title = entry.get('title', '').strip()
+                title = entry.get("title", "").strip()
 
                 if title and len(title) > 10 and is_english_text(title):
                     trend = Trend(
                         title=title,
-                        source='lobsters',
-                        url=entry.get('link'),
-                        description=self._clean_html(entry.get('summary', '')),
+                        source="lobsters",
+                        url=entry.get("link"),
+                        description=self._clean_html(entry.get("summary", "")),
                         score=1.6,  # Good quality tech content
-                        image_url=self._extract_image_from_entry(entry)
+                        image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
 
@@ -934,15 +1180,15 @@ class TrendCollector:
             feed = feedparser.parse(response.content)
 
             for entry in feed.entries[:10]:
-                title = entry.get('title', '').strip()
+                title = entry.get("title", "").strip()
 
                 if title and len(title) > 5 and is_english_text(title):
                     trend = Trend(
                         title=title,
-                        source='product_hunt',
-                        url=entry.get('link'),
-                        description=self._clean_html(entry.get('summary', '')),
-                        score=1.4
+                        source="product_hunt",
+                        url=entry.get("link"),
+                        description=self._clean_html(entry.get("summary", "")),
+                        score=1.4,
                     )
                     trends.append(trend)
 
@@ -964,19 +1210,19 @@ class TrendCollector:
             articles = response.json()
 
             for article in articles:
-                title = article.get('title', '').strip()
+                title = article.get("title", "").strip()
 
                 if title and len(title) > 10 and is_english_text(title):
                     # Include reaction count in score
-                    reactions = article.get('public_reactions_count', 0)
+                    reactions = article.get("public_reactions_count", 0)
                     score_boost = min(reactions / 100, 1.0)
 
                     trend = Trend(
                         title=title,
-                        source='devto',
-                        url=article.get('url'),
-                        description=article.get('description', ''),
-                        score=1.3 + score_boost
+                        source="devto",
+                        url=article.get("url"),
+                        description=article.get("description", ""),
+                        score=1.3 + score_boost,
                     )
                     trends.append(trend)
 
@@ -997,16 +1243,16 @@ class TrendCollector:
             feed = feedparser.parse(response.content)
 
             for entry in feed.entries[:12]:
-                title = entry.get('title', '').strip()
+                title = entry.get("title", "").strip()
 
                 if title and len(title) > 10 and is_english_text(title):
                     trend = Trend(
                         title=title,
-                        source='slashdot',
-                        url=entry.get('link'),
-                        description=self._clean_html(entry.get('summary', '')),
+                        source="slashdot",
+                        url=entry.get("link"),
+                        description=self._clean_html(entry.get("summary", "")),
                         score=1.4,
-                        image_url=self._extract_image_from_entry(entry)
+                        image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
 
@@ -1027,17 +1273,17 @@ class TrendCollector:
             feed = feedparser.parse(response.content)
 
             for entry in feed.entries[:8]:
-                title = entry.get('title', '').strip()
-                title = title.replace(' | Ars Technica', '')
+                title = entry.get("title", "").strip()
+                title = title.replace(" | Ars Technica", "")
 
                 if title and len(title) > 10 and is_english_text(title):
                     trend = Trend(
                         title=title,
-                        source='ars_features',
-                        url=entry.get('link'),
-                        description=self._clean_html(entry.get('summary', '')),
+                        source="ars_features",
+                        url=entry.get("link"),
+                        description=self._clean_html(entry.get("summary", "")),
                         score=1.7,  # High quality long-form content
-                        image_url=self._extract_image_from_entry(entry)
+                        image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
 
@@ -1053,14 +1299,14 @@ class TrendCollector:
 
         # Only parse as HTML if it contains HTML-like content
         # This avoids BeautifulSoup's MarkupResemblesLocatorWarning
-        if '<' not in text:
+        if "<" not in text:
             # No HTML tags, just clean whitespace
-            return re.sub(r'\s+', ' ', text.strip())[:500]
+            return re.sub(r"\s+", " ", text.strip())[:500]
 
         # Use 'html.parser' with markup_type to suppress warning
-        soup = BeautifulSoup(text, 'html.parser')
-        clean = soup.get_text(separator=' ').strip()
-        return re.sub(r'\s+', ' ', clean)[:500]
+        soup = BeautifulSoup(text, "html.parser")
+        clean = soup.get_text(separator=" ").strip()
+        return re.sub(r"\s+", " ", clean)[:500]
 
     def _deduplicate(self):
         """Remove duplicate trends using semantic similarity matching.
@@ -1078,7 +1324,7 @@ class TrendCollector:
         for trend in self.trends:
             # Normalize title for comparison
             normalized = trend.title.lower().strip()
-            normalized = re.sub(r'[^\w\s]', '', normalized)
+            normalized = re.sub(r"[^\w\s]", "", normalized)
             words = set(normalized.split())
 
             if not words:
@@ -1092,7 +1338,9 @@ class TrendCollector:
                     overlap = len(words & seen_words) / min(len(words), len(seen_words))
                     if overlap > DEDUP_SIMILARITY_THRESHOLD:
                         is_dupe = True
-                        logger.debug(f"Duplicate (word overlap {overlap:.0%}): {trend.title[:50]}")
+                        logger.debug(
+                            f"Duplicate (word overlap {overlap:.0%}): {trend.title[:50]}"
+                        )
                         break
 
                 # Semantic check using SequenceMatcher for stories about same event
@@ -1100,7 +1348,9 @@ class TrendCollector:
                 similarity = SequenceMatcher(None, normalized, seen_norm).ratio()
                 if similarity > DEDUP_SEMANTIC_THRESHOLD:
                     is_dupe = True
-                    logger.debug(f"Duplicate (semantic {similarity:.0%}): {trend.title[:50]}")
+                    logger.debug(
+                        f"Duplicate (semantic {similarity:.0%}): {trend.title[:50]}"
+                    )
                     break
 
             if not is_dupe:
@@ -1128,19 +1378,22 @@ class TrendCollector:
 
         # Identify global keywords (appearing in 3+ distinct stories)
         global_keywords = {
-            word for word, count in story_word_counts.items()
-            if count >= 3
+            word for word, count in story_word_counts.items() if count >= 3
         }
 
         if global_keywords:
-            logger.info(f"Found {len(global_keywords)} global keywords: {', '.join(list(global_keywords)[:10])}...")
+            logger.info(
+                f"Found {len(global_keywords)} global keywords: {', '.join(list(global_keywords)[:10])}..."
+            )
 
         # Store for later use (image fetching, word cloud)
         self.global_keywords = global_keywords
 
         for trend in self.trends:
             # Count how many global keywords this trend contains
-            global_keyword_matches = sum(1 for kw in trend.keywords if kw in global_keywords)
+            global_keyword_matches = sum(
+                1 for kw in trend.keywords if kw in global_keywords
+            )
 
             # Apply tiered boost based on global keyword matches
             # 1 match = 15% boost, 2 matches = 35% boost, 3+ matches = 60% boost
@@ -1153,14 +1406,13 @@ class TrendCollector:
 
             # Additional small boost for keywords appearing in multiple stories
             keyword_boost = sum(
-                0.1 for kw in trend.keywords
-                if story_word_counts.get(kw, 0) > 1
+                0.1 for kw in trend.keywords if story_word_counts.get(kw, 0) > 1
             )
             trend.score += keyword_boost
 
     def get_global_keywords(self) -> List[str]:
         """Get keywords that appear across multiple stories (meta-trends)."""
-        if hasattr(self, 'global_keywords'):
+        if hasattr(self, "global_keywords"):
             return list(self.global_keywords)
         return []
 
@@ -1187,7 +1439,7 @@ class TrendCollector:
 
     def save(self, filepath: str):
         """Save trends to a JSON file."""
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             f.write(self.to_json())
         logger.info(f"Saved {len(self.trends)} trends to {filepath}")
 
@@ -1207,7 +1459,7 @@ def main():
 
     # Save to file
     output_dir = os.path.dirname(os.path.abspath(__file__))
-    output_path = os.path.join(output_dir, '..', 'data', 'trends.json')
+    output_path = os.path.join(output_dir, "..", "data", "trends.json")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     collector.save(output_path)
 

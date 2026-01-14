@@ -36,19 +36,29 @@ LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 # ============================================================================
 
 # Per-source limits (how many items to fetch from each source)
+# Balanced for diverse content: World/General news gets more weight
 LIMITS = {
+    # General/World News (higher limits)
     "google_trends": 20,
-    "news_rss": 8,  # Per feed
-    "tech_rss": 6,  # Per feed
-    "hackernews": 25,
-    "lobsters": 20,
-    "reddit": 8,  # Per subreddit
-    "product_hunt": 15,
-    "devto": 15,
-    "slashdot": 10,
-    "ars_technica": 10,
-    "github_trending": 15,
+    "news_rss": 10,  # Per feed - increased from 8
     "wikipedia": 20,
+    # Reddit (balanced across categories)
+    "reddit": 8,  # Per subreddit
+    # Tech sources (reduced for balance)
+    "tech_rss": 5,  # Per feed - reduced from 6
+    "hackernews": 15,  # Reduced from 25
+    "lobsters": 10,  # Reduced from 20
+    "product_hunt": 8,  # Reduced from 15
+    "devto": 8,  # Reduced from 15
+    "slashdot": 6,  # Reduced from 10
+    "ars_technica": 6,  # Reduced from 10
+    "github_trending": 10,  # Reduced from 15
+    # Other categories
+    "science_rss": 8,  # Science news
+    "politics_rss": 8,  # Politics news
+    "finance_rss": 8,  # Finance/Business news
+    "sports_rss": 6,  # Sports news
+    "entertainment_rss": 6,  # Entertainment news
 }
 
 # Quality gates

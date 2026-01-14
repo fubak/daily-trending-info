@@ -28,7 +28,13 @@ from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from fetch_images import FallbackImageGenerator
-from shared_components import build_header, build_footer, get_header_styles, get_footer_styles, get_theme_script
+from shared_components import (
+    build_header,
+    build_footer,
+    get_header_styles,
+    get_footer_styles,
+    get_theme_script,
+)
 
 
 LAYOUT_TEMPLATES = ["newspaper", "magazine", "bold", "mosaic"]
@@ -51,6 +57,7 @@ HERO_STYLES = [
 @dataclass
 class BuildContext:
     """Context for building the website."""
+
     trends: List[Dict]
     images: List[Dict]
     design: Dict
@@ -74,15 +81,15 @@ class WebsiteBuilder:
         self.ctx = context
         self.design = context.design
         self._description_cache = {}
-        
+
         # Setup Jinja2 environment
         # Assuming templates are in a 'templates' folder at the project root
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        template_dir = os.path.join(project_root, 'templates')
-        
+        template_dir = os.path.join(project_root, "templates")
+
         self.env = Environment(
             loader=FileSystemLoader(template_dir),
-            autoescape=select_autoescape(['html', 'xml'])
+            autoescape=select_autoescape(["html", "xml"]),
         )
 
         # Use timestamp as seed for unique randomization on each generation
@@ -90,11 +97,19 @@ class WebsiteBuilder:
         self.rng = random.Random(timestamp_seed)
 
         if isinstance(self.design, dict):
-            layout_style = self.design.get('layout_style')
-            hero_style = self.design.get('hero_style')
+            layout_style = self.design.get("layout_style")
+            hero_style = self.design.get("hero_style")
         else:
-            layout_style = self.design.layout_style if self.design and hasattr(self.design, 'layout_style') else None
-            hero_style = self.design.hero_style if self.design and hasattr(self.design, 'hero_style') else None
+            layout_style = (
+                self.design.layout_style
+                if self.design and hasattr(self.design, "layout_style")
+                else None
+            )
+            hero_style = (
+                self.design.hero_style
+                if self.design and hasattr(self.design, "hero_style")
+                else None
+            )
 
         self.layout = layout_style or self.rng.choice(LAYOUT_TEMPLATES)
         self.hero_style = hero_style or self.rng.choice(HERO_STYLES)
@@ -107,33 +122,32 @@ class WebsiteBuilder:
 
         # Find the best hero image based on headline content
         self._hero_image = self._find_relevant_hero_image()
-        self._category_card_limit = 8  # 2 rows × 4 columns
+        self._category_card_limit = 8  # 2 rows × 4 columns (must be multiple of 4)
 
     def _choose_column_count(self, count: int) -> int:
-        if count <= 0:
-            return 1
-        for candidate in (4, 3, 2):
-            if count % candidate == 0:
-                return candidate
-        if count >= 8:
-            return 4
-        if count >= 6:
-            return 3
-        return min(count, 4)
+        """Always use 4-column layout for consistency."""
+        # Always return 4 columns for uniform grid layout
+        # Card counts should be multiples of 4 for even distribution
+        return 4
 
     def _prepare_categories(self) -> List[dict]:
         categories = []
-        sorted_groups = sorted(self.grouped_trends.items(), key=lambda x: len(x[1]), reverse=True)
+        sorted_groups = sorted(
+            self.grouped_trends.items(), key=lambda x: len(x[1]), reverse=True
+        )
         for title, stories in sorted_groups:
-            display_stories = stories[:self._category_card_limit]
+            display_stories = stories[: self._category_card_limit]
             columns = self._choose_column_count(len(display_stories))
-            categories.append({
-                'title': title,
-                'stories': display_stories,
-                'count': len(display_stories),
-                'columns': columns
-            })
+            categories.append(
+                {
+                    "title": title,
+                    "stories": display_stories,
+                    "count": len(display_stories),
+                    "columns": columns,
+                }
+            )
         return categories
+
     def _find_relevant_hero_image(self) -> Optional[Dict]:
         """Find an image that matches the headline/top story content.
 
@@ -145,16 +159,16 @@ class WebsiteBuilder:
         # Priority 1: Check if top trend has an article image from RSS
         if self.ctx.trends:
             top_trend = self.ctx.trends[0]
-            article_image_url = top_trend.get('image_url')
+            article_image_url = top_trend.get("image_url")
             if article_image_url:
                 return {
-                    'url_large': article_image_url,
-                    'url_medium': article_image_url,
-                    'url_original': article_image_url,
-                    'photographer': 'Article Image',
-                    'source': 'article',
-                    'alt': top_trend.get('title', 'Today\'s trending topic'),
-                    'id': f"article_{hash(article_image_url) % 100000}"
+                    "url_large": article_image_url,
+                    "url_medium": article_image_url,
+                    "url_original": article_image_url,
+                    "photographer": "Article Image",
+                    "source": "article",
+                    "alt": top_trend.get("title", "Today's trending topic"),
+                    "id": f"article_{hash(article_image_url) % 100000}",
                 }
 
         # Priority 2: Fall back to stock photo matching
@@ -162,21 +176,76 @@ class WebsiteBuilder:
             return None
 
         # Get the headline and top trend for keyword matching
-        headline = self.design.get('headline', '').lower()
-        top_trend_title = ''
+        headline = self.design.get("headline", "").lower()
+        top_trend_title = ""
         if self.ctx.trends:
-            top_trend_title = (self.ctx.trends[0].get('title') or '').lower()
+            top_trend_title = (self.ctx.trends[0].get("title") or "").lower()
 
         # Extract keywords from headline and top trend
         search_text = f"{headline} {top_trend_title}"
-        stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-                      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-                      'should', 'may', 'might', 'must', 'shall', 'can', 'of', 'in', 'to',
-                      'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into', 'through',
-                      'and', 'or', 'but', 'if', 'then', 'than', 'so', 'that', 'this',
-                      'what', 'which', 'who', 'whom', 'how', 'when', 'where', 'why',
-                      "today's", "trends", "trending", "world", "talking", "about"}
-        words = [w.strip('.,!?()[]{}ப்படாத') for w in search_text.split()]
+        stop_words = {
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "shall",
+            "can",
+            "of",
+            "in",
+            "to",
+            "for",
+            "on",
+            "with",
+            "at",
+            "by",
+            "from",
+            "as",
+            "into",
+            "through",
+            "and",
+            "or",
+            "but",
+            "if",
+            "then",
+            "than",
+            "so",
+            "that",
+            "this",
+            "what",
+            "which",
+            "who",
+            "whom",
+            "how",
+            "when",
+            "where",
+            "why",
+            "today's",
+            "trends",
+            "trending",
+            "world",
+            "talking",
+            "about",
+        }
+        words = [w.strip(".,!?()[]{}ப்படாத") for w in search_text.split()]
         keywords = [w for w in words if len(w) > 2 and w not in stop_words]
 
         # Score each image based on keyword matches in query/description
@@ -188,7 +257,7 @@ class WebsiteBuilder:
             score = sum(1 for kw in keywords if kw in img_text)
 
             # Prefer larger images
-            if img.get('width', 0) >= 1200:
+            if img.get("width", 0) >= 1200:
                 score += 0.5
 
             if score > best_score:
@@ -206,68 +275,90 @@ class WebsiteBuilder:
         groups = defaultdict(list)
 
         category_map = {
-            'news_': 'World News',
-            'tech_': 'Technology',
-            'science_': 'Science',
-            'politics_': 'Politics',
-            'finance_': 'Finance',
-            'entertainment_': 'Entertainment',
-            'sports_': 'Sports',
-            'reddit_news': 'World News',
-            'reddit_worldnews': 'World News',
-            'reddit_politics': 'Politics',
-            'reddit_technology': 'Technology',
-            'reddit_science': 'Science',
-            'reddit_programming': 'Technology',
-            'reddit_futurology': 'Future',
-            'reddit_business': 'Business',
-            'reddit_economics': 'Finance',
-            'hackernews': 'Hacker News',
-            'lobsters': 'Technology',
-            'product_hunt': 'Technology',
-            'devto': 'Technology',
-            'slashdot': 'Technology',
-            'ars_features': 'Technology',
-            'github_trending': 'Technology',
-            'wikipedia_current': 'World News',
+            # RSS feeds by category prefix
+            "news_": "World News",
+            "tech_": "Technology",
+            "science_": "Science",
+            "politics_": "Politics",
+            "finance_": "Finance",
+            "entertainment_": "Entertainment",
+            "sports_": "Sports",
+            # Reddit - News & World
+            "reddit_news": "World News",
+            "reddit_worldnews": "World News",
+            "reddit_politics": "Politics",
+            "reddit_upliftingnews": "World News",
+            # Reddit - Tech & Science
+            "reddit_technology": "Technology",
+            "reddit_science": "Science",
+            "reddit_space": "Science",
+            # Reddit - Business & Finance
+            "reddit_business": "Business",
+            "reddit_economics": "Finance",
+            "reddit_personalfinance": "Finance",
+            # Reddit - Entertainment & Culture
+            "reddit_movies": "Entertainment",
+            "reddit_television": "Entertainment",
+            "reddit_music": "Entertainment",
+            "reddit_books": "Entertainment",
+            # Reddit - Sports
+            "reddit_sports": "Sports",
+            "reddit_nba": "Sports",
+            "reddit_soccer": "Sports",
+            # Reddit - Health & Lifestyle
+            "reddit_health": "Health",
+            "reddit_food": "Lifestyle",
+            # Reddit - General
+            "reddit_todayilearned": "World News",
+            # Tech-specific sources
+            "hackernews": "Hacker News",
+            "lobsters": "Technology",
+            "product_hunt": "Technology",
+            "devto": "Technology",
+            "slashdot": "Technology",
+            "ars_features": "Technology",
+            "github_trending": "Technology",
+            # Other
+            "wikipedia_current": "World News",
+            "google_trends": "Trending",
         }
 
         for trend in self.ctx.trends:
-            source = trend.get('source', 'unknown')
-            category = 'Other'
+            source = trend.get("source", "unknown")
+            category = "Other"
 
             # Check for explicit category override (from NLP)
-            if trend.get('category'):
-                category = trend['category']
+            if trend.get("category"):
+                category = trend["category"]
             else:
                 # Fallback to source-based mapping
                 for prefix, cat in category_map.items():
                     if source.startswith(prefix):
                         category = cat
                         break
-            
+
             # Format timestamp for display
-            if trend.get('timestamp'):
-                ts = trend['timestamp']
+            if trend.get("timestamp"):
+                ts = trend["timestamp"]
                 if isinstance(ts, str):
                     try:
                         ts = datetime.fromisoformat(ts)
                     except ValueError:
                         ts = datetime.now()
                 else:
-                    ts = trend['timestamp']
-                
+                    ts = trend["timestamp"]
+
                 # Calculate time ago
                 diff = datetime.now() - ts
                 hours = int(diff.total_seconds() / 3600)
                 if hours < 1:
-                    trend['time_ago'] = "Just now"
+                    trend["time_ago"] = "Just now"
                 elif hours < 24:
-                    trend['time_ago'] = f"{hours}h ago"
+                    trend["time_ago"] = f"{hours}h ago"
                 else:
-                    trend['time_ago'] = "1d ago"
+                    trend["time_ago"] = "1d ago"
             else:
-                trend['time_ago'] = "Today"
+                trend["time_ago"] = "Today"
 
             groups[category].append(trend)
 
@@ -286,13 +377,13 @@ class WebsiteBuilder:
 
         def can_add_story(story: Dict) -> bool:
             """Check if story can be added based on source diversity limits."""
-            source = story.get('source', 'unknown')
+            source = story.get("source", "unknown")
             return source_counts[source] < MAX_PER_SOURCE
 
         def add_story(story: Dict) -> None:
             """Add story and update tracking."""
-            selected_urls.add(story.get('url'))
-            source_counts[story.get('source', 'unknown')] += 1
+            selected_urls.add(story.get("url"))
+            source_counts[story.get("source", "unknown")] += 1
             top_stories.append(story)
 
         # Helper to find best available story from a category
@@ -302,10 +393,10 @@ class WebsiteBuilder:
                 candidates.extend(self.grouped_trends.get(cat, []))
 
             # Sort by score
-            candidates.sort(key=lambda x: x.get('score', 0), reverse=True)
+            candidates.sort(key=lambda x: x.get("score", 0), reverse=True)
 
             for story in candidates:
-                if story.get('url') not in selected_urls and can_add_story(story):
+                if story.get("url") not in selected_urls and can_add_story(story):
                     return story
             return None
 
@@ -313,24 +404,28 @@ class WebsiteBuilder:
         if self.ctx.trends:
             hero = self.ctx.trends[0]
             # Ensure the hero story has the same image as the hero section
-            if self._hero_image and not hero.get('image_url'):
-                hero_img_url = self._hero_image.get('url_large') or self._hero_image.get('url_medium') or self._hero_image.get('url_original')
+            if self._hero_image and not hero.get("image_url"):
+                hero_img_url = (
+                    self._hero_image.get("url_large")
+                    or self._hero_image.get("url_medium")
+                    or self._hero_image.get("url_original")
+                )
                 if hero_img_url:
-                    hero['image_url'] = hero_img_url
+                    hero["image_url"] = hero_img_url
             add_story(hero)
 
         # Slot 2: World News
-        world = get_best_from_category(['World News', 'Politics', 'Current Events'])
+        world = get_best_from_category(["World News", "Politics", "Current Events"])
         if world:
             add_story(world)
 
         # Slot 3: Technology
-        tech = get_best_from_category(['Technology', 'Hacker News', 'Science'])
+        tech = get_best_from_category(["Technology", "Hacker News", "Science"])
         if tech:
             add_story(tech)
 
         # Slot 4: Finance/Business
-        finance = get_best_from_category(['Finance', 'Business'])
+        finance = get_best_from_category(["Finance", "Business"])
         if finance:
             add_story(finance)
 
@@ -339,7 +434,7 @@ class WebsiteBuilder:
         remaining_slots = 9 - len(top_stories)
         if remaining_slots > 0:
             for story in self.ctx.trends:
-                if story.get('url') not in selected_urls and can_add_story(story):
+                if story.get("url") not in selected_urls and can_add_story(story):
                     add_story(story)
                     if len(top_stories) >= 9:
                         break
@@ -359,16 +454,18 @@ class WebsiteBuilder:
         description = ""
         try:
             response = requests.get(
-                url,
-                timeout=6,
-                headers={"User-Agent": "DailyTrendingBot/1.0"}
+                url, timeout=6, headers={"User-Agent": "DailyTrendingBot/1.0"}
             )
             if response.status_code >= 400:
                 self._description_cache[url] = ""
                 return ""
 
             soup = BeautifulSoup(response.text, "lxml")
-            for attr, key in (("property", "og:description"), ("name", "description"), ("name", "twitter:description")):
+            for attr, key in (
+                ("property", "og:description"),
+                ("name", "description"),
+                ("name", "twitter:description"),
+            ):
                 tag = soup.find("meta", attrs={attr: key})
                 if tag and tag.get("content"):
                     description = tag.get("content", "").strip()
@@ -396,17 +493,17 @@ class WebsiteBuilder:
         """Calculate keyword frequencies and assign size classes 1-6."""
         freq = defaultdict(int)
         for trend in self.ctx.trends:
-            for kw in trend.get('keywords', []):
+            for kw in trend.get("keywords", []):
                 freq[kw.lower()] += 1
-        
+
         sorted_freq = sorted(freq.items(), key=lambda x: x[1], reverse=True)[:50]
-        
+
         if not sorted_freq:
             return []
-            
+
         max_freq = sorted_freq[0][1]
         min_freq = sorted_freq[-1][1]
-        
+
         result = []
         for word, count in sorted_freq:
             if max_freq == min_freq:
@@ -414,13 +511,13 @@ class WebsiteBuilder:
             else:
                 size = 1 + int((count - min_freq) / (max_freq - min_freq) * 5)
             result.append((word, count, size))
-            
+
         return result
 
     def _get_top_topic(self) -> str:
         """Get the main topic for SEO title - ONLY use for non-homepage pages."""
         if self.ctx.trends:
-            return self.ctx.trends[0].get('title', '')[:60]
+            return self.ctx.trends[0].get("title", "")[:60]
         return "Today's Top Trends"
 
     def _build_page_title(self) -> str:
@@ -450,15 +547,13 @@ class WebsiteBuilder:
             "potentialAction": {
                 "@type": "SearchAction",
                 "target": "https://dailytrending.info/?q={search_term_string}",
-                "query-input": "required name=search_term_string"
+                "query-input": "required name=search_term_string",
             },
-            "sameAs": [
-                "https://twitter.com/bradshannon"
-            ],
+            "sameAs": ["https://twitter.com/bradshannon"],
             "speakable": {
                 "@type": "SpeakableSpecification",
-                "cssSelector": [".hero-content h1", ".hero-subtitle", ".story-title"]
-            }
+                "cssSelector": [".hero-content h1", ".hero-subtitle", ".story-title"],
+            },
         }
 
         # CollectionPage with ItemList
@@ -471,23 +566,29 @@ class WebsiteBuilder:
                 "position": idx,
                 "item": {
                     "@type": "NewsArticle",
-                    "headline": story.get('title', ''),
-                    "url": story.get('url', ''),
-                    "datePublished": story.get('timestamp', datetime.now().isoformat()) if isinstance(story.get('timestamp'), str) else datetime.now().isoformat(),
+                    "headline": story.get("title", ""),
+                    "url": story.get("url", ""),
+                    "datePublished": (
+                        story.get("timestamp", datetime.now().isoformat())
+                        if isinstance(story.get("timestamp"), str)
+                        else datetime.now().isoformat()
+                    ),
                     "publisher": {
                         "@type": "Organization",
-                        "name": story.get('source', '').replace('_', ' ').title()
-                    }
-                }
+                        "name": story.get("source", "").replace("_", " ").title(),
+                    },
+                },
             }
 
             # Add image if available
-            if story.get('image_url'):
-                item["item"]["image"] = story.get('image_url')
+            if story.get("image_url"):
+                item["item"]["image"] = story.get("image_url")
 
             # Add description if available
-            if story.get('summary') or story.get('description'):
-                item["item"]["description"] = story.get('summary') or story.get('description')
+            if story.get("summary") or story.get("description"):
+                item["item"]["description"] = story.get("summary") or story.get(
+                    "description"
+                )
 
             item_list_elements.append(item)
 
@@ -501,8 +602,8 @@ class WebsiteBuilder:
             "mainEntity": {
                 "@type": "ItemList",
                 "numberOfItems": len(item_list_elements),
-                "itemListElement": item_list_elements
-            }
+                "itemListElement": item_list_elements,
+            },
         }
 
         # FAQPage schema for common questions
@@ -515,51 +616,47 @@ class WebsiteBuilder:
                     "name": "How often is DailyTrending.info updated?",
                     "acceptedAnswer": {
                         "@type": "Answer",
-                        "text": "DailyTrending.info regenerates automatically every day at 6 AM EST via GitHub Actions, aggregating the latest trending stories from 12+ sources including Hacker News, NPR, BBC, Reddit, and GitHub."
-                    }
+                        "text": "DailyTrending.info regenerates automatically every day at 6 AM EST via GitHub Actions, aggregating the latest trending stories from 12+ sources including Hacker News, NPR, BBC, Reddit, and GitHub.",
+                    },
                 },
                 {
                     "@type": "Question",
                     "name": "What sources does DailyTrending.info aggregate?",
                     "acceptedAnswer": {
                         "@type": "Answer",
-                        "text": "We aggregate from 12 curated sources: Hacker News, Lobsters, GitHub Trending, Reddit (r/technology, r/worldnews, r/programming), NPR, BBC, Reuters, Wikipedia Current Events, and specialized tech RSS feeds."
-                    }
+                        "text": "We aggregate from 12 curated sources: Hacker News, Lobsters, GitHub Trending, Reddit (r/technology, r/worldnews, r/programming), NPR, BBC, Reuters, Wikipedia Current Events, and specialized tech RSS feeds.",
+                    },
                 },
                 {
                     "@type": "Question",
                     "name": "Is DailyTrending.info content AI-generated?",
                     "acceptedAnswer": {
                         "@type": "Answer",
-                        "text": "Headlines and summaries are sourced from original publishers. Our AI curates, ranks, and selects trending topics, and generates unique editorial analysis for top stories."
-                    }
-                }
-            ]
+                        "text": "Headlines and summaries are sourced from original publishers. Our AI curates, ranks, and selects trending topics, and generates unique editorial analysis for top stories.",
+                    },
+                },
+            ],
         }
 
         # Combine all schemas using @graph
         combined_schema = {
             "@context": "https://schema.org",
-            "@graph": [
-                website_schema,
-                collection_schema,
-                faq_schema
-            ]
+            "@graph": [website_schema, collection_schema, faq_schema],
         }
 
         return f'<script type="application/ld+json">\n{json.dumps(combined_schema, indent=2)}\n</script>'
 
     def build(self) -> str:
         """Render the website using Jinja2 templates."""
-        template = self.env.get_template('index.html')
+        template = self.env.get_template("index.html")
 
         def hex_to_rgb(value: str, fallback: str = "10, 10, 10") -> str:
             """Convert a hex color (e.g. #0a0a0a) to an RGB string."""
             if not value:
                 return fallback
-            hex_value = value.lstrip('#')
+            hex_value = value.lstrip("#")
             if len(hex_value) == 3:
-                hex_value = ''.join([c * 2 for c in hex_value])
+                hex_value = "".join([c * 2 for c in hex_value])
             if len(hex_value) != 6:
                 return fallback
             try:
@@ -569,21 +666,23 @@ class WebsiteBuilder:
                 return f"{r}, {g}, {b}"
             except ValueError:
                 return fallback
-        
+
         # Prepare hero background CSS
         hero_bg_css = FallbackImageGenerator.get_gradient_css()
         hero_image_url = ""
         if self._hero_image:
-            url = self._hero_image.get('url_large') or self._hero_image.get('url_medium')
+            url = self._hero_image.get("url_large") or self._hero_image.get(
+                "url_medium"
+            )
             if url:
                 hero_image_url = url
                 hero_bg_css = f"url('{url}') center center / cover no-repeat #0a0a0a"
 
         # Prepare styles from design spec
         d = self.design
-        card_style = d.get('card_style', 'bordered')
-        hover_effect = d.get('hover_effect', 'lift')
-        animation_level = d.get('animation_level', 'subtle')
+        card_style = d.get("card_style", "bordered")
+        hover_effect = d.get("hover_effect", "lift")
+        animation_level = d.get("animation_level", "subtle")
         custom_styles = f"""
             .hero-content {{ 
                 text-align: { 'center' if d.get('hero_style') in ['minimal', 'centered'] else 'left' }; 
@@ -595,8 +694,8 @@ class WebsiteBuilder:
 
         # Build body classes - dynamically set mode from design
         # JavaScript will override based on user preference from localStorage
-        base_mode = "dark-mode" if d.get('is_dark_mode', True) else "light-mode"
-        spacing = d.get('spacing', 'comfortable')
+        base_mode = "dark-mode" if d.get("is_dark_mode", True) else "light-mode"
+        spacing = d.get("spacing", "comfortable")
         body_classes = [
             f"layout-{self.layout}",
             f"hero-{self.hero_style}",
@@ -606,35 +705,35 @@ class WebsiteBuilder:
             base_mode,
         ]
 
-        if d.get('text_transform_headings') != 'none':
+        if d.get("text_transform_headings") != "none":
             body_classes.append(f"text-transform-{d.get('text_transform_headings')}")
 
         # Add creative flourish classes from design spec
-        bg_pattern = d.get('background_pattern', 'none')
-        if bg_pattern and bg_pattern != 'none':
+        bg_pattern = d.get("background_pattern", "none")
+        if bg_pattern and bg_pattern != "none":
             body_classes.append(f"bg-pattern-{bg_pattern}")
 
-        accent_style = d.get('accent_style', 'none')
-        if accent_style and accent_style != 'none':
+        accent_style = d.get("accent_style", "none")
+        if accent_style and accent_style != "none":
             body_classes.append(f"accent-{accent_style}")
 
-        special_mode = d.get('special_mode', 'standard')
-        if special_mode and special_mode != 'standard':
+        special_mode = d.get("special_mode", "standard")
+        if special_mode and special_mode != "standard":
             body_classes.append(f"mode-{special_mode}")
 
         # Add animation modifiers
-        if d.get('use_float_animation', False):
+        if d.get("use_float_animation", False):
             body_classes.append("use-float")
-        if d.get('use_pulse_animation', False):
+        if d.get("use_pulse_animation", False):
             body_classes.append("use-pulse")
 
         # Add new design dimension classes
-        image_treatment = d.get('image_treatment', 'none')
-        if image_treatment and image_treatment != 'none':
+        image_treatment = d.get("image_treatment", "none")
+        if image_treatment and image_treatment != "none":
             body_classes.append(f"image-treatment-{image_treatment}")
 
-        card_aspect = d.get('card_aspect_ratio', 'auto')
-        if card_aspect and card_aspect != 'auto':
+        card_aspect = d.get("card_aspect_ratio", "auto")
+        if card_aspect and card_aspect != "auto":
             body_classes.append(f"aspect-{card_aspect}")
 
         if spacing:
@@ -651,55 +750,53 @@ class WebsiteBuilder:
 
         # Build context variables for the template
         render_context = {
-            'page_title': self._build_page_title(),
-            'meta_description': self._build_meta_description(),
-            'keywords_str': ', '.join(self.ctx.keywords[:15]),
-            'canonical_url': 'https://dailytrending.info/',
-            'date_str': self.ctx.generated_at,
-            'date_iso': datetime.now().strftime("%Y-%m-%d"),
-            'last_modified': datetime.now().isoformat(),
-            'active_page': 'home',
-            'font_primary': d.get('font_primary', 'Space Grotesk').replace(' ', '+'),
-            'font_secondary': d.get('font_secondary', 'Inter').replace(' ', '+'),
-            'font_primary_family': d.get('font_primary', 'Space Grotesk'),
-            'font_secondary_family': d.get('font_secondary', 'Inter'),
-            'hero_image_url': hero_image_url,
-            'section_gap': section_gap,
-            'colors': {
-                'bg': d.get('color_bg', '#0a0a0a'),
-                'bg_rgb': hex_to_rgb(d.get('color_bg', '#0a0a0a')),
-                'text': d.get('color_text', '#ffffff'),
-                'accent': d.get('color_accent', '#6366f1'),
-                'accent_secondary': d.get('color_accent_secondary', '#8b5cf6'),
-                'muted': d.get('color_muted', '#a1a1aa'),
-                'card_bg': d.get('color_card_bg', '#18181b'),
-                'border': d.get('color_border', '#27272a'),
+            "page_title": self._build_page_title(),
+            "meta_description": self._build_meta_description(),
+            "keywords_str": ", ".join(self.ctx.keywords[:15]),
+            "canonical_url": "https://dailytrending.info/",
+            "date_str": self.ctx.generated_at,
+            "date_iso": datetime.now().strftime("%Y-%m-%d"),
+            "last_modified": datetime.now().isoformat(),
+            "active_page": "home",
+            "font_primary": d.get("font_primary", "Space Grotesk").replace(" ", "+"),
+            "font_secondary": d.get("font_secondary", "Inter").replace(" ", "+"),
+            "font_primary_family": d.get("font_primary", "Space Grotesk"),
+            "font_secondary_family": d.get("font_secondary", "Inter"),
+            "hero_image_url": hero_image_url,
+            "section_gap": section_gap,
+            "colors": {
+                "bg": d.get("color_bg", "#0a0a0a"),
+                "bg_rgb": hex_to_rgb(d.get("color_bg", "#0a0a0a")),
+                "text": d.get("color_text", "#ffffff"),
+                "accent": d.get("color_accent", "#6366f1"),
+                "accent_secondary": d.get("color_accent_secondary", "#8b5cf6"),
+                "muted": d.get("color_muted", "#a1a1aa"),
+                "card_bg": d.get("color_card_bg", "#18181b"),
+                "border": d.get("color_border", "#27272a"),
             },
-            'design': {
-                'card_radius': d.get('card_radius', '1rem'),
-                'card_padding': d.get('card_padding', '1.5rem'),
-                'max_width': d.get('max_width', '1400px'),
-                'theme_name': d.get('theme_name'),
-                'subheadline': d.get('subheadline'),
-                'story_capsules': d.get('story_capsules', [])
+            "design": {
+                "card_radius": d.get("card_radius", "1rem"),
+                "card_padding": d.get("card_padding", "1.5rem"),
+                "max_width": d.get("max_width", "1400px"),
+                "theme_name": d.get("theme_name"),
+                "subheadline": d.get("subheadline"),
+                "story_capsules": d.get("story_capsules", []),
             },
-            'hero_bg_css': hero_bg_css,
-            'body_classes': ' '.join(body_classes),
-            'custom_styles': custom_styles,
-            'placeholder_image_url': '/assets/nano-banana.png',
-            
+            "hero_bg_css": hero_bg_css,
+            "body_classes": " ".join(body_classes),
+            "custom_styles": custom_styles,
+            "placeholder_image_url": "/assets/nano-banana.png",
             # Content
-            'hero_story': self.ctx.trends[0] if self.ctx.trends else {},
-            'top_stories': self._select_top_stories(),
-            'trends': self.ctx.trends,
-            'total_trends_count': len(self.ctx.trends),
-            'word_cloud': self.keyword_freq,
-            'categories': categories,
-            
+            "hero_story": self.ctx.trends[0] if self.ctx.trends else {},
+            "top_stories": self._select_top_stories(),
+            "trends": self.ctx.trends,
+            "total_trends_count": len(self.ctx.trends),
+            "word_cloud": self.keyword_freq,
+            "categories": categories,
             # SEO - Static branded OG image for consistent social sharing
-            'og_image_tags': '<meta property="og:image" content="https://dailytrending.info/og-image.png">\n    <meta property="og:image:width" content="1200">\n    <meta property="og:image:height" content="630">\n    <meta property="og:image:type" content="image/png">',
-            'twitter_image_tags': '<meta name="twitter:image" content="https://dailytrending.info/twitter-image.png">\n    <meta name="twitter:card" content="summary_large_image">',
-            'structured_data': self._build_structured_data()
+            "og_image_tags": '<meta property="og:image" content="https://dailytrending.info/og-image.png">\n    <meta property="og:image:width" content="1200">\n    <meta property="og:image:height" content="630">\n    <meta property="og:image:type" content="image/png">',
+            "twitter_image_tags": '<meta name="twitter:image" content="https://dailytrending.info/twitter-image.png">\n    <meta name="twitter:card" content="summary_large_image">',
+            "structured_data": self._build_structured_data(),
         }
 
         return template.render(render_context)
@@ -707,5 +804,5 @@ class WebsiteBuilder:
     def save(self, output_path: str):
         """Build and save the website."""
         html_content = self.build()
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(html_content)
