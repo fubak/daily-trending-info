@@ -650,7 +650,7 @@ class TrendCollector:
             ("Guardian US", "https://www.theguardian.com/us-news/rss"),
             ("ABC News", "https://abcnews.go.com/abcnews/topstories"),
             ("CBS News", "https://www.cbsnews.com/latest/rss/main"),
-            ("USA Today", "https://rssfeeds.usatoday.com/usatoday-NewsTopStories"),
+            ("UPI", "https://rss.upi.com/news/news.rss"),
             ("Washington Post", "https://feeds.washingtonpost.com/rss/national"),
             ("Al Jazeera", "https://www.aljazeera.com/xml/rss/all.xml"),
             ("PBS NewsHour", "https://www.pbs.org/newshour/feeds/rss/headlines"),
