@@ -62,14 +62,14 @@ body.layout-split .top-stories {
 .top-stories .story-media {
     flex-shrink: 0;
     width: 100%;
-    min-height: 180px;
-    height: 180px;
+    min-height: 120px;
+    height: 120px;
 }
 
 .top-stories .story-image {
     width: 100%;
     height: 100%;
-    min-height: 180px;
+    min-height: 120px;
     object-fit: cover;
     object-position: center;
     background-color: var(--color-border);
@@ -82,7 +82,7 @@ body.layout-split .top-stories {
 }
 
 .top-stories .story-content {
-    padding: 1rem;
+    padding: 0.75rem;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -108,10 +108,10 @@ body.layout-split .top-stories {
 .source-badge.sports { color: #f59e0b; }
 
 .top-stories .story-title {
-    font-size: 0.95rem;
+    font-size: 0.875rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
-    line-height: 1.4;
+    margin-bottom: 0.35rem;
+    line-height: 1.35;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -127,15 +127,9 @@ body.layout-split .top-stories {
     background-size: 100% 2px;
 }
 
+/* Hide summary for regular cards - only show for featured */
 .top-stories .story-summary {
-    font-size: 0.8rem;
-    line-height: 1.5;
-    color: var(--color-muted);
-    margin-bottom: 0.75rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: none;
 }
 
 .top-stories .story-meta {
@@ -173,9 +167,15 @@ body.layout-split .top-stories {
     margin-bottom: 0.75rem;
 }
 
+/* Show summary only for featured card */
 .top-stories article.story-card.featured .story-summary {
+    display: -webkit-box;
     font-size: 0.95rem;
-    -webkit-line-clamp: 4;
+    line-height: 1.5;
+    color: var(--color-muted);
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     margin-bottom: 1rem;
 }
 
@@ -379,14 +379,14 @@ body.view-list .stories-grid {
 
 .stories-grid .story-image {
     width: 100%;
-    height: clamp(140px, 22vw, 180px);
+    height: clamp(100px, 18vw, 140px);
     object-fit: cover;
     object-position: center;
     background-color: var(--color-border);
 }
 
 .stories-grid .story-media {
-    min-height: clamp(140px, 22vw, 180px);
+    min-height: clamp(100px, 18vw, 140px);
 }
 
 .stories-grid .story-image.placeholder {
@@ -412,22 +412,18 @@ body.view-list .stories-grid {
 }
 
 .stories-grid .story-title {
-    font-size: 1.1rem; /* Slightly smaller title */
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
+/* Hide summary in stories-grid for compact view */
 .stories-grid .story-summary {
-    font-size: 0.9rem; /* Smaller description */
-    line-height: 1.5;
-    color: var(--color-muted);
-    margin: 0.6rem 0 1rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: none;
 }
 
 .stories-grid .story-meta {

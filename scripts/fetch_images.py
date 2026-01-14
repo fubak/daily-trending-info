@@ -145,6 +145,92 @@ CACHE_MAX_AGE_DAYS = IMAGE_CACHE_MAX_AGE_DAYS
 CACHE_MAX_ENTRIES = IMAGE_CACHE_MAX_ENTRIES
 
 
+# Keywords that indicate an image likely contains text (screenshots, infographics, etc.)
+TEXT_HEAVY_KEYWORDS = {
+    # Document/screenshot indicators
+    "screenshot",
+    "screen shot",
+    "screen-shot",
+    "screencap",
+    "screen capture",
+    "document",
+    "webpage",
+    "web page",
+    "website",
+    "article",
+    "blog post",
+    "newspaper",
+    "magazine",
+    "book",
+    "text",
+    "words",
+    "writing",
+    "written",
+    # Infographic indicators
+    "infographic",
+    "info graphic",
+    "chart",
+    "graph",
+    "diagram",
+    "flowchart",
+    "timeline",
+    "statistics",
+    "data visualization",
+    "presentation",
+    "slide",
+    # UI/Interface indicators
+    "interface",
+    "dashboard",
+    "app screen",
+    "mobile app",
+    "ui design",
+    "user interface",
+    "menu",
+    "form",
+    "spreadsheet",
+    "table",
+    # Other text-heavy content
+    "quote",
+    "meme",
+    "poster",
+    "banner",
+    "advertisement",
+    "ad",
+    "flyer",
+    "brochure",
+    "certificate",
+    "diploma",
+    "resume",
+    "cv",
+    "letter",
+    "email",
+    "message",
+    "chat",
+    "tweet",
+    "social media post",
+}
+
+
+def is_text_heavy_image(alt_text: str, tags: str = "") -> bool:
+    """
+    Check if an image is likely to contain significant text content.
+
+    Args:
+        alt_text: The alt text or description of the image
+        tags: Additional tags/keywords associated with the image
+
+    Returns:
+        True if the image is likely text-heavy and should be filtered out
+    """
+    combined = f"{alt_text} {tags}".lower()
+
+    for keyword in TEXT_HEAVY_KEYWORDS:
+        if keyword in combined:
+            return True
+
+    return False
+
+
 @dataclass
 class Image:
     """Represents a fetched image with metadata."""
@@ -441,12 +527,16 @@ class ImageFetcher:
                 "Content-Type": "application/json",
             }
 
-            prompt = f"""Convert this news headline into 3 simple, physical visual search queries for a stock photo site.
+            prompt = f"""Convert this news headline into 3 visual search queries for high-quality stock photography.
             Headline: "{headline}"
-            Rules:
-            - Focus on physical objects, places, or symbols (e.g. "bitcoin", "white house", "microscope")
-            - No abstract concepts (avoid "democracy", "inflation")
-            - No people's names (avoid "Elon Musk", use "CEO" or "man in suit")
+
+            IMPORTANT - Return PHOTOGRAPHIC imagery, not screenshots or graphics:
+            - Focus on real-world scenes, objects, nature, architecture (e.g. "city skyline sunset", "technology office", "nature landscape")
+            - Use atmospheric/abstract terms when topic is digital (e.g. for "AI news" use "futuristic technology light", not "computer screen")
+            - Prefer wide establishing shots, textures, and environments over close-ups of screens/devices
+            - No people's names - use descriptive roles instead (e.g. "business meeting" not "Elon Musk")
+            - Avoid: screenshots, infographics, charts, graphs, UI, websites, documents, text-heavy images
+            - Good examples: "golden hour cityscape", "abstract technology blue light", "corporate office interior"
             - Output ONLY a JSON list of strings, e.g. ["query1", "query2", "query3"]
             """
 
@@ -564,6 +654,13 @@ class ImageFetcher:
             for photo in data.get("photos", []):
                 src = photo.get("src", {})
 
+                alt_text = photo.get("alt", query)
+
+                # Filter out text-heavy images
+                if is_text_heavy_image(alt_text):
+                    logger.debug(f"Filtering text-heavy image: {alt_text[:50]}")
+                    continue
+
                 image = Image(
                     id=f"pexels_{photo['id']}",
                     url_small=src.get("small", src.get("medium", "")),
@@ -575,7 +672,7 @@ class ImageFetcher:
                         "photographer_url", "https://pexels.com"
                     ),
                     source="pexels",
-                    alt_text=photo.get("alt", query),
+                    alt_text=alt_text,
                     color=photo.get("avg_color"),
                     width=photo.get("width", 0),
                     height=photo.get("height", 0),
@@ -596,7 +693,12 @@ class ImageFetcher:
 
         images = []
         headers = {"Authorization": f"Client-ID {current_key}"}
-        params = {"query": query, "per_page": per_page, "orientation": "landscape"}
+        params = {
+            "query": query,
+            "per_page": per_page,
+            "orientation": "landscape",
+            "content_filter": "high",  # Filter for more curated, high-quality images
+        }
 
         response = self._request_with_retry(
             "https://api.unsplash.com/search/photos",
@@ -628,6 +730,15 @@ class ImageFetcher:
                 urls = photo.get("urls", {})
                 user = photo.get("user", {})
 
+                alt_text = (
+                    photo.get("alt_description") or photo.get("description") or query
+                )
+
+                # Filter out text-heavy images
+                if is_text_heavy_image(alt_text):
+                    logger.debug(f"Filtering text-heavy image: {alt_text[:50]}")
+                    continue
+
                 image = Image(
                     id=f"unsplash_{photo['id']}",
                     url_small=urls.get("small", urls.get("regular", "")),
@@ -639,9 +750,7 @@ class ImageFetcher:
                         "html", "https://unsplash.com"
                     ),
                     source="unsplash",
-                    alt_text=photo.get("alt_description")
-                    or photo.get("description")
-                    or query,
+                    alt_text=alt_text,
                     color=photo.get("color"),
                     width=photo.get("width", 0),
                     height=photo.get("height", 0),
@@ -674,6 +783,9 @@ class ImageFetcher:
             "orientation": "horizontal",
             "per_page": per_page,
             "safesearch": "true",
+            "min_width": 1200,  # Ensure high-quality images
+            "min_height": 800,
+            "editors_choice": "true",  # Prefer editor-curated images (falls back if none)
         }
 
         response = self._request_with_retry(
@@ -703,6 +815,13 @@ class ImageFetcher:
             data = response.json()
 
             for photo in data.get("hits", []):
+                tags = photo.get("tags", query)
+
+                # Filter out text-heavy images
+                if is_text_heavy_image(tags):
+                    logger.debug(f"Filtering text-heavy image: {tags[:50]}")
+                    continue
+
                 # Pixabay provides different size URLs
                 image = Image(
                     id=f"pixabay_{photo['id']}",
@@ -715,7 +834,7 @@ class ImageFetcher:
                     photographer=photo.get("user", "Unknown"),
                     photographer_url=f"https://pixabay.com/users/{photo.get('user', '')}-{photo.get('user_id', '')}",
                     source="pixabay",
-                    alt_text=photo.get("tags", query),
+                    alt_text=tags,
                     color=None,  # Pixabay doesn't provide dominant color
                     width=photo.get("imageWidth", 0),
                     height=photo.get("imageHeight", 0),

@@ -27,10 +27,12 @@
     inset: 0;
     background: linear-gradient(
         180deg,
-        rgba(10, 10, 26, 0.7) 0%,
-        rgba(10, 10, 26, 0.4) 50%,
-        rgba(10, 10, 26, 0.6) 100%
+        rgba(10, 10, 26, 0.85) 0%,
+        rgba(10, 10, 26, 0.6) 40%,
+        rgba(10, 10, 26, 0.75) 100%
     );
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
     z-index: 1;
 }
 
@@ -41,6 +43,12 @@
     position: relative;
     z-index: 2;
     animation: fadeInUp 0.8s ease-out;
+    /* Subtle text protection background */
+    background: rgba(10, 10, 26, 0.4);
+    padding: 2rem 2.5rem;
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 .hero-eyebrow {
