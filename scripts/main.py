@@ -41,13 +41,14 @@ from fetch_images import ImageFetcher
 from generate_design import DesignGenerator, DesignSpec
 from build_website import WebsiteBuilder, BuildContext
 from archive_manager import ArchiveManager
-from generate_rss import generate_rss_feed
+from generate_rss import generate_rss_feed, generate_cmmc_rss_feed
 from enrich_content import ContentEnricher, EnrichedContent
 from keyword_tracker import KeywordTracker
 from pwa_generator import save_pwa_assets
 from sitemap_generator import save_sitemap
 from editorial_generator import EditorialGenerator
 from fetch_media_of_day import MediaOfDayFetcher
+from cmmc_page_generator import generate_cmmc_page, filter_cmmc_trends
 from shared_components import (
     build_header,
     build_footer,
@@ -236,6 +237,10 @@ class Pipeline:
             # Step 9: Generate topic sub-pages
             if not dry_run:
                 self._step_generate_topic_pages()
+
+            # Step 9b: Generate CMMC Watch page
+            if not dry_run:
+                self._step_generate_cmmc_page()
 
             # Step 10: Fetch media of the day
             self._step_fetch_media_of_day()
@@ -1219,6 +1224,29 @@ class Pipeline:
             )
 
         logger.info(f"Generated {pages_created} topic sub-pages")
+
+    def _step_generate_cmmc_page(self):
+        """Generate CMMC Watch standalone page."""
+        logger.info("[9b] Generating CMMC Watch page...")
+
+        # Check if we have CMMC trends
+        cmmc_trends = filter_cmmc_trends(self.trends)
+        if not cmmc_trends:
+            logger.info("  No CMMC trends found, skipping CMMC page generation")
+            return
+
+        # Generate the page
+        result = generate_cmmc_page(
+            trends=self.trends,
+            images=self.images,
+            design=self.design or {},
+            output_dir=self.public_dir,
+        )
+
+        if result:
+            logger.info(f"  Created /cmmc/ with {len(cmmc_trends)} stories")
+        else:
+            logger.warning("  Failed to generate CMMC page")
 
     def _build_topic_page(
         self, config: dict, trends: list, design: dict, hero_image: dict
@@ -2619,11 +2647,18 @@ class Pipeline:
             asdict(t) if hasattr(t, "__dataclass_fields__") else t for t in self.trends
         ]
 
-        # Generate RSS feed
+        # Generate main RSS feed
         output_path = self.public_dir / "feed.xml"
         generate_rss_feed(trends_data, output_path)
-
         logger.info(f"RSS feed saved to {output_path}")
+
+        # Generate CMMC Watch RSS feed
+        cmmc_output_path = self.public_dir / "cmmc" / "feed.xml"
+        cmmc_result = generate_cmmc_rss_feed(trends_data, cmmc_output_path)
+        if cmmc_result:
+            logger.info(f"CMMC RSS feed saved to {cmmc_output_path}")
+        else:
+            logger.info("No CMMC trends found, skipping CMMC RSS feed")
 
     def _step_generate_pwa(self):
         """Generate PWA assets (manifest, service worker, offline page)."""

@@ -59,7 +59,49 @@ LIMITS = {
     "finance_rss": 8,  # Finance/Business news
     "sports_rss": 6,  # Sports news
     "entertainment_rss": 6,  # Entertainment news
+    "cmmc_rss": 8,  # CMMC/Federal compliance news
 }
+
+# ============================================================================
+# CMMC WATCH KEYWORDS
+# ============================================================================
+
+# Keywords for filtering CMMC-relevant content from RSS feeds
+CMMC_KEYWORDS = [
+    # Primary CMMC terms
+    "cmmc",
+    "cmmc 2.0",
+    "cmmc level",
+    "c3pao",
+    "cyber-ab",
+    "cyberab",
+    "cmmc certification",
+    "cmmc assessment",
+    "cmmc compliance",
+    # NIST/Compliance
+    "nist 800-171",
+    "nist sp 800-171",
+    "nist 800-172",
+    "sp 800-172",
+    "dfars",
+    "dfars 252.204",
+    "dfars 7012",
+    "dfars compliance",
+    "cui",
+    "controlled unclassified",
+    "fedramp",
+    # Defense Industrial Base
+    "defense industrial base",
+    "dib",
+    "defense contractor",
+    "dod contractor",
+    "cleared contractor",
+    "industrial security",
+    # Federal cybersecurity
+    "federal cybersecurity",
+    "dod cybersecurity",
+    "government compliance",
+]
 
 # Quality gates
 MIN_TRENDS = 5  # Minimum trends required to build

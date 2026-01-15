@@ -41,6 +41,7 @@ from config import (
     TREND_FRESHNESS_HOURS,
     DEDUP_SIMILARITY_THRESHOLD,
     DEDUP_SEMANTIC_THRESHOLD,
+    CMMC_KEYWORDS,
     setup_logging,
 )
 
@@ -485,6 +486,7 @@ class TrendCollector:
             ("Ars Features", self._collect_ars_frontpage),
             ("GitHub Trending", self._collect_github_trending),
             ("Wikipedia Current Events", self._collect_wikipedia_current),
+            ("CMMC/Federal Compliance", self._collect_cmmc),
         ]
 
         for name, collector in collectors:
@@ -1290,6 +1292,74 @@ class TrendCollector:
         except Exception as e:
             logger.warning(f"Ars Features error: {e}")
 
+        return trends
+
+    def _collect_cmmc(self) -> List[Trend]:
+        """Collect CMMC and federal compliance news from specialized RSS feeds.
+
+        Filters content by CMMC-relevant keywords to ensure relevance.
+        Used for the standalone CMMC Watch page.
+        """
+        trends = []
+
+        # Federal IT and cybersecurity news sources
+        feeds = [
+            ("FedScoop", "https://fedscoop.com/feed/"),
+            ("DefenseScoop", "https://defensescoop.com/feed/"),
+            (
+                "Federal News Network",
+                "https://federalnewsnetwork.com/category/technology-main/cybersecurity/feed/",
+            ),
+            ("Nextgov Cybersecurity", "https://www.nextgov.com/rss/cybersecurity/"),
+            ("GovCon Wire", "https://www.govconwire.com/feed/"),
+            ("SecurityWeek", "https://www.securityweek.com/feed/"),
+            ("Cyberscoop", "https://cyberscoop.com/feed/"),
+            # SC Media removed - returns 403 Forbidden for automated access
+        ]
+
+        for name, url in feeds:
+            try:
+                response = self.session.get(url, timeout=15)
+                response.raise_for_status()
+
+                feed = feedparser.parse(response.content)
+
+                for entry in feed.entries[:10]:  # Check more entries, filter by keyword
+                    title = entry.get("title", "").strip()
+                    description = entry.get("summary", "")
+
+                    # Clean up title
+                    title = re.sub(r"\s+", " ", title)
+
+                    # Only include English content
+                    if not title or len(title) < 10 or not is_english_text(title):
+                        continue
+
+                    # Check if content matches CMMC keywords
+                    content_lower = (title + " " + description).lower()
+                    is_cmmc_relevant = any(
+                        keyword.lower() in content_lower for keyword in CMMC_KEYWORDS
+                    )
+
+                    if is_cmmc_relevant:
+                        trend = Trend(
+                            title=title,
+                            source=f'cmmc_{name.lower().replace(" ", "_")}',
+                            url=entry.get("link"),
+                            description=self._clean_html(description),
+                            category="cmmc",  # Explicit categorization
+                            score=1.6,  # Good quality federal news
+                            image_url=self._extract_image_from_entry(entry),
+                        )
+                        trends.append(trend)
+
+            except Exception as e:
+                logger.warning(f"CMMC {name} RSS error: {e}")
+                continue
+
+            time.sleep(0.15)
+
+        logger.info(f"CMMC collector found {len(trends)} relevant stories")
         return trends
 
     def _clean_html(self, text: str) -> str:
