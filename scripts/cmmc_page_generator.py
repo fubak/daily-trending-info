@@ -31,12 +31,23 @@ def filter_cmmc_trends(trends: List[Dict]) -> List[Dict]:
     Filter trends that are CMMC-related.
 
     Args:
-        trends: List of all trend dictionaries
+        trends: List of trend objects (dataclass or dict)
 
     Returns:
         List of CMMC-related trends (source starts with 'cmmc_')
     """
-    return [trend for trend in trends if trend.get("source", "").startswith("cmmc_")]
+    cmmc_trends = []
+    for trend in trends:
+        # Handle both dataclass and dict formats
+        if hasattr(trend, "source"):
+            source = trend.source
+        elif isinstance(trend, dict):
+            source = trend.get("source", "")
+        else:
+            source = ""
+        if source.startswith("cmmc_"):
+            cmmc_trends.append(trend)
+    return cmmc_trends
 
 
 def get_cmmc_hero_image(

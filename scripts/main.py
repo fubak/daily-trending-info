@@ -1229,15 +1229,20 @@ class Pipeline:
         """Generate CMMC Watch standalone page."""
         logger.info("[9b] Generating CMMC Watch page...")
 
+        # Convert trends to dict format
+        trends_data = [
+            asdict(t) if hasattr(t, "__dataclass_fields__") else t for t in self.trends
+        ]
+
         # Check if we have CMMC trends
-        cmmc_trends = filter_cmmc_trends(self.trends)
+        cmmc_trends = filter_cmmc_trends(trends_data)
         if not cmmc_trends:
             logger.info("  No CMMC trends found, skipping CMMC page generation")
             return
 
         # Generate the page
         result = generate_cmmc_page(
-            trends=self.trends,
+            trends=trends_data,
             images=self.images,
             design=self.design or {},
             output_dir=self.public_dir,
