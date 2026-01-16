@@ -67,6 +67,7 @@ LIMITS = {
 # ============================================================================
 
 # Keywords for filtering CMMC-relevant content from RSS feeds
+# Broader keywords to capture more defense/federal cybersecurity content
 CMMC_KEYWORDS = [
     # Primary CMMC terms
     "cmmc",
@@ -83,6 +84,8 @@ CMMC_KEYWORDS = [
     "nist sp 800-171",
     "nist 800-172",
     "sp 800-172",
+    "nist framework",
+    "nist cybersecurity",
     "dfars",
     "dfars 252.204",
     "dfars 7012",
@@ -90,6 +93,9 @@ CMMC_KEYWORDS = [
     "cui",
     "controlled unclassified",
     "fedramp",
+    "fisma",
+    "ato",
+    "authority to operate",
     # Defense Industrial Base
     "defense industrial base",
     "dib",
@@ -97,10 +103,30 @@ CMMC_KEYWORDS = [
     "dod contractor",
     "cleared contractor",
     "industrial security",
-    # Federal cybersecurity
+    "pentagon",
+    "department of defense",
+    # Federal cybersecurity (broader)
     "federal cybersecurity",
     "dod cybersecurity",
     "government compliance",
+    "federal zero trust",
+    "cisa",
+    "cybersecurity agency",
+    "federal cio",
+    "government cyber",
+    "federal it security",
+    "defense cyber",
+    "military cyber",
+    # Contract/Acquisition
+    "defense contract",
+    "dod contract",
+    "federal contract",
+    "government contract award",
+    "cleared defense",
+    # Supply chain security
+    "supply chain security",
+    "supply chain risk",
+    "scrm",
 ]
 
 # Quality gates

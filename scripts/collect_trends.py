@@ -1302,7 +1302,7 @@ class TrendCollector:
         """
         trends = []
 
-        # Federal IT and cybersecurity news sources
+        # Federal IT, defense, and cybersecurity news sources
         feeds = [
             ("FedScoop", "https://fedscoop.com/feed/"),
             ("DefenseScoop", "https://defensescoop.com/feed/"),
@@ -1314,6 +1314,14 @@ class TrendCollector:
             ("GovCon Wire", "https://www.govconwire.com/feed/"),
             ("SecurityWeek", "https://www.securityweek.com/feed/"),
             ("Cyberscoop", "https://cyberscoop.com/feed/"),
+            # Defense-focused sources
+            ("Breaking Defense", "https://breakingdefense.com/feed/"),
+            ("Defense One", "https://www.defenseone.com/rss/all/"),
+            (
+                "Defense News",
+                "https://www.defensenews.com/arc/outboundfeeds/rss/?outputType=xml",
+            ),
+            ("ExecutiveGov", "https://executivegov.com/feed/"),
             # SC Media removed - returns 403 Forbidden for automated access
         ]
 
@@ -1324,7 +1332,7 @@ class TrendCollector:
 
                 feed = feedparser.parse(response.content)
 
-                for entry in feed.entries[:10]:  # Check more entries, filter by keyword
+                for entry in feed.entries[:25]:  # Check more entries, filter by keyword
                     title = entry.get("title", "").strip()
                     description = entry.get("summary", "")
 
