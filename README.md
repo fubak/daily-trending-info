@@ -48,6 +48,25 @@ Dedicated pages for major categories:
 - `/sports/` - Sports news and scores
 - `/business/` - Business and corporate news
 
+### CMMC Watch
+Standalone page focused on CMMC (Cybersecurity Maturity Model Certification) compliance news at `/cmmc/`:
+
+**Sources:**
+- Federal IT news (FedScoop, DefenseScoop, Federal News Network, Nextgov)
+- Defense industry (Breaking Defense, Defense One, Defense News, ExecutiveGov)
+- Cybersecurity (SecurityWeek, Cyberscoop, GovCon Wire)
+- Reddit communities (r/CMMC, r/NISTControls, r/FederalEmployees)
+
+**Features:**
+- **4 Priority Categories:**
+  - 🎯 CMMC Program News - Direct certification and assessment updates
+  - 📋 NIST & Compliance - NIST 800-171/172, DFARS, FedRAMP
+  - 🛡️ Defense Industrial Base - DoD contractors and DIB news
+  - 🔒 Federal Cybersecurity - Related government IT news
+- Separate RSS feed at `/cmmc/feed.xml`
+- Publication dates in MM/DD/YYYY format
+- Standalone branding (no main site navigation)
+
 ### User Preferences
 All settings persist in localStorage:
 - **Theme:** Dark mode (default) / Light mode
@@ -86,6 +105,7 @@ PWA → Sitemap → Cleanup → Save
 | `generate_design.py` | AI-driven design generation |
 | `build_website.py` | Jinja2-based HTML builder |
 | `editorial_generator.py` | 8-section article generator |
+| `cmmc_page_generator.py` | CMMC Watch standalone page |
 | `archive_manager.py` | 30-day snapshot management |
 | `generate_rss.py` | RSS 2.0 feed generation |
 | `sitemap_generator.py` | XML sitemap generation |
@@ -115,7 +135,10 @@ public/
 ├── finance/            # Topic page
 ├── media/              # Topic page
 ├── sports/             # Topic page
-└── business/           # Topic page
+├── business/           # Topic page
+└── cmmc/               # CMMC Watch (standalone)
+    ├── index.html      # CMMC compliance news
+    └── feed.xml        # CMMC-specific RSS feed
 ```
 
 ## Setup

@@ -16,25 +16,26 @@ Required in `.env` or GitHub Secrets:
 
 ## Architecture
 
-**Pipeline (14 steps in `main.py`):** Archive → Collect (12 sources) → Images → Enrich → Load yesterday → AI design → Editorial → Topics → Build HTML → RSS → PWA → Sitemap → Cleanup → Save
+**Pipeline (16 steps in `main.py`):** Archive → Load yesterday → Collect (15+ sources) → Images → Enrich → AI design → Editorial → Topics → CMMC Watch → Media → Build HTML → RSS → PWA → Sitemap → Cleanup → Save
 
 | Module | Purpose |
 |--------|---------|
 | `main.py` | Orchestrator, quality gates |
-| `collect_trends.py` | 12 sources, deduplication |
+| `collect_trends.py` | 15+ sources, deduplication |
 | `fetch_images.py` | Pexels/Unsplash, 7-day cache |
 | `generate_design.py` | 9 personalities, 20+ colors, 12 hero styles |
 | `build_website.py` | Single-file HTML/CSS/JS builder |
 | `enrich_content.py` | Word of Day, Grokipedia |
 | `editorial_generator.py` | 8-section articles |
+| `cmmc_page_generator.py` | CMMC Watch standalone page |
 | `generate_rss.py` | RSS 2.0, content:encoded |
 | `sitemap_generator.py` | XML sitemap |
 | `config.py` | All limits, timeouts, constants |
 | `archive_manager.py` | 30-day snapshots |
 
-**Data Flow:** `12 Sources → trends.json → images.json → design.json → public/index.html` | Cache: `data/image_cache/` (7-day TTL)
+**Data Flow:** `15+ Sources → trends.json → images.json → design.json → public/index.html` | Cache: `data/image_cache/` (7-day TTL)
 
-**Output (`public/`):** `index.html` (self-contained) | `feed.xml` | `sitemap.xml` | `manifest.json` + `sw.js` | `archive/` (30-day) | `articles/` (permanent: index, YYYY/MM/DD/slug/)  | Topic pages: `tech/`, `world/`, `social/`
+**Output (`public/`):** `index.html` (self-contained) | `feed.xml` | `sitemap.xml` | `manifest.json` + `sw.js` | `archive/` (30-day) | `articles/` (permanent: index, YYYY/MM/DD/slug/) | Topic pages: `tech/`, `world/`, `science/`, `politics/`, `finance/`, `business/`, `sports/` | CMMC Watch: `cmmc/` (standalone)
 
 ## Quality Gates
 
@@ -59,6 +60,22 @@ Required in `.env` or GitHub Secrets:
 **Topics:** `/tech/` (HackerNews, Lobsters, GitHub, tech RSS) | `/world/` (news RSS, Wikipedia) | `/social/` (Reddit, viral)
 
 **RSS:** RSS 2.0 | `content:encoded` (full HTML) | `dc:creator` | "Why This Matters" | Atom self-link
+
+## CMMC Watch
+
+**Module:** `cmmc_page_generator.py` | **URL:** `/cmmc/` | **RSS:** `/cmmc/feed.xml`
+
+**Sources:** FedScoop, DefenseScoop, Federal News Network, Nextgov, Breaking Defense, Defense One, Defense News, ExecutiveGov, SecurityWeek, Cyberscoop, GovCon Wire | Reddit: r/CMMC, r/NISTControls, r/FederalEmployees
+
+**Categories (priority order):**
+1. 🎯 CMMC Program News - `CMMC_CORE_KEYWORDS` (cmmc, c3pao, cyber-ab, cmmc certification)
+2. 📋 NIST & Compliance - `NIST_KEYWORDS` (nist 800-171, dfars, fedramp, fisma)
+3. 🛡️ Defense Industrial Base - `DIB_KEYWORDS` (defense contractor, dod contractor, pentagon)
+4. 🔒 Federal Cybersecurity - General federal cyber news
+
+**Key functions:** `filter_cmmc_trends()` | `categorize_trend()` | `sort_trends_by_priority()` | `build_cmmc_page()`
+
+**Date format:** MM/DD/YYYY | Standalone page (no main nav)
 
 ## Trending Indicators
 
