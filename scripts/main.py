@@ -1240,11 +1240,18 @@ class Pipeline:
             logger.info("  No CMMC trends found, skipping CMMC page generation")
             return
 
+        # Convert design to dict format
+        design_data = (
+            asdict(self.design)
+            if hasattr(self.design, "__dataclass_fields__")
+            else self.design or {}
+        )
+
         # Generate the page
         result = generate_cmmc_page(
             trends=trends_data,
             images=self.images,
-            design=self.design or {},
+            design=design_data,
             output_dir=self.public_dir,
         )
 
