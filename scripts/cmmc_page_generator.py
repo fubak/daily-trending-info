@@ -50,6 +50,90 @@ def filter_cmmc_trends(trends: List[Dict]) -> List[Dict]:
     return cmmc_trends
 
 
+# Keywords that indicate CMMC-specific content (highest priority)
+CMMC_CORE_KEYWORDS = [
+    "cmmc",
+    "c3pao",
+    "cyber-ab",
+    "cyberab",
+    "cmmc 2.0",
+    "cmmc level",
+    "cmmc certification",
+    "cmmc assessment",
+    "cmmc compliance",
+]
+
+# Keywords for NIST/Compliance content (second priority)
+NIST_KEYWORDS = [
+    "nist 800-171",
+    "nist sp 800-171",
+    "nist 800-172",
+    "sp 800-172",
+    "dfars",
+    "dfars 252.204",
+    "dfars 7012",
+    "cui",
+    "controlled unclassified",
+    "fedramp",
+    "fisma",
+    "ato",
+    "authority to operate",
+]
+
+# Keywords for Defense Industrial Base (third priority)
+DIB_KEYWORDS = [
+    "defense industrial base",
+    "dib",
+    "defense contractor",
+    "dod contractor",
+    "cleared contractor",
+    "defense contract",
+    "pentagon",
+    "dod cybersecurity",
+]
+
+
+def categorize_trend(trend: Dict) -> str:
+    """
+    Categorize a trend into CMMC-specific, NIST/Compliance, DIB, or General.
+
+    Returns: "cmmc", "nist", "dib", or "general"
+    """
+    title = trend.get("title", "").lower()
+    desc = (trend.get("summary") or trend.get("description") or "").lower()
+    content = title + " " + desc
+
+    # Check CMMC-specific first (highest priority)
+    for keyword in CMMC_CORE_KEYWORDS:
+        if keyword in content:
+            return "cmmc"
+
+    # Check NIST/Compliance
+    for keyword in NIST_KEYWORDS:
+        if keyword in content:
+            return "nist"
+
+    # Check DIB
+    for keyword in DIB_KEYWORDS:
+        if keyword in content:
+            return "dib"
+
+    return "general"
+
+
+def sort_trends_by_priority(trends: List[Dict]) -> List[Dict]:
+    """
+    Sort trends with CMMC-specific content first, then NIST, then DIB, then general.
+    """
+    priority_order = {"cmmc": 0, "nist": 1, "dib": 2, "general": 3}
+
+    def sort_key(trend):
+        category = categorize_trend(trend)
+        return priority_order.get(category, 3)
+
+    return sorted(trends, key=sort_key)
+
+
 def get_cmmc_hero_image(
     images: List[Dict], headline: str, used_image_ids: Set[str]
 ) -> Dict:
@@ -486,6 +570,25 @@ def get_cmmc_styles(colors: Dict, fonts: Dict) -> str:
         padding: var(--section-gap, 2rem) 1.5rem;
     }}
 
+    .category-section {{
+        margin-bottom: 3rem;
+    }}
+
+    .category-section.cmmc-priority {{
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.02));
+        margin-left: -1.5rem;
+        margin-right: -1.5rem;
+        padding: 2rem 1.5rem;
+        border-left: 4px solid var(--accent);
+    }}
+
+    .category-desc {{
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+        font-style: italic;
+    }}
+
     .cmmc-section-header {{
         display: flex;
         justify-content: space-between;
@@ -752,8 +855,9 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
     Returns:
         Complete HTML string for the page
     """
-    # Filter to CMMC trends only
+    # Filter to CMMC trends only and sort by priority
     cmmc_trends = filter_cmmc_trends(trends)
+    cmmc_trends = sort_trends_by_priority(cmmc_trends)
 
     if not cmmc_trends:
         logger.warning("No CMMC trends found, generating empty page")
@@ -800,9 +904,8 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
         (featured_story.get("summary") or featured_story.get("description") or "")[:200]
     )
 
-    # Build story cards (skip first since it's featured)
-    story_cards = []
-    for trend in cmmc_trends[1:20]:  # Show up to 19 additional stories
+    # Helper function to build a story card
+    def build_story_card(trend, images, used_image_ids):
         title = html_module.escape(trend.get("title", "")[:100])
         url = html_module.escape(trend.get("url", "#"))
         source = html_module.escape(
@@ -812,21 +915,19 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
             (trend.get("summary") or trend.get("description") or "")[:150]
         )
 
-        # Format publication date as MM/YYYY
+        # Format publication date as MM/DD/YYYY
         pub_date = ""
         timestamp = trend.get("timestamp")
         if timestamp:
             try:
                 if isinstance(timestamp, datetime):
-                    # Already a datetime object (from asdict())
-                    pub_date = timestamp.strftime("%m/%Y")
+                    pub_date = timestamp.strftime("%m/%d/%Y")
                 elif isinstance(timestamp, str):
-                    # Try ISO format (handles both 'T' and space separators)
                     dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-                    pub_date = dt.strftime("%m/%Y")
+                    pub_date = dt.strftime("%m/%d/%Y")
                 elif isinstance(timestamp, (int, float)):
                     dt = datetime.fromtimestamp(timestamp)
-                    pub_date = dt.strftime("%m/%Y")
+                    pub_date = dt.strftime("%m/%d/%Y")
             except (ValueError, TypeError, OSError):
                 pass
 
@@ -840,10 +941,9 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
                 if img.get("id"):
                     used_image_ids.add(img["id"])
 
-        # Build date element if we have a date
         date_html = f'<span class="story-date">{pub_date}</span>' if pub_date else ""
 
-        card = f"""
+        return f"""
         <article class="story-card">
             <div class="story-media">
                 {"<img class='story-image' src='" + html_module.escape(story_image) + "' alt='' loading='lazy'>" if story_image else "<div class='story-image' style='background: linear-gradient(135deg, #1e3a5f, #0d1b2a);'></div>"}
@@ -855,7 +955,60 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
                 <p class="story-summary">{summary}</p>
             </div>
         </article>"""
-        story_cards.append(card)
+
+    # Categorize stories (skip first since it's featured)
+    remaining_trends = cmmc_trends[1:]
+    cmmc_specific = []
+    nist_compliance = []
+    dib_stories = []
+    general_stories = []
+
+    for trend in remaining_trends:
+        category = categorize_trend(trend)
+        if category == "cmmc":
+            cmmc_specific.append(trend)
+        elif category == "nist":
+            nist_compliance.append(trend)
+        elif category == "dib":
+            dib_stories.append(trend)
+        else:
+            general_stories.append(trend)
+
+    # Build cards for each category
+    cmmc_cards = [
+        build_story_card(t, images, used_image_ids) for t in cmmc_specific[:10]
+    ]
+    nist_cards = [
+        build_story_card(t, images, used_image_ids) for t in nist_compliance[:10]
+    ]
+    dib_cards = [build_story_card(t, images, used_image_ids) for t in dib_stories[:10]]
+    general_cards = [
+        build_story_card(t, images, used_image_ids) for t in general_stories[:10]
+    ]
+
+    # Category section labels and icons
+    category_info = {
+        "cmmc": (
+            "CMMC Program News",
+            "🎯",
+            "Direct CMMC certification, assessment, and program updates",
+        ),
+        "nist": (
+            "NIST & Compliance",
+            "📋",
+            "NIST 800-171/172, DFARS, FedRAMP, and regulatory updates",
+        ),
+        "dib": (
+            "Defense Industrial Base",
+            "🛡️",
+            "Defense contractors, DoD cybersecurity, and DIB news",
+        ),
+        "general": (
+            "Federal Cybersecurity",
+            "🔒",
+            "Related federal cybersecurity and government IT news",
+        ),
+    }
 
     # Build complete HTML
     html = f"""<!DOCTYPE html>
@@ -904,14 +1057,41 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
     </section>
 
     <main class="cmmc-main">
-        <div class="cmmc-section-header">
-            <h2 class="cmmc-section-title">Latest CMMC News</h2>
-            <span class="cmmc-story-count">{len(cmmc_trends)} stories</span>
-        </div>
+        {f'''<section class="category-section cmmc-priority">
+            <div class="cmmc-section-header">
+                <h2 class="cmmc-section-title">{category_info["cmmc"][1]} {category_info["cmmc"][0]}</h2>
+                <span class="cmmc-story-count">{len(cmmc_specific)} stories</span>
+            </div>
+            <p class="category-desc">{category_info["cmmc"][2]}</p>
+            <div class="stories-grid">{"".join(cmmc_cards)}</div>
+        </section>''' if cmmc_cards else ""}
 
-        <div class="stories-grid">
-            {''.join(story_cards) if story_cards else '<p style="color: var(--text-muted); padding: 2rem;">No stories found. CMMC news will appear here when available.</p>'}
-        </div>
+        {f'''<section class="category-section">
+            <div class="cmmc-section-header">
+                <h2 class="cmmc-section-title">{category_info["nist"][1]} {category_info["nist"][0]}</h2>
+                <span class="cmmc-story-count">{len(nist_compliance)} stories</span>
+            </div>
+            <p class="category-desc">{category_info["nist"][2]}</p>
+            <div class="stories-grid">{"".join(nist_cards)}</div>
+        </section>''' if nist_cards else ""}
+
+        {f'''<section class="category-section">
+            <div class="cmmc-section-header">
+                <h2 class="cmmc-section-title">{category_info["dib"][1]} {category_info["dib"][0]}</h2>
+                <span class="cmmc-story-count">{len(dib_stories)} stories</span>
+            </div>
+            <p class="category-desc">{category_info["dib"][2]}</p>
+            <div class="stories-grid">{"".join(dib_cards)}</div>
+        </section>''' if dib_cards else ""}
+
+        {f'''<section class="category-section">
+            <div class="cmmc-section-header">
+                <h2 class="cmmc-section-title">{category_info["general"][1]} {category_info["general"][0]}</h2>
+                <span class="cmmc-story-count">{len(general_stories)} stories</span>
+            </div>
+            <p class="category-desc">{category_info["general"][2]}</p>
+            <div class="stories-grid">{"".join(general_cards)}</div>
+        </section>''' if general_cards else ""}
     </main>
 
     {build_cmmc_footer(date_str)}
