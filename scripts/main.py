@@ -1380,6 +1380,8 @@ class Pipeline:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{config['title']} | DailyTrending.info</title>
     <meta name="description" content="{config['description']}">
+    <meta name="author" content="DailyTrending.info">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <link rel="canonical" href="https://dailytrending.info/{config['slug']}/">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
@@ -1388,21 +1390,49 @@ class Pipeline:
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://dailytrending.info/{config['slug']}/">
     <meta property="og:image" content="https://dailytrending.info/og-image.png">
+    <meta property="og:site_name" content="DailyTrending.info">
 
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@bradshannon">
     <meta name="twitter:title" content="{config['title']} | DailyTrending.info">
     <meta name="twitter:description" content="{config['description']}">
 
     <script type="application/ld+json">
     {{
         "@context": "https://schema.org",
-        "@type": "CollectionPage",
-        "name": "{config['title']} Trends",
-        "description": "{config['description']}",
-        "url": "https://dailytrending.info/{config['slug']}/",
-        "isPartOf": {{"@id": "https://dailytrending.info"}},
-        "dateModified": "{date_iso}",
-        "numberOfItems": {len(trends)}
+        "@graph": [
+            {{
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                    {{
+                        "@type": "ListItem",
+                        "position": 1,
+                        "name": "Home",
+                        "item": "https://dailytrending.info/"
+                    }},
+                    {{
+                        "@type": "ListItem",
+                        "position": 2,
+                        "name": "{config['title']}",
+                        "item": "https://dailytrending.info/{config['slug']}/"
+                    }}
+                ]
+            }},
+            {{
+                "@type": "CollectionPage",
+                "name": "{config['title']} Trends",
+                "description": "{config['description']}",
+                "url": "https://dailytrending.info/{config['slug']}/",
+                "isPartOf": {{"@id": "https://dailytrending.info"}},
+                "dateModified": "{date_iso}",
+                "numberOfItems": {len(trends)},
+                "publisher": {{
+                    "@type": "Organization",
+                    "name": "DailyTrending.info",
+                    "url": "https://dailytrending.info/"
+                }}
+            }}
+        ]
     }}
     </script>
 

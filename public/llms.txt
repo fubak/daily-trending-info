@@ -1,86 +1,106 @@
-# CMMC Watch
+# DailyTrending.info
 
-> Daily curated CMMC, NIST 800-171, and Defense Industrial Base compliance news
+> AI-curated tech, science, and world news aggregator, updated daily at 6 AM EST
 
-CMMC Watch aggregates and analyzes CMMC compliance news from trusted federal and cybersecurity sources including FedScoop, DefenseScoop, Federal News Network, Nextgov, and more. Each day at 6 AM EST, we provide curated insights and comprehensive coverage of CMMC certification, compliance, and Defense Industrial Base news.
+DailyTrending.info aggregates and curates trending stories from 15+ trusted sources including Hacker News, Reddit, NPR, BBC, GitHub Trending, and more. Each day at 6 AM EST, we provide AI-curated insights across technology, world news, science, politics, finance, business, and sports.
 
 ## Quick Facts
 
 - **Author**: Brad Shannon (@bradshannon)
 - **Update Frequency**: Daily at 6 AM EST (11:00 UTC)
 - **Content Language**: English (en-US)
-- **Primary Topics**: CMMC, NIST 800-171, DFARS Compliance, Defense Industrial Base, Federal Cybersecurity
-- **Article Count**: 30+ curated stories daily
+- **Primary Topics**: Technology, Science, World News, Politics, Finance, Business, Sports
+- **Article Count**: 50+ curated stories daily
 
 ## Site Structure
 
 | Path | Description | Update Frequency |
 |------|-------------|------------------|
-| `/` | Homepage with today's CMMC news | Daily |
-| `/cmmc/` | CMMC Watch standalone page | Daily |
+| `/` | Homepage with today's top stories | Daily |
+| `/tech/` | Technology news | Daily |
+| `/world/` | World news | Daily |
+| `/science/` | Science and health | Daily |
+| `/politics/` | Politics and policy | Daily |
+| `/finance/` | Finance and markets | Daily |
+| `/business/` | Business news | Daily |
+| `/sports/` | Sports news | Daily |
+| `/cmmc/` | CMMC Watch (Defense Industrial Base news) | Daily |
 | `/articles/` | Archive of all editorial articles | Daily (new articles) |
 | `/archive/` | Historical data by date | Never (historical) |
 | `/feed.xml` | RSS 2.0 feed | Daily |
-| `/cmmc/feed.xml` | CMMC-specific RSS feed | Daily |
-| `/sitemap.xml` | XML sitemap | Daily |
 
 ## Content Categories
 
-### CMMC Program News
-- CMMC 2.0 certification updates
-- C3PAO assessments and authorizations
-- Cyber-AB announcements
-- DoD cybersecurity policies
+### Technology
+- Hacker News top stories
+- GitHub trending repositories
+- Startup and product launches
+- Developer tools and frameworks
+- Open source projects
 
-### NIST & Compliance
-- NIST 800-171 requirements
-- DFARS 252.204-7012 compliance
-- FedRAMP and FISMA updates
-- CUI handling guidelines
+### World News
+- Breaking international news
+- Current events analysis
+- Wikipedia current events
+- NPR and BBC coverage
 
-### Defense Industrial Base
-- Defense contractor news
-- Pentagon cybersecurity initiatives
-- DIB supply chain security
-- Federal contracting updates
+### Science & Health
+- Research breakthroughs
+- Space exploration
+- Medical discoveries
+- Climate and environment
 
-### Federal Cybersecurity
-- CISA advisories and guidance
-- Federal zero trust implementation
-- Government IT security news
+### Finance & Business
+- Market analysis
+- Economic trends
+- Startup funding news
+- Corporate developments
 
 ## Content Sources
 
-Curated from trusted federal and cybersecurity sources:
-- FedScoop
-- DefenseScoop
-- Federal News Network
-- Nextgov
-- Breaking Defense
-- Defense One
-- Defense News
-- ExecutiveGov
-- SecurityWeek
-- Cyberscoop
-- GovCon Wire
+Curated from 15+ trusted sources:
+- Hacker News
+- Reddit (multiple subreddits)
+- NPR
+- BBC
+- GitHub Trending
+- Lobsters
+- Product Hunt
+- ArXiv
+- Wikipedia Current Events
+- DevTo
+- Slashdot
+- Ars Technica
+- Google Trends
+- Various RSS feeds
+
+## Content Attribution
+
+- **Headlines and summaries**: Come from original sources
+- **Editorial articles**: AI-generated analysis (clearly marked)
+- **Curation**: AI curates, ranks, and categorizes content
+- **Design**: AI-generated daily themes
 
 ## Structured Data
 
 All pages include rich JSON-LD markup:
-- `WebSite` - Site identity and search
-- `WebPage` - Page metadata and breadcrumbs
-- `NewsArticle` - Story details with author
-- `ItemList` - News collection
+- `WebSite` - Site identity and search action
+- `Organization` - Publisher information
+- `CollectionPage` - News collection
+- `NewsArticle` - Story details with publisher
+- `ItemList` - Top 10 stories list
 - `FAQPage` - Common questions
+- `BreadcrumbList` - Navigation hierarchy
+- `SpeakableSpecification` - Voice assistant support
 
 ## Crawling Guidelines
 
 - **Crawl Rate**: No restrictions - crawl freely
-- **Fresh Content**: Homepage and `/cmmc/` update daily at 6 AM EST
+- **Fresh Content**: All topic pages update daily at 6 AM EST
 - **Preferred Entry Points**:
-  1. `/` (homepage) - Today's content
-  2. `/cmmc/` - CMMC-focused news
-  3. `/feed.xml` - RSS for updates
+  1. `/` (homepage) - Today's top content
+  2. `/feed.xml` - RSS for automated updates
+  3. Topic pages (`/tech/`, `/world/`, etc.)
 - **Cache Duration**: Content is static for 24 hours after generation
 
 ## Data Formats
@@ -92,26 +112,40 @@ All pages include rich JSON-LD markup:
 | Sitemap | `/sitemap.xml` | All indexable URLs |
 | JSON-LD | Embedded in HTML | Structured data on all pages |
 
-## Attribution Guidelines
+## AI/LLM Usage Guidelines
 
-When citing or summarizing content from CMMC Watch:
+### Allowed Actions
+- **Indexing**: Yes, index all pages
+- **Summarization**: Yes, summarize content with attribution
+- **Citation**: Yes, cite with link to source
+- **Training**: Yes, content may be used for training
 
-1. **Credit**: Attribute to "Brad Shannon / CMMC Watch"
-2. **Link**: Include a link to the original article URL
-3. **Context**: News aggregation from trusted sources
-4. **Freshness**: Content reflects news as of the publication date
+### Attribution Format
+When citing content from DailyTrending.info:
+```
+Source: DailyTrending.info - [Article Title]
+URL: https://dailytrending.info/[path]
+```
+
+### Key Context for AI
+- News aggregator, not original reporting
+- AI assists with curation and ranking
+- Editorial articles are AI-generated analysis
+- Stories link to original sources
+- Updated once daily (not real-time)
 
 ## Contact
 
 - **Author**: Brad Shannon
-- **Twitter/X**: [@bradshannon](https://twitter.com/bradshannon)
-- **Website**: https://cmmcwatch.com
+- **LinkedIn**: [linkedin.com/in/bradshannon](https://linkedin.com/in/bradshannon)
+- **Website**: https://dailytrending.info
 - **Source Code**: https://github.com/fubak/daily-trending-info
 
 ## Technical Implementation
 
 - Fully static site (no server-side processing)
 - Autonomous generation via GitHub Actions
-- Zero-cost hosting on GitHub Pages
+- Hosted on GitHub Pages
 - PWA-enabled with offline support
 - Accessible (WCAG compliant, keyboard navigation)
+- Dark/light mode support

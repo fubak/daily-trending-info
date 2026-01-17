@@ -536,6 +536,45 @@ class WebsiteBuilder:
         """Generate comprehensive JSON-LD structured data for SEO and LLMs."""
         import json
 
+        # Organization schema
+        organization_schema = {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "DailyTrending.info",
+            "url": "https://dailytrending.info/",
+            "logo": "https://dailytrending.info/icons/icon-512.png",
+            "description": "AI-curated tech, science, and world news aggregator",
+            "founder": {
+                "@type": "Person",
+                "name": "Brad Shannon",
+                "url": "https://www.linkedin.com/in/bradshannon/",
+            },
+            "sameAs": [
+                "https://www.linkedin.com/in/bradshannon/",
+                "https://twitter.com/bradshannon",
+                "https://github.com/fubak/daily-trending-info",
+            ],
+            "contactPoint": {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "url": "https://www.linkedin.com/in/bradshannon/",
+            },
+        }
+
+        # BreadcrumbList schema for homepage
+        breadcrumb_schema = {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Home",
+                    "item": "https://dailytrending.info/",
+                }
+            ],
+        }
+
         # Base WebSite schema
         website_schema = {
             "@context": "https://schema.org",
@@ -544,12 +583,23 @@ class WebsiteBuilder:
             "alternateName": "Daily Trending",
             "url": "https://dailytrending.info/",
             "description": "AI-curated tech, science, and world news aggregator, updated daily",
+            "publisher": {
+                "@type": "Organization",
+                "name": "DailyTrending.info",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://dailytrending.info/icons/icon-512.png",
+                },
+            },
             "potentialAction": {
                 "@type": "SearchAction",
                 "target": "https://dailytrending.info/?q={search_term_string}",
                 "query-input": "required name=search_term_string",
             },
-            "sameAs": ["https://twitter.com/bradshannon"],
+            "sameAs": [
+                "https://www.linkedin.com/in/bradshannon/",
+                "https://twitter.com/bradshannon",
+            ],
             "speakable": {
                 "@type": "SpeakableSpecification",
                 "cssSelector": [".hero-content h1", ".hero-subtitle", ".story-title"],
@@ -641,7 +691,13 @@ class WebsiteBuilder:
         # Combine all schemas using @graph
         combined_schema = {
             "@context": "https://schema.org",
-            "@graph": [website_schema, collection_schema, faq_schema],
+            "@graph": [
+                organization_schema,
+                breadcrumb_schema,
+                website_schema,
+                collection_schema,
+                faq_schema,
+            ],
         }
 
         return f'<script type="application/ld+json">\n{json.dumps(combined_schema, indent=2)}\n</script>'

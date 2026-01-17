@@ -231,8 +231,29 @@ Allow: /
 User-agent: Google-Extended
 Allow: /
 
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Meta-ExternalFetcher
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Diffbot
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
 # Sitemap location
-Sitemap: {base_url}/sitemap_main.xml
+Sitemap: {base_url}/sitemap.xml
+
+# LLM Information
+# See /llms.txt for AI crawler guidelines
 """
 
 
