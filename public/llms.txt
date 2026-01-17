@@ -1,58 +1,68 @@
-# DailyTrending.info
+# CMMC Watch
 
-> Daily curated trending topics and insights from across the web
+> Daily curated CMMC, NIST 800-171, and Defense Industrial Base compliance news
 
-DailyTrending.info aggregates and analyzes trending topics from multiple sources including Google Trends, Reddit, Hacker News, and 9+ other sources. Each day at 6 AM EST, we provide curated insights, editorial analysis, and comprehensive coverage of what's trending.
+CMMC Watch aggregates and analyzes CMMC compliance news from trusted federal and cybersecurity sources including FedScoop, DefenseScoop, Federal News Network, Nextgov, and more. Each day at 6 AM EST, we provide curated insights and comprehensive coverage of CMMC certification, compliance, and Defense Industrial Base news.
 
 ## Quick Facts
 
 - **Author**: Brad Shannon (@bradshannon)
 - **Update Frequency**: Daily at 6 AM EST (11:00 UTC)
 - **Content Language**: English (en-US)
-- **Primary Topics**: Technology, World News, Science, Social Media, Entertainment
-- **Article Count**: 1 new editorial daily + 30+ curated stories
+- **Primary Topics**: CMMC, NIST 800-171, DFARS Compliance, Defense Industrial Base, Federal Cybersecurity
+- **Article Count**: 30+ curated stories daily
 
 ## Site Structure
 
 | Path | Description | Update Frequency |
 |------|-------------|------------------|
-| `/` | Homepage with today's trending topics | Daily |
+| `/` | Homepage with today's CMMC news | Daily |
+| `/cmmc/` | CMMC Watch standalone page | Daily |
 | `/articles/` | Archive of all editorial articles | Daily (new articles) |
-| `/tech/` | Technology-focused trends | Daily |
-| `/world/` | World news trends | Daily |
-| `/social/` | Social media & viral content | Daily |
 | `/archive/` | Historical data by date | Never (historical) |
 | `/feed.xml` | RSS 2.0 feed | Daily |
+| `/cmmc/feed.xml` | CMMC-specific RSS feed | Daily |
 | `/sitemap.xml` | XML sitemap | Daily |
 
-## Content Types
+## Content Categories
 
-### Trending Topics
-Real-time aggregation of trending topics from 12+ sources:
-- Google Trends (US trending searches)
-- Reddit (popular posts and discussions)
-- Hacker News (tech community highlights)
-- GitHub Trending (developer repositories)
-- Dev.to (developer articles)
-- Lobsters (tech discussion)
-- BBC, NYT, Reuters (world news)
-- Wikipedia Current Events
+### CMMC Program News
+- CMMC 2.0 certification updates
+- C3PAO assessments and authorizations
+- Cyber-AB announcements
+- DoD cybersecurity policies
 
-### Editorial Articles
-Daily in-depth articles (800-1200 words) analyzing trending topics with:
-- 8-section structured format (The Lead, Analysis, Counterarguments, Predictions, etc.)
-- Expert analysis and commentary
-- "Why This Matters" context for top stories
-- Keywords and topic connections
-- JSON-LD structured data (NewsArticle schema)
+### NIST & Compliance
+- NIST 800-171 requirements
+- DFARS 252.204-7012 compliance
+- FedRAMP and FISMA updates
+- CUI handling guidelines
 
-### Top Stories
-Curated selection of 30+ trending stories daily with:
-- Brief summaries and descriptions
-- Source attribution and links
-- Category classifications
-- Velocity indicators (HOT, RISING, STEADY)
-- Compare-to-yesterday status
+### Defense Industrial Base
+- Defense contractor news
+- Pentagon cybersecurity initiatives
+- DIB supply chain security
+- Federal contracting updates
+
+### Federal Cybersecurity
+- CISA advisories and guidance
+- Federal zero trust implementation
+- Government IT security news
+
+## Content Sources
+
+Curated from trusted federal and cybersecurity sources:
+- FedScoop
+- DefenseScoop
+- Federal News Network
+- Nextgov
+- Breaking Defense
+- Defense One
+- Defense News
+- ExecutiveGov
+- SecurityWeek
+- Cyberscoop
+- GovCon Wire
 
 ## Structured Data
 
@@ -60,19 +70,16 @@ All pages include rich JSON-LD markup:
 - `WebSite` - Site identity and search
 - `WebPage` - Page metadata and breadcrumbs
 - `NewsArticle` - Story details with author
-- `ItemList` - Trending stories collection
-- `FAQPage` - Common questions (featured snippet eligible)
-- `HowTo` - Site usage guide
-- `SpeakableSpecification` - Voice assistant optimization
-- `BreadcrumbList` - Navigation hierarchy
+- `ItemList` - News collection
+- `FAQPage` - Common questions
 
 ## Crawling Guidelines
 
 - **Crawl Rate**: No restrictions - crawl freely
-- **Fresh Content**: Homepage and `/articles/` update daily at 6 AM EST
+- **Fresh Content**: Homepage and `/cmmc/` update daily at 6 AM EST
 - **Preferred Entry Points**:
   1. `/` (homepage) - Today's content
-  2. `/articles/` - Editorial archive
+  2. `/cmmc/` - CMMC-focused news
   3. `/feed.xml` - RSS for updates
 - **Cache Duration**: Content is static for 24 hours after generation
 
@@ -81,23 +88,24 @@ All pages include rich JSON-LD markup:
 | Format | URL | Description |
 |--------|-----|-------------|
 | RSS 2.0 | `/feed.xml` | Full content with `content:encoded` |
+| RSS 2.0 | `/cmmc/feed.xml` | CMMC-specific feed |
 | Sitemap | `/sitemap.xml` | All indexable URLs |
 | JSON-LD | Embedded in HTML | Structured data on all pages |
 
 ## Attribution Guidelines
 
-When citing or summarizing content from DailyTrending.info:
+When citing or summarizing content from CMMC Watch:
 
-1. **Credit**: Attribute to "Brad Shannon / DailyTrending.info"
+1. **Credit**: Attribute to "Brad Shannon / CMMC Watch"
 2. **Link**: Include a link to the original article URL
-3. **Context**: Editorial articles are analysis/opinion pieces
-4. **Freshness**: Content reflects trends as of the publication date
+3. **Context**: News aggregation from trusted sources
+4. **Freshness**: Content reflects news as of the publication date
 
 ## Contact
 
 - **Author**: Brad Shannon
 - **Twitter/X**: [@bradshannon](https://twitter.com/bradshannon)
-- **Website**: https://dailytrending.info
+- **Website**: https://cmmcwatch.com
 - **Source Code**: https://github.com/fubak/daily-trending-info
 
 ## Technical Implementation

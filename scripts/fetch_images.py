@@ -856,7 +856,7 @@ class ImageFetcher:
 
         for i in range(count):
             # Use seeded URLs for reproducibility within the same day
-            seed = f"dailytrending_{datetime.now().strftime('%Y%m%d')}_{i}"
+            seed = f"cmmcwatch_{datetime.now().strftime('%Y%m%d')}_{i}"
             base_url = f"https://picsum.photos/seed/{seed}"
 
             try:

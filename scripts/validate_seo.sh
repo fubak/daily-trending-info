@@ -14,10 +14,10 @@ fi
 echo -e "\n1. Title Tag:"
 TITLE=$(grep -o '<title>[^<]*</title>' ../public/index.html | sed 's/<[^>]*>//g')
 echo "   $TITLE"
-if [[ $TITLE == *"DailyTrending.info | AI-Curated"* ]]; then
+if [[ $TITLE == *"CMMC Watch"* ]]; then
     echo "   ✅ Title is correct"
 else
-    echo "   ⚠️  Title should be: DailyTrending.info | AI-Curated Tech & World News Aggregator"
+    echo "   ⚠️  Title should contain: CMMC Watch"
 fi
 
 # 2. Check meta description
@@ -76,7 +76,7 @@ fi
 
 # 6. Check canonical
 echo -e "\n6. Canonical URL:"
-if grep -q 'rel="canonical" href="https://dailytrending.info/"' ../public/index.html; then
+if grep -q 'rel="canonical" href="https://cmmcwatch.com/"' ../public/index.html; then
     echo "   ✅ Canonical URL correct"
 else
     echo "   ⚠️  Canonical URL issue"

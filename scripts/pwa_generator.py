@@ -21,9 +21,9 @@ def generate_manifest() -> str:
         JSON string for manifest.json
     """
     manifest = {
-        "name": "DailyTrending.info",
-        "short_name": "DailyTrending",
-        "description": "Daily aggregated trending topics from news, technology, and social media",
+        "name": "CMMC Watch",
+        "short_name": "CMMCWatch",
+        "description": "Daily CMMC, NIST 800-171, and federal cybersecurity compliance news aggregator",
         "start_url": "/",
         "display": "standalone",
         "background_color": "#0a0a0a",
@@ -36,14 +36,14 @@ def generate_manifest() -> str:
                 "src": "/icons/icon-192.png",
                 "sizes": "192x192",
                 "type": "image/png",
-                "purpose": "any maskable"
+                "purpose": "any maskable",
             },
             {
                 "src": "/icons/icon-512.png",
                 "sizes": "512x512",
                 "type": "image/png",
-                "purpose": "any maskable"
-            }
+                "purpose": "any maskable",
+            },
         ],
         "related_applications": [],
         "prefer_related_applications": False,
@@ -53,16 +53,16 @@ def generate_manifest() -> str:
                 "short_name": "Trends",
                 "description": "View today's trending topics",
                 "url": "/",
-                "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]
+                "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}],
             },
             {
                 "name": "Archive",
                 "short_name": "Archive",
                 "description": "Browse past daily designs",
                 "url": "/archive/",
-                "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]
-            }
-        ]
+                "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}],
+            },
+        ],
     }
 
     return json.dumps(manifest, indent=2)
@@ -77,10 +77,10 @@ def generate_service_worker() -> str:
     """
     cache_version = datetime.now().strftime("%Y%m%d")
 
-    return f'''// DailyTrending.info Service Worker
+    return f"""// CMMC Watch Service Worker
 // Cache version: {cache_version}
 
-const CACHE_NAME = 'dailytrending-v{cache_version}';
+const CACHE_NAME = 'cmmcwatch-v{cache_version}';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache immediately
@@ -161,7 +161,7 @@ self.addEventListener('fetch', (event) => {{
             }})
     );
 }});
-'''
+"""
 
 
 def generate_offline_page() -> str:
@@ -171,12 +171,12 @@ def generate_offline_page() -> str:
     Returns:
         HTML string for offline.html
     """
-    return '''<!DOCTYPE html>
+    return """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Offline - DailyTrending.info</title>
+    <title>Offline - CMMC Watch</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -226,7 +226,7 @@ def generate_offline_page() -> str:
         <h1>You're Offline</h1>
         <p>
             It looks like you've lost your internet connection.
-            DailyTrending.info needs a connection to show you the latest trends.
+            CMMC Watch needs a connection to show you the latest news.
         </p>
         <button class="retry-btn" onclick="location.reload()">
             Try Again
@@ -234,7 +234,7 @@ def generate_offline_page() -> str:
     </div>
 </body>
 </html>
-'''
+"""
 
 
 def generate_pwa_icon_placeholder() -> str:
@@ -245,11 +245,11 @@ def generate_pwa_icon_placeholder() -> str:
     Returns:
         SVG string for icon
     """
-    return '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    return """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" fill="#6366f1" rx="64"/>
   <text x="256" y="320" font-family="Arial, sans-serif" font-size="280" font-weight="bold" fill="white" text-anchor="middle">D</text>
 </svg>
-'''
+"""
 
 
 def save_pwa_assets(public_dir: Path):
@@ -260,25 +260,25 @@ def save_pwa_assets(public_dir: Path):
         public_dir: Path to the public output directory
     """
     # Create directories
-    (public_dir / 'icons').mkdir(parents=True, exist_ok=True)
+    (public_dir / "icons").mkdir(parents=True, exist_ok=True)
 
     # Save manifest
-    manifest_path = public_dir / 'manifest.json'
+    manifest_path = public_dir / "manifest.json"
     manifest_path.write_text(generate_manifest())
     print(f"  Created {manifest_path}")
 
     # Save service worker
-    sw_path = public_dir / 'sw.js'
+    sw_path = public_dir / "sw.js"
     sw_path.write_text(generate_service_worker())
     print(f"  Created {sw_path}")
 
     # Save offline page
-    offline_path = public_dir / 'offline.html'
+    offline_path = public_dir / "offline.html"
     offline_path.write_text(generate_offline_page())
     print(f"  Created {offline_path}")
 
     # Save placeholder icon SVG
-    icon_svg_path = public_dir / 'icons' / 'icon.svg'
+    icon_svg_path = public_dir / "icons" / "icon.svg"
     icon_svg_path.write_text(generate_pwa_icon_placeholder())
     print(f"  Created {icon_svg_path}")
 

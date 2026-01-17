@@ -1383,9 +1383,7 @@ class TrendCollector:
                 response = self.session.get(
                     url,
                     timeout=15,
-                    headers={
-                        "User-Agent": "Mozilla/5.0 (compatible; DailyTrending/1.0)"
-                    },
+                    headers={"User-Agent": "Mozilla/5.0 (compatible; CMMCWatch/1.0)"},
                 )
                 response.raise_for_status()
 

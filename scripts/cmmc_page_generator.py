@@ -253,8 +253,8 @@ def build_cmmc_footer(date_str: str) -> str:
     <footer class="cmmc-footer">
         <div class="cmmc-footer-container">
             <div class="cmmc-footer-brand">
-                <span class="cmmc-footer-powered">Powered by</span>
-                <a href="https://dailytrending.info" class="cmmc-footer-link">DailyTrending.info</a>
+                <span class="cmmc-footer-powered">A product of</span>
+                <a href="https://cmmcwatch.com" class="cmmc-footer-link">CMMC Watch</a>
             </div>
             <div class="cmmc-footer-links">
                 <a href="/cmmc/feed.xml" class="cmmc-footer-rss">
@@ -1018,10 +1018,10 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CMMC Watch | CMMC Compliance & Certification News</title>
     <meta name="description" content="Daily curated news on CMMC (Cybersecurity Maturity Model Certification), NIST 800-171 compliance, and Defense Industrial Base cybersecurity.">
-    <link rel="canonical" href="https://dailytrending.info/cmmc/">
+    <link rel="canonical" href="https://cmmcwatch.com/cmmc/">
     <meta property="og:title" content="CMMC Watch | CMMC Compliance & Certification News">
     <meta property="og:description" content="Daily curated news on CMMC certification, NIST 800-171 compliance, and DIB cybersecurity.">
-    <meta property="og:url" content="https://dailytrending.info/cmmc/">
+    <meta property="og:url" content="https://cmmcwatch.com/cmmc/">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="alternate" type="application/rss+xml" title="CMMC Watch RSS" href="/cmmc/feed.xml">

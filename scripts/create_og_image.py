@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Generate static OG image for DailyTrending.info"""
+"""Generate static OG image for CMMC Watch"""
 
 from PIL import Image, ImageDraw, ImageFont
 import os
+
 
 def create_og_image():
     """Create a branded 1200x630 OG image."""
@@ -18,7 +19,7 @@ def create_og_image():
     text_muted = (148, 163, 184)  # Slate 400
 
     # Create base image with gradient
-    img = Image.new('RGB', (width, height), bg_dark)
+    img = Image.new("RGB", (width, height), bg_dark)
     draw = ImageDraw.Draw(img)
 
     # Create gradient background (top-left to bottom-right)
@@ -51,8 +52,10 @@ def create_og_image():
         x_pos = 950 + (i % 4) * 60
         y_pos = 450 + (i // 4) * 60
         radius = 4
-        draw.ellipse([x_pos - radius, y_pos - radius, x_pos + radius, y_pos + radius],
-                     fill=(*accent_primary, 80))
+        draw.ellipse(
+            [x_pos - radius, y_pos - radius, x_pos + radius, y_pos + radius],
+            fill=(*accent_primary, 80),
+        )
 
     # Try to load fonts, fall back to default if not available
     try:
@@ -84,22 +87,22 @@ def create_og_image():
         font_small = ImageFont.load_default()
 
     # Draw site name
-    site_name = "DailyTrending.info"
+    site_name = "CMMC Watch"
     draw.text((80, 200), site_name, font=font_large, fill=text_white)
 
     # Draw accent underline under site name
-    draw.rectangle([80, 290, 580, 296], fill=accent_primary)
+    draw.rectangle([80, 290, 480, 296], fill=accent_primary)
 
     # Draw tagline
-    tagline = "AI-Curated Tech & World News"
+    tagline = "CMMC & DIB Compliance News"
     draw.text((80, 320), tagline, font=font_medium, fill=text_muted)
 
     # Draw description
-    description = "Real-time trending stories from 12+ sources"
+    description = "Defense Industrial Base news aggregated daily"
     draw.text((80, 380), description, font=font_small, fill=text_muted)
 
     # Draw source badges
-    sources = ["HackerNews", "BBC", "NPR", "Reddit", "GitHub"]
+    sources = ["FedScoop", "DefenseScoop", "NextGov", "GovCon", "CISA"]
     badge_x = 80
     badge_y = 450
     badge_padding = 12
@@ -119,33 +122,47 @@ def create_og_image():
         draw.rounded_rectangle(
             [badge_x, badge_y, badge_x + badge_width, badge_y + 36],
             radius=6,
-            fill=(30, 41, 59)  # Slate 800
+            fill=(30, 41, 59),  # Slate 800
         )
 
         # Draw badge text
-        draw.text((badge_x + badge_padding, badge_y + 6), source, font=font_small, fill=text_muted)
+        draw.text(
+            (badge_x + badge_padding, badge_y + 6),
+            source,
+            font=font_small,
+            fill=text_muted,
+        )
 
         badge_x += badge_width + badge_spacing
 
     # Draw "Updated Daily" indicator
-    draw.text((80, 540), "Updated Daily at 6 AM EST", font=font_small, fill=accent_primary)
+    draw.text(
+        (80, 540), "Updated Daily at 6 AM EST", font=font_small, fill=accent_primary
+    )
 
     # Add corner accent
-    draw.polygon([(width, 0), (width - 150, 0), (width, 150)], fill=(*accent_secondary, 30))
+    draw.polygon(
+        [(width, 0), (width - 150, 0), (width, 150)], fill=(*accent_secondary, 30)
+    )
 
     # Save image
-    output_path = os.path.join(os.path.dirname(__file__), '..', 'public', 'og-image.png')
+    output_path = os.path.join(
+        os.path.dirname(__file__), "..", "public", "og-image.png"
+    )
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    img.save(output_path, 'PNG', optimize=True)
+    img.save(output_path, "PNG", optimize=True)
     print(f"Created OG image: {output_path}")
 
     # Also create a smaller version for Twitter
     twitter_img = img.resize((1200, 600), Image.Resampling.LANCZOS)
-    twitter_path = os.path.join(os.path.dirname(__file__), '..', 'public', 'twitter-image.png')
-    twitter_img.save(twitter_path, 'PNG', optimize=True)
+    twitter_path = os.path.join(
+        os.path.dirname(__file__), "..", "public", "twitter-image.png"
+    )
+    twitter_img.save(twitter_path, "PNG", optimize=True)
     print(f"Created Twitter image: {twitter_path}")
 
     return output_path
+
 
 if __name__ == "__main__":
     create_og_image()

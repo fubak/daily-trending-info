@@ -1378,19 +1378,19 @@ class Pipeline:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{config['title']} | DailyTrending.info</title>
+    <title>{config['title']} | CMMC Watch</title>
     <meta name="description" content="{config['description']}">
-    <link rel="canonical" href="https://dailytrending.info/{config['slug']}/">
+    <link rel="canonical" href="https://cmmcwatch.com/{config['slug']}/">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
-    <meta property="og:title" content="{config['title']} | DailyTrending.info">
+    <meta property="og:title" content="{config['title']} | CMMC Watch">
     <meta property="og:description" content="{config['description']}">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://dailytrending.info/{config['slug']}/">
-    <meta property="og:image" content="https://dailytrending.info/og-image.png">
+    <meta property="og:url" content="https://cmmcwatch.com/{config['slug']}/">
+    <meta property="og:image" content="https://cmmcwatch.com/og-image.png">
 
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{config['title']} | DailyTrending.info">
+    <meta name="twitter:title" content="{config['title']} | CMMC Watch">
     <meta name="twitter:description" content="{config['description']}">
 
     <script type="application/ld+json">
@@ -1399,8 +1399,8 @@ class Pipeline:
         "@type": "CollectionPage",
         "name": "{config['title']} Trends",
         "description": "{config['description']}",
-        "url": "https://dailytrending.info/{config['slug']}/",
-        "isPartOf": {{"@id": "https://dailytrending.info"}},
+        "url": "https://cmmcwatch.com/{config['slug']}/",
+        "isPartOf": {{"@id": "https://cmmcwatch.com"}},
         "dateModified": "{date_iso}",
         "numberOfItems": {len(trends)}
     }}
@@ -2223,19 +2223,19 @@ class Pipeline:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Media of the Day | DailyTrending.info</title>
+    <title>Media of the Day | CMMC Watch</title>
     <meta name="description" content="Daily curated image and video content - featuring NASA's Astronomy Picture of the Day and Vimeo Staff Picks.">
-    <link rel="canonical" href="https://dailytrending.info/media/">
+    <link rel="canonical" href="https://cmmcwatch.com/media/">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
-    <meta property="og:title" content="Media of the Day | DailyTrending.info">
+    <meta property="og:title" content="Media of the Day | CMMC Watch">
     <meta property="og:description" content="Daily curated image and video content">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://dailytrending.info/media/">
+    <meta property="og:url" content="https://cmmcwatch.com/media/">
     {f'<meta property="og:image" content="{image_url}">' if image_url else ''}
 
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Media of the Day | DailyTrending.info">
+    <meta name="twitter:title" content="Media of the Day | CMMC Watch">
     <meta name="twitter:description" content="Daily curated image and video content">
 
     <link href="https://fonts.googleapis.com/css2?family={font_primary.replace(' ', '+')}:wght@400;500;600;700;800&family={font_secondary.replace(' ', '+')}:wght@400;500;600;700&display=swap" rel="stylesheet">

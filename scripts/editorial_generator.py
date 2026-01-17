@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Editorial Article Generator for DailyTrending.info
+Editorial Article Generator for CMMC Watch
 
 Generates AI-written editorial articles that synthesize top stories into
 cohesive narratives. Articles are permanently retained (not archived).
@@ -159,7 +159,7 @@ class EditorialGenerator:
         self.articles_dir = self.public_dir / "articles"
         self.session = requests.Session()
         self.session.headers.update(
-            {"User-Agent": "DailyTrending.info/1.0 (Editorial Generator)"}
+            {"User-Agent": "CMMCWatch/1.0 (Editorial Generator)"}
         )
         self._last_call_time = 0.0  # Track last API call for rate limiting
 
@@ -269,7 +269,7 @@ class EditorialGenerator:
         central_themes = self._identify_central_themes(top_stories, keywords)
 
         prompt = f"""## ROLE
-You're a senior editorial writer for DailyTrending.info, known for combining factual rigor with a whimsical, memorable voice. Your writing is:
+You're a senior editorial writer for CMMC Watch, known for combining factual rigor with a whimsical, memorable voice. Your writing is:
 - Evidence-based but never dry
 - Structured but not formulaic
 - Insightful but accessible
@@ -728,18 +728,18 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{article.title} | DailyTrending.info</title>
+    <title>{article.title} | CMMC Watch</title>
     <meta name="description" content="{summary_escaped}">
     <meta name="keywords" content="{', '.join(article.keywords)}">
-    <link rel="canonical" href="https://dailytrending.info{article.url}">
+    <link rel="canonical" href="https://cmmcwatch.com{article.url}">
 
     <!-- Open Graph -->
     <meta property="og:title" content="{title_escaped}">
     <meta property="og:description" content="{summary_escaped}">
     <meta property="og:type" content="article">
-    <meta property="og:url" content="https://dailytrending.info{article.url}">
-    <meta property="og:site_name" content="DailyTrending.info">
-    <meta property="og:image" content="https://dailytrending.info/og-image.png">
+    <meta property="og:url" content="https://cmmcwatch.com{article.url}">
+    <meta property="og:site_name" content="CMMC Watch">
+    <meta property="og:image" content="https://cmmcwatch.com/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="article:published_time" content="{article.date}T06:00:00Z">
@@ -752,7 +752,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
     <meta name="twitter:creator" content="@bradshannon">
     <meta name="twitter:title" content="{title_escaped}">
     <meta name="twitter:description" content="{summary_escaped}">
-    <meta name="twitter:image" content="https://dailytrending.info/og-image.png">
+    <meta name="twitter:image" content="https://cmmcwatch.com/og-image.png">
 
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
@@ -761,7 +761,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
         "@graph": [
             {{
                 "@type": "NewsArticle",
-                "@id": "https://dailytrending.info{article.url}#article",
+                "@id": "https://cmmcwatch.com{article.url}#article",
                 "headline": "{title_escaped}",
                 "description": "{summary_escaped}",
                 "datePublished": "{article.date}T06:00:00Z",
@@ -774,16 +774,16 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                 }},
                 "publisher": {{
                     "@type": "Organization",
-                    "name": "DailyTrending.info",
-                    "url": "https://dailytrending.info",
+                    "name": "CMMC Watch",
+                    "url": "https://cmmcwatch.com",
                     "logo": {{
                         "@type": "ImageObject",
-                        "url": "https://dailytrending.info/icons/icon-512.png"
+                        "url": "https://cmmcwatch.com/icons/icon-512.png"
                     }}
                 }},
                 "mainEntityOfPage": {{
                     "@type": "WebPage",
-                    "@id": "https://dailytrending.info{article.url}"
+                    "@id": "https://cmmcwatch.com{article.url}"
                 }},
                 "wordCount": {article.word_count},
                 "keywords": {json.dumps(article.keywords)},
@@ -793,8 +793,8 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
             {{
                 "@type": "BreadcrumbList",
                 "itemListElement": [
-                    {{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://dailytrending.info/"}},
-                    {{"@type": "ListItem", "position": 2, "name": "Articles", "item": "https://dailytrending.info/articles/"}},
+                    {{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://cmmcwatch.com/"}},
+                    {{"@type": "ListItem", "position": 2, "name": "Articles", "item": "https://cmmcwatch.com/articles/"}},
                     {{"@type": "ListItem", "position": 3, "name": "{title_escaped}"}}
                 ]
             }}
@@ -1543,8 +1543,8 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                         headers={
                             "Authorization": f"Bearer {self.openrouter_key}",
                             "Content-Type": "application/json",
-                            "HTTP-Referer": "https://dailytrending.info",
-                            "X-Title": "DailyTrending.info",
+                            "HTTP-Referer": "https://cmmcwatch.com",
+                            "X-Title": "CMMC Watch",
                         },
                         json={
                             "model": model,
@@ -2204,11 +2204,11 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editorial Articles | DailyTrending.info</title>
-    <meta name="description" content="Browse {total_articles} daily editorial articles analyzing trending news and technology stories. Search, filter by mood, and explore our archive.">
-    <link rel="canonical" href="https://dailytrending.info/articles/">
+    <title>Editorial Articles | CMMC Watch</title>
+    <meta name="description" content="Browse {total_articles} daily editorial articles analyzing CMMC and compliance news stories. Search, filter by mood, and explore our archive.">
+    <link rel="canonical" href="https://cmmcwatch.com/articles/">
 
-    <meta property="og:title" content="Editorial Articles | DailyTrending.info">
+    <meta property="og:title" content="Editorial Articles | CMMC Watch">
     <meta property="og:description" content="Browse {total_articles} daily editorial articles analyzing trending news and technology stories.">
     <meta property="og:type" content="website">
 
@@ -2748,7 +2748,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
     <div class="container">
         <header class="page-header">
             <h1>Editorial Articles</h1>
-            <p>Daily analysis and insights from DailyTrending.info</p>
+            <p>Daily analysis and insights from CMMC Watch</p>
         </header>
 
         <div class="stats-bar" aria-label="Article statistics">

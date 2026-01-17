@@ -17,7 +17,7 @@ import xml.etree.ElementTree as ET
 
 
 def generate_sitemap(
-    base_url: str = "https://dailytrending.info",
+    base_url: str = "https://cmmcwatch.com",
     archive_dates: Optional[List[str]] = None,
     public_dir: Optional[Path] = None,
     extra_urls: Optional[List[str]] = None,
@@ -168,7 +168,7 @@ def generate_sitemap(
     return f'<?xml version="1.0" encoding="UTF-8"?>\n{xml_string}'
 
 
-def generate_robots_txt(base_url: str = "https://dailytrending.info") -> str:
+def generate_robots_txt(base_url: str = "https://cmmcwatch.com") -> str:
     """
     Generate robots.txt with sitemap reference.
 
@@ -178,8 +178,8 @@ def generate_robots_txt(base_url: str = "https://dailytrending.info") -> str:
     Returns:
         robots.txt content string
     """
-    return f"""# DailyTrending.info robots.txt
-# AI-curated technology and world news aggregator
+    return f"""# CMMC Watch robots.txt
+# CMMC & Compliance News Aggregator
 
 # Allow all crawlers by default
 User-agent: *
@@ -236,7 +236,7 @@ Sitemap: {base_url}/sitemap_main.xml
 """
 
 
-def generate_sitemap_index(base_url: str = "https://dailytrending.info") -> str:
+def generate_sitemap_index(base_url: str = "https://cmmcwatch.com") -> str:
     """
     Generate a sitemap index pointing to the main sitemap.
 
@@ -259,7 +259,7 @@ def generate_sitemap_index(base_url: str = "https://dailytrending.info") -> str:
 
 def save_sitemap(
     public_dir: Path,
-    base_url: str = "https://dailytrending.info",
+    base_url: str = "https://cmmcwatch.com",
     extra_urls: Optional[List[str]] = None,
 ):
     """
@@ -287,7 +287,7 @@ def save_sitemap(
     print(f"  Created {sitemap_path} (index)")
 
     # Create IndexNow API key file for search engine indexing
-    indexnow_key = "dailytrendinginfo85788"
+    indexnow_key = "cmmcwatchinfo12345"
     indexnow_path = public_dir / f"{indexnow_key}.txt"
     indexnow_path.write_text(indexnow_key)
     print(f"  Created {indexnow_path} (IndexNow key)")

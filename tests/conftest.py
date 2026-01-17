@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pytest configuration and fixtures for DailyTrending.info tests.
+Pytest configuration and fixtures for CMMC Watch tests.
 """
 
 import sys
@@ -35,7 +35,7 @@ def sample_trends():
             "description": "A major technology company made a significant announcement today.",
             "score": 150,
             "keywords": ["tech", "announcement", "major"],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         },
         {
             "title": "New AI Model Released",
@@ -44,7 +44,7 @@ def sample_trends():
             "description": "Researchers unveiled a new AI model with impressive capabilities.",
             "score": 120,
             "keywords": ["ai", "model", "research"],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         },
         {
             "title": "Climate Report: Global Temperatures Rising",
@@ -53,7 +53,7 @@ def sample_trends():
             "description": "New report shows global temperatures continue to rise.",
             "score": 100,
             "keywords": ["climate", "temperature", "global"],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         },
         {
             "title": "Sports Team Wins Championship",
@@ -62,7 +62,7 @@ def sample_trends():
             "description": "Local sports team claims championship victory.",
             "score": 80,
             "keywords": ["sports", "championship", "team"],
-            "timestamp": (datetime.now() - timedelta(hours=12)).isoformat()
+            "timestamp": (datetime.now() - timedelta(hours=12)).isoformat(),
         },
         {
             "title": "New Movie Breaks Box Office Records",
@@ -71,8 +71,8 @@ def sample_trends():
             "description": "The latest blockbuster has broken multiple box office records.",
             "score": 90,
             "keywords": ["movie", "box office", "records"],
-            "timestamp": (datetime.now() - timedelta(hours=6)).isoformat()
-        }
+            "timestamp": (datetime.now() - timedelta(hours=6)).isoformat(),
+        },
     ]
 
 
@@ -92,7 +92,7 @@ def sample_images():
             "alt_text": "Technology abstract",
             "color": "#4a90d9",
             "width": 1920,
-            "height": 1080
+            "height": 1080,
         },
         {
             "id": "unsplash_67890",
@@ -106,8 +106,8 @@ def sample_images():
             "alt_text": "Nature landscape",
             "color": "#2d9653",
             "width": 2560,
-            "height": 1440
-        }
+            "height": 1440,
+        },
     ]
 
 
@@ -130,14 +130,14 @@ def sample_design():
         "font_heading": "Space Grotesk",
         "font_body": "Inter",
         "animation_level": "moderate",
-        "hero_style": "particles"
+        "hero_style": "particles",
     }
 
 
 @pytest.fixture
 def mock_requests():
     """Mock requests for API tests."""
-    with patch('requests.Session') as mock_session:
+    with patch("requests.Session") as mock_session:
         mock_instance = MagicMock()
         mock_session.return_value = mock_instance
         yield mock_instance

@@ -1,6 +1,6 @@
 ---
 name: trending-pipeline
-description: DailyTrending.info pipeline specialist - trend aggregation, AI design, editorial
+description: CMMC Watch pipeline specialist - trend aggregation, AI design, editorial
 model: sonnet
 allowed-tools:
   - Read
@@ -13,7 +13,7 @@ allowed-tools:
 
 # Trending Pipeline Agent
 
-Specialist for the DailyTrending.info autonomous trend aggregator.
+Specialist for the CMMC Watch autonomous trend aggregator.
 
 ## Domain Knowledge
 
