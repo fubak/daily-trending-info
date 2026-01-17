@@ -179,57 +179,80 @@ body.layout-split .top-stories {
     margin-bottom: 1rem;
 }
 
-/* Responsive: Mobile - Compact Overlay Cards */
+/* Responsive: Mobile - Instagram/Pinterest Style Grid */
 @media (max-width: 640px) {
+    /* ===== TOP STORIES GRID ===== */
     .top-stories {
         grid-template-columns: repeat(2, 1fr);
-        gap: 0.75rem;
+        gap: 0.5rem;
     }
 
+    /* Card container - square tiles */
     .top-stories article.story-card {
         position: relative;
-        border-radius: var(--radius);
+        aspect-ratio: 1;
+        min-height: 0;
+        border-radius: 8px;
         overflow: hidden;
+        grid-row: span 1;
     }
 
+    /* Featured card - full width, wider aspect */
     .top-stories article.story-card.featured {
         grid-column: span 2;
-        grid-row: span 2;
+        grid-row: span 1;
+        aspect-ratio: 16/9;
     }
 
-    /* Image takes full card height */
+    /* Inner wrapper - fills card for absolute positioning */
     .top-stories .story-wrapper {
-        position: relative;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
         height: 100%;
     }
 
-    .top-stories .story-media,
-    .top-stories .story-image {
-        height: 160px;
-        min-height: 160px;
+    /* Image fills entire card as background */
+    .top-stories .story-media {
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
+        height: 100%;
+        min-height: 0;
     }
 
+    .top-stories .story-image {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        object-fit: cover;
+        object-position: center;
+    }
+
+    /* Featured card image - same treatment */
     .top-stories article.story-card.featured .story-media,
     .top-stories article.story-card.featured .story-image {
-        min-height: 280px;
-        height: 280px;
+        min-height: 0;
+        height: 100%;
     }
 
-    /* Content overlays the image */
+    /* Text overlay at bottom with gradient */
     .top-stories .story-content {
         position: absolute;
         bottom: 0;
         left: 0;
         right: 0;
         padding: 0.75rem;
-        background: linear-gradient(to top,
+        z-index: 3;
+        background: linear-gradient(
+            to top,
             rgba(0, 0, 0, 0.95) 0%,
-            rgba(0, 0, 0, 0.85) 50%,
-            rgba(0, 0, 0, 0.4) 80%,
+            rgba(0, 0, 0, 0.8) 40%,
+            rgba(0, 0, 0, 0.4) 70%,
             transparent 100%
         );
-        z-index: 2;
     }
 
     /* Hide summary on mobile */
@@ -239,33 +262,36 @@ body.layout-split .top-stories {
 
     /* Source badge */
     .top-stories .source-badge {
-        font-size: 0.65rem;
-        margin-bottom: 0.3rem;
+        font-size: 0.6rem;
+        margin-bottom: 0.25rem;
         opacity: 0.95;
     }
 
-    /* Readable title */
+    /* Typography - compact with text shadow */
     .top-stories .story-title {
-        font-size: 0.875rem;
-        line-height: 1.35;
-        -webkit-line-clamp: 2;
-        margin-bottom: 0.3rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        line-height: 1.3;
         color: #fff;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+        text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 0;
     }
 
     .top-stories article.story-card.featured .story-title {
-        font-size: 1.125rem;
-        -webkit-line-clamp: 3;
-        line-height: 1.4;
+        font-size: 1rem;
+        -webkit-line-clamp: 2;
     }
 
     /* Meta info */
     .top-stories .story-meta {
+        margin-top: 0.25rem;
         font-size: 0.65rem;
-        margin-top: 0.2rem;
-        padding-top: 0;
         color: rgba(255,255,255,0.8);
+        padding-top: 0;
     }
 
     /* Hide action buttons on mobile cards */
@@ -273,37 +299,63 @@ body.layout-split .top-stories {
         display: none;
     }
 
-    /* Category grids also compact */
+    /* ===== CATEGORY GRIDS ===== */
     .stories-grid {
         grid-template-columns: repeat(2, 1fr) !important;
-        gap: 0.75rem;
+        gap: 0.5rem;
     }
 
+    /* Card container - square tiles */
     .stories-grid article.story-card {
         position: relative;
+        aspect-ratio: 1;
+        min-height: 0;
+        border-radius: 8px;
         overflow: hidden;
+        grid-row: span 1;
+        padding: 0;
     }
 
+    /* Inner wrapper */
     .stories-grid .story-wrapper {
-        position: relative;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
     }
 
-    .stories-grid .story-media,
+    /* Image fills entire card */
+    .stories-grid .story-media {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+    }
+
     .stories-grid .story-image {
-        height: 140px;
-        min-height: 140px;
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        object-fit: cover;
+        object-position: center;
     }
 
+    /* Text overlay */
     .stories-grid .story-content {
         position: absolute;
         bottom: 0;
         left: 0;
         right: 0;
-        padding: 0.6rem;
-        background: linear-gradient(to top,
+        padding: 0.75rem;
+        z-index: 3;
+        background: linear-gradient(
+            to top,
             rgba(0, 0, 0, 0.95) 0%,
-            rgba(0, 0, 0, 0.85) 50%,
-            rgba(0, 0, 0, 0.4) 80%,
+            rgba(0, 0, 0, 0.8) 40%,
+            rgba(0, 0, 0, 0.4) 70%,
             transparent 100%
         );
     }
@@ -312,23 +364,43 @@ body.layout-split .top-stories {
         display: none !important;
     }
 
-    .stories-grid .story-title {
-        font-size: 0.8rem;
-        line-height: 1.35;
-        -webkit-line-clamp: 2;
-        color: #fff;
+    .stories-grid .source-badge {
+        font-size: 0.6rem;
         margin-bottom: 0.25rem;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    }
+
+    .stories-grid .story-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        line-height: 1.3;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        display: -webkit-box;
+        overflow: hidden;
+        color: #fff;
+        margin-bottom: 0;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     }
 
     .stories-grid .story-meta {
-        font-size: 0.6rem;
+        margin-top: 0.25rem;
+        font-size: 0.65rem;
         color: rgba(255,255,255,0.8);
         padding-top: 0;
     }
 
     .stories-grid .story-actions {
         display: none;
+    }
+
+    /* ===== SECTION SPACING ===== */
+    .section {
+        margin-bottom: 1.5rem;
+    }
+
+    .section-header {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
     }
 }
 
