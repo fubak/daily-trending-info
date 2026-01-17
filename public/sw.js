@@ -1,7 +1,7 @@
-// CMMC Watch Service Worker
-// Cache version: 20260116
+// DailyTrending.info Service Worker
+// Cache version: 20260117
 
-const CACHE_NAME = 'cmmcwatch-v20260116';
+const CACHE_NAME = 'dailytrending-v20260117';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache immediately

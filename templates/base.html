@@ -125,6 +125,7 @@
         {% include "css/components.css" %}
         {% include "components/nav.css" %}
         {% include "components/footer.css" %}
+        {% include "components/on-this-page.css" %}
         
         /* Custom Design Styles */
         {{ custom_styles | safe }}
@@ -145,14 +146,21 @@
 </head>
 <body class="{{ body_classes }}">
     <a href="#main-content" class="skip-link">Skip to main content</a>
-    
+
     {% include "components/nav.html" %}
 
-    <article itemscope itemtype="https://schema.org/Article">
-        {% block hero %}{% endblock %}
-        
-        {% block content %}{% endblock %}
-    </article>
+    <div class="page-layout">
+        <main class="main-content" id="main-content">
+            <article itemscope itemtype="https://schema.org/Article">
+                {% block hero %}{% endblock %}
+
+                {% block content %}{% endblock %}
+            </article>
+        </main>
+
+        <!-- On This Page Navigation (Desktop Only) -->
+        {% include "components/on-this-page.html" %}
+    </div>
 
     {% include "components/footer.html" %}
 
@@ -375,6 +383,180 @@
                 document.addEventListener('DOMContentLoaded', bindErrors);
             } else {
                 bindErrors();
+            }
+        })();
+    </script>
+
+    <!-- On This Page Navigation JavaScript -->
+    <script>
+        (function() {
+            const onThisPage = document.getElementById('on-this-page');
+            const onThisPageList = document.getElementById('on-this-page-list');
+            const progressFill = document.getElementById('reading-progress-fill');
+            const scrollToTopBtn = document.getElementById('scroll-to-top');
+            const togglePageBtn = document.getElementById('toggle-on-page');
+
+            if (!onThisPage || !onThisPageList) return;
+
+            // Find all headings in the main content
+            const headings = document.querySelectorAll('.main-content h1, .main-content h2, .main-content h3, .main-content h4');
+            const headingData = [];
+
+            // Generate navigation items
+            headings.forEach((heading, index) => {
+                const id = heading.id || `heading-${index}`;
+                heading.id = id;
+
+                const level = parseInt(heading.tagName.charAt(1));
+                const text = heading.textContent.trim();
+
+                headingData.push({ id, level, text, element: heading });
+
+                // Create navigation item
+                const li = document.createElement('li');
+                li.className = 'on-this-page-item';
+
+                const a = document.createElement('a');
+                a.href = `#${id}`;
+                a.className = `on-this-page-link level-${Math.min(level - 1, 3)}`;
+                a.textContent = text;
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    heading.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    history.pushState(null, '', `#${id}`);
+                });
+
+                li.appendChild(a);
+                onThisPageList.appendChild(li);
+            });
+
+            // Hide navigation if no headings found
+            if (headingData.length === 0) {
+                onThisPage.style.display = 'none';
+                return;
+            }
+
+            // Update active section on scroll
+            let isScrolling = false;
+            const updateActiveSection = () => {
+                if (isScrolling) return;
+
+                const scrollY = window.scrollY + 100; // Offset for header
+                let activeHeading = null;
+
+                for (let i = headingData.length - 1; i >= 0; i--) {
+                    const heading = headingData[i];
+                    if (heading.element.offsetTop <= scrollY) {
+                        activeHeading = heading;
+                        break;
+                    }
+                }
+
+                // Update active link
+                document.querySelectorAll('.on-this-page-link').forEach(link => {
+                    link.classList.remove('active');
+                });
+
+                if (activeHeading) {
+                    const activeLink = document.querySelector(`a[href="#${activeHeading.id}"]`);
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                    }
+                }
+            };
+
+            // Update reading progress
+            const updateReadingProgress = () => {
+                const winHeight = window.innerHeight;
+                const docHeight = document.documentElement.scrollHeight;
+                const scrollTop = window.scrollY;
+                const trackLength = docHeight - winHeight;
+                const pctScrolled = Math.floor((scrollTop / trackLength) * 100);
+
+                progressFill.style.width = `${Math.min(pctScrolled, 100)}%`;
+            };
+
+            // Scroll event handler with throttling
+            let scrollTimeout;
+            const handleScroll = () => {
+                if (scrollTimeout) {
+                    clearTimeout(scrollTimeout);
+                }
+
+                scrollTimeout = setTimeout(() => {
+                    updateActiveSection();
+                    updateReadingProgress();
+                }, 10);
+            };
+
+            // Smooth scroll handler
+            const handleSmoothScroll = (targetId) => {
+                isScrolling = true;
+                const target = document.getElementById(targetId);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                    // Re-enable active section detection after scroll animation
+                    setTimeout(() => {
+                        isScrolling = false;
+                        updateActiveSection();
+                    }, 800);
+                }
+            };
+
+            // Scroll to top functionality
+            if (scrollToTopBtn) {
+                scrollToTopBtn.addEventListener('click', () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            }
+
+            // Mobile toggle functionality
+            if (togglePageBtn) {
+                togglePageBtn.addEventListener('click', () => {
+                    onThisPage.classList.toggle('mobile-open');
+                });
+
+                // Close on outside click (mobile)
+                document.addEventListener('click', (e) => {
+                    if (!onThisPage.contains(e.target) && !togglePageBtn.contains(e.target)) {
+                        onThisPage.classList.remove('mobile-open');
+                    }
+                });
+
+                // Close on escape key
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        onThisPage.classList.remove('mobile-open');
+                    }
+                });
+            }
+
+            // Initialize
+            window.addEventListener('scroll', handleScroll, { passive: true });
+            window.addEventListener('resize', updateReadingProgress);
+
+            // Initial calls
+            updateActiveSection();
+            updateReadingProgress();
+
+            // Handle hash changes (back/forward navigation)
+            window.addEventListener('hashchange', () => {
+                const hash = window.location.hash.slice(1);
+                if (hash) {
+                    handleSmoothScroll(hash);
+                }
+            });
+
+            // Handle initial hash on page load
+            if (window.location.hash) {
+                setTimeout(() => {
+                    const hash = window.location.hash.slice(1);
+                    handleSmoothScroll(hash);
+                }, 100);
             }
         })();
     </script>

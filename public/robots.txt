@@ -1,5 +1,5 @@
-# CMMC Watch robots.txt
-# CMMC & Compliance News Aggregator
+# DailyTrending.info robots.txt
+# AI-Curated Tech & World News Aggregator
 
 # Allow all crawlers by default
 User-agent: *
@@ -52,4 +52,4 @@ User-agent: Google-Extended
 Allow: /
 
 # Sitemap location
-Sitemap: https://cmmcwatch.com/sitemap_main.xml
+Sitemap: https://dailytrending.info/sitemap_main.xml
