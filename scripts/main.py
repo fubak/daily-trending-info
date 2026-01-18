@@ -1397,6 +1397,10 @@ class Pipeline:
     <meta name="twitter:title" content="{config['title']} | DailyTrending.info">
     <meta name="twitter:description" content="{config['description']}">
 
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2196222970720414"
+         crossorigin="anonymous"></script>
+
     <script type="application/ld+json">
     {{
         "@context": "https://schema.org",
@@ -2269,6 +2273,10 @@ class Pipeline:
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Media of the Day | DailyTrending.info">
     <meta name="twitter:description" content="Daily curated image and video content">
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2196222970720414"
+         crossorigin="anonymous"></script>
 
     <link href="https://fonts.googleapis.com/css2?family={font_primary.replace(' ', '+')}:wght@400;500;600;700;800&family={font_secondary.replace(' ', '+')}:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>

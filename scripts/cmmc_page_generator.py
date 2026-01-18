@@ -1028,6 +1028,11 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family={fonts['primary'].replace(' ', '+')}:wght@400;500;600;700&family={fonts['secondary'].replace(' ', '+')}:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2196222970720414"
+         crossorigin="anonymous"></script>
+
     <style>
     {get_cmmc_styles(colors, fonts)}
     </style>

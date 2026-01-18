@@ -754,6 +754,10 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
     <meta name="twitter:description" content="{summary_escaped}">
     <meta name="twitter:image" content="https://dailytrending.info/og-image.png">
 
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2196222970720414"
+         crossorigin="anonymous"></script>
+
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
     {{
@@ -2211,6 +2215,10 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
     <meta property="og:title" content="Editorial Articles | DailyTrending.info">
     <meta property="og:description" content="Browse {total_articles} daily editorial articles analyzing trending news and technology stories.">
     <meta property="og:type" content="website">
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2196222970720414"
+         crossorigin="anonymous"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family={tokens['font_secondary'].replace(' ', '+')}:wght@400;500;600;700&family={tokens['font_primary'].replace(' ', '+')}:wght@600;700&display=swap" rel="stylesheet">
