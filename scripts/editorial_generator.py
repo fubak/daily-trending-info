@@ -368,8 +368,9 @@ Respond with ONLY a valid JSON object:
 
         try:
             # Try structured output first (guaranteed valid JSON from Gemini)
+            # Use 4000 tokens to accommodate 600-900 word article + HTML + JSON wrapper
             data = self._call_google_ai_structured(
-                prompt, EDITORIAL_SCHEMA, max_tokens=2000
+                prompt, EDITORIAL_SCHEMA, max_tokens=4000
             )
 
             # Fall back to regular LLM call + JSON parsing if structured output fails
@@ -377,17 +378,31 @@ Respond with ONLY a valid JSON object:
                 logger.info(
                     "Structured output unavailable, falling back to regular LLM call"
                 )
-                response = self._call_groq(prompt, max_tokens=2000)
+                response = self._call_groq(prompt, max_tokens=4000)
                 data = self._parse_json_response(response)
 
             if not data or not data.get("content"):
                 logger.warning("Failed to parse editorial response")
                 return None
 
+            content = data.get("content", "")
+
+            # Validate article completeness - warn if sections are missing
+            is_complete, missing_sections = self._validate_article_completeness(content)
+            if not is_complete:
+                logger.warning(
+                    f"Article may be truncated - missing sections: {', '.join(missing_sections)}"
+                )
+                # Check if conclusion is missing (strong indicator of cutoff)
+                if "conclusion" in missing_sections:
+                    logger.error(
+                        "Article is likely cut off (missing conclusion). "
+                        "Consider increasing max_tokens or reducing prompt complexity."
+                    )
+
             # Build article object
             today = datetime.now().strftime("%Y-%m-%d")
             slug = self._sanitize_slug(data.get("slug", "daily-editorial"))
-            content = data.get("content", "")
 
             article = EditorialArticle(
                 title=data.get("title", "Today's Analysis"),
@@ -2055,6 +2070,54 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
         slug = re.sub(r"-+", "-", slug)  # Remove duplicate dashes
         slug = slug.strip("-")
         return slug[:60] or "daily-editorial"  # Max 60 chars
+
+    def _validate_article_completeness(self, content: str) -> tuple[bool, List[str]]:
+        """
+        Validate that the article contains all 8 required sections.
+
+        Returns:
+            Tuple of (is_complete, missing_sections)
+        """
+        # Required section headers (case-insensitive matching)
+        required_sections = [
+            "the lead",
+            "what people think",
+            "what's actually happening",
+            "the hidden tradeoffs",
+            "the best counterarguments",
+            "what this means next",
+            "practical framework",
+            "conclusion",
+        ]
+
+        # Alternative section names that are acceptable
+        section_aliases = {
+            "what's actually happening": ["what is actually happening", "what's happening", "what is happening"],
+            "the hidden tradeoffs": ["hidden tradeoffs", "the tradeoffs", "tradeoffs"],
+            "the best counterarguments": ["best counterarguments", "counterarguments", "the counterarguments"],
+            "what this means next": ["what comes next", "what's next", "next steps"],
+            "practical framework": ["framework", "the framework", "a practical framework"],
+        }
+
+        content_lower = content.lower()
+        missing_sections = []
+
+        for section in required_sections:
+            # Check for the main section name
+            found = section in content_lower
+
+            # Check aliases if not found
+            if not found and section in section_aliases:
+                for alias in section_aliases[section]:
+                    if alias in content_lower:
+                        found = True
+                        break
+
+            if not found:
+                missing_sections.append(section)
+
+        is_complete = len(missing_sections) == 0
+        return is_complete, missing_sections
 
     def get_all_articles(self) -> List[Dict]:
         """Get metadata for all saved articles (for sitemap/index)."""
