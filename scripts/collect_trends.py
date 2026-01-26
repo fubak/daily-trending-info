@@ -1494,12 +1494,38 @@ class TrendCollector:
         # This avoids BeautifulSoup's MarkupResemblesLocatorWarning
         if "<" not in text:
             # No HTML tags, just clean whitespace
-            return re.sub(r"\s+", " ", text.strip())[:500]
-
-        # Use 'html.parser' with markup_type to suppress warning
-        soup = BeautifulSoup(text, "html.parser")
-        clean = soup.get_text(separator=" ").strip()
-        return re.sub(r"\s+", " ", clean)[:500]
+            clean = text.strip()
+        else:
+            # Use 'html.parser' with markup_type to suppress warning
+            soup = BeautifulSoup(text, "html.parser")
+            clean = soup.get_text(separator=" ").strip()
+        
+        # Normalize whitespace
+        clean = re.sub(r"\s+", " ", clean)
+        
+        # Smart truncation at sentence boundaries (up to 1500 chars)
+        max_length = 1500
+        if len(clean) > max_length:
+            truncated = clean[:max_length]
+            # Find last sentence boundary
+            last_period = max(
+                truncated.rfind('. '),
+                truncated.rfind('! '),
+                truncated.rfind('? ')
+            )
+            
+            # If found a good sentence boundary with reasonable content
+            if last_period > 300:
+                return clean[:last_period + 1]
+            else:
+                # Fall back to word boundary
+                last_space = truncated.rfind(' ')
+                if last_space > 200:
+                    return clean[:last_space] + "..."
+                else:
+                    return clean[:max_length] + "..."
+        
+        return clean
 
     def _deduplicate(self):
         """Remove duplicate trends using semantic similarity matching.
