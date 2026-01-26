@@ -20,6 +20,11 @@ from config import (
     PUBLIC_DIR,
 )
 
+# Register namespaces globally to prevent duplication
+ET.register_namespace('atom', 'http://www.w3.org/2005/Atom')
+ET.register_namespace('content', 'http://purl.org/rss/1.0/modules/content/')
+ET.register_namespace('dc', 'http://purl.org/dc/elements/1.1/')
+
 # Setup logging
 logger = setup_logging("rss")
 
