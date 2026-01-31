@@ -1,0 +1,84 @@
+name: Competitor & Algorithm Monitor
+
+on:
+  # Run weekly on Mondays at 9 AM UTC
+  schedule:
+    - cron: '0 9 * * 1'
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 lxml
+
+      - name: Run competitor monitor
+        run: |
+          python scripts/competitor_monitor.py --output markdown --save
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-report-${{ github.run_number }}
+          path: data/monitoring_reports/
+          retention-days: 30
+
+      - name: Commit report to repo
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          # Only commit if there are changes
+          if [ -n "$(git status --porcelain data/monitoring_reports/)" ]; then
+            git add data/monitoring_reports/
+            git commit -m "chore: add weekly competitor monitoring report"
+            git push
+          else
+            echo "No new reports to commit"
+          fi
+
+      - name: Check for high priority alerts
+        id: check_alerts
+        run: |
+          LATEST_REPORT=$(ls -t data/monitoring_reports/*.md 2>/dev/null | head -1)
+          if [ -f "$LATEST_REPORT" ]; then
+            if grep -q "## High Priority Alerts" "$LATEST_REPORT"; then
+              echo "has_alerts=true" >> $GITHUB_OUTPUT
+              echo "report_file=$(basename $LATEST_REPORT)" >> $GITHUB_OUTPUT
+            else
+              echo "has_alerts=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_alerts=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create issue for high priority alerts
+        if: steps.check_alerts.outputs.has_alerts == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPORT_FILE: ${{ steps.check_alerts.outputs.report_file }}
+        run: |
+          gh issue create \
+            --title "High Priority SEO/Algorithm Alerts Detected" \
+            --body "The weekly competitor monitor detected high priority alerts. Please review the latest report in data/monitoring_reports/$REPORT_FILE" \
+            --label "seo"

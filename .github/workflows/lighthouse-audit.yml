@@ -1,0 +1,128 @@
+name: Lighthouse Performance Audit
+
+on:
+  # Run after daily regeneration completes
+  workflow_run:
+    workflows: ["Daily Website Regeneration"]
+    types:
+      - completed
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.13.x
+
+      - name: Create Lighthouse config
+        run: |
+          cat > lighthouserc.json << 'EOF'
+          {
+            "ci": {
+              "collect": {
+                "numberOfRuns": 3,
+                "url": ["https://dailytrending.info/", "https://dailytrending.info/tech/", "https://dailytrending.info/cmmc/"]
+              },
+              "assert": {
+                "assertions": {
+                  "categories:performance": ["warn", {"minScore": 0.7}],
+                  "categories:accessibility": ["warn", {"minScore": 0.9}],
+                  "categories:best-practices": ["warn", {"minScore": 0.8}],
+                  "categories:seo": ["error", {"minScore": 0.9}],
+                  "first-contentful-paint": ["warn", {"maxNumericValue": 3000}],
+                  "largest-contentful-paint": ["warn", {"maxNumericValue": 4000}],
+                  "cumulative-layout-shift": ["warn", {"maxNumericValue": 0.1}],
+                  "total-blocking-time": ["warn", {"maxNumericValue": 500}]
+                }
+              },
+              "upload": {
+                "target": "temporary-public-storage"
+              }
+            }
+          }
+          EOF
+
+      - name: Run Lighthouse CI
+        id: lighthouse
+        run: |
+          lhci autorun --config=lighthouserc.json 2>&1 | tee lighthouse-output.txt
+        continue-on-error: true
+
+      - name: Extract scores
+        id: scores
+        run: |
+          PERF=$(grep -oP 'performance: \K[0-9.]+' lighthouse-output.txt | head -1 || echo "N/A")
+          A11Y=$(grep -oP 'accessibility: \K[0-9.]+' lighthouse-output.txt | head -1 || echo "N/A")
+          BP=$(grep -oP 'best-practices: \K[0-9.]+' lighthouse-output.txt | head -1 || echo "N/A")
+          SEO=$(grep -oP 'seo: \K[0-9.]+' lighthouse-output.txt | head -1 || echo "N/A")
+
+          echo "performance=$PERF" >> $GITHUB_OUTPUT
+          echo "accessibility=$A11Y" >> $GITHUB_OUTPUT
+          echo "best_practices=$BP" >> $GITHUB_OUTPUT
+          echo "seo=$SEO" >> $GITHUB_OUTPUT
+
+      - name: Upload Lighthouse results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results-${{ github.run_number }}
+          path: .lighthouseci/
+          retention-days: 30
+
+      - name: Create Lighthouse summary
+        env:
+          PERF_SCORE: ${{ steps.scores.outputs.performance }}
+          A11Y_SCORE: ${{ steps.scores.outputs.accessibility }}
+          BP_SCORE: ${{ steps.scores.outputs.best_practices }}
+          SEO_SCORE: ${{ steps.scores.outputs.seo }}
+        run: |
+          mkdir -p data/lighthouse
+          DATE=$(date +%Y-%m-%d)
+
+          cat > "data/lighthouse/report-${DATE}.md" << EOF
+          # Lighthouse Audit Report - ${DATE}
+
+          ## Scores
+
+          | Metric | Score |
+          |--------|-------|
+          | Performance | ${PERF_SCORE:-N/A} |
+          | Accessibility | ${A11Y_SCORE:-N/A} |
+          | Best Practices | ${BP_SCORE:-N/A} |
+          | SEO | ${SEO_SCORE:-N/A} |
+
+          ## URLs Tested
+          - https://dailytrending.info/
+          - https://dailytrending.info/tech/
+          - https://dailytrending.info/cmmc/
+
+          ## Detailed Results
+          View the full report in the workflow artifacts.
+          EOF
+
+      - name: Commit Lighthouse report
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          if [ -n "$(git status --porcelain data/lighthouse/)" ]; then
+            git add data/lighthouse/
+            git commit -m "chore: add Lighthouse audit report"
+            git push
+          fi

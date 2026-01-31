@@ -685,6 +685,21 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
         # Save index.html
         (article_dir / "index.html").write_text(html, encoding="utf-8")
 
+        # Generate and save AMP version
+        amp_dir = (
+            self.public_dir
+            / "amp"
+            / "articles"
+            / date_parts[0]
+            / date_parts[1]
+            / date_parts[2]
+            / article.slug
+        )
+        amp_dir.mkdir(parents=True, exist_ok=True)
+        amp_html = self._generate_amp_html(article, tokens)
+        (amp_dir / "index.html").write_text(amp_html, encoding="utf-8")
+        logger.info(f"Saved AMP version to {amp_dir}")
+
         # Save metadata JSON for sitemap/index generation
         metadata = asdict(article)
         (article_dir / "metadata.json").write_text(
@@ -747,6 +762,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
     <meta name="description" content="{summary_escaped}">
     <meta name="keywords" content="{', '.join(article.keywords)}">
     <link rel="canonical" href="https://dailytrending.info{article.url}">
+    <link rel="amphtml" href="https://dailytrending.info/amp{article.url}">
 
     <!-- Open Graph -->
     <meta property="og:title" content="{title_escaped}">
@@ -1239,6 +1255,236 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
     {build_footer(date_formatted)}
 
     {get_theme_script()}
+</body>
+</html>"""
+
+    def _generate_amp_html(
+        self,
+        article: EditorialArticle,
+        tokens: Dict,
+    ) -> str:
+        """Generate AMP HTML page for an editorial article."""
+        date_formatted = datetime.strptime(article.date, "%Y-%m-%d").strftime(
+            "%B %d, %Y"
+        )
+
+        # Escape for HTML attributes
+        title_escaped = article.title.replace('"', "&quot;")
+        summary_escaped = article.summary.replace('"', "&quot;")
+
+        # AMP requires inline styles under 75KB and no external stylesheets except fonts
+        amp_styles = f"""
+        body {{
+            font-family: 'Inter', system-ui, sans-serif;
+            background: {tokens['bg_color']};
+            color: {tokens['text_color']};
+            margin: 0;
+            padding: 0;
+            line-height: 1.7;
+        }}
+        .container {{
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 1rem 1.5rem 3rem;
+        }}
+        header {{
+            text-align: center;
+            padding: 2rem 0;
+            border-bottom: 1px solid {tokens['border_color']};
+            margin-bottom: 2rem;
+        }}
+        .logo {{
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: {tokens['accent_color']};
+            text-decoration: none;
+        }}
+        .article-meta {{
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            font-size: 0.875rem;
+            color: {tokens['muted_color']};
+            margin-bottom: 1rem;
+        }}
+        h1 {{
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: {tokens['text_color']};
+        }}
+        .summary {{
+            font-size: 1.125rem;
+            color: {tokens['muted_color']};
+        }}
+        .content {{
+            font-size: 1.0625rem;
+        }}
+        .content p {{
+            margin-bottom: 1.5rem;
+        }}
+        .content h2 {{
+            font-size: 1.375rem;
+            margin: 2rem 0 1rem;
+            color: {tokens['accent_color']};
+        }}
+        .content blockquote {{
+            border-left: 4px solid {tokens['primary_color']};
+            padding-left: 1rem;
+            margin: 1.5rem 0;
+            font-style: italic;
+            color: {tokens['muted_color']};
+        }}
+        .content strong {{
+            color: {tokens['accent_color']};
+        }}
+        .sources {{
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 2rem 0;
+        }}
+        .sources h3 {{
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: {tokens['muted_color']};
+            margin-bottom: 0.75rem;
+        }}
+        .sources ul {{
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }}
+        .sources li {{
+            padding: 0.5rem 0;
+            font-size: 0.875rem;
+            color: {tokens['muted_color']};
+            border-bottom: 1px solid {tokens['border_color']};
+        }}
+        .sources li:last-child {{
+            border-bottom: none;
+        }}
+        .keywords {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+        }}
+        .keyword {{
+            background: rgba(255,255,255,0.05);
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            color: {tokens['muted_color']};
+        }}
+        footer {{
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid {tokens['border_color']};
+            text-align: center;
+        }}
+        .back-link {{
+            color: {tokens['accent_color']};
+            text-decoration: none;
+        }}
+        """
+
+        return f"""<!doctype html>
+<html amp lang="en">
+<head>
+    <meta charset="utf-8">
+    <script async src="https://cdn.ampproject.org/v0.js"></script>
+    <title>{article.title} | DailyTrending.info</title>
+    <link rel="canonical" href="https://dailytrending.info{article.url}">
+    <meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+    <meta name="description" content="{summary_escaped}">
+
+    <!-- AMP Boilerplate -->
+    <style amp-boilerplate>body{{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}}@-webkit-keyframes -amp-start{{from{{visibility:hidden}}to{{visibility:visible}}}}@-moz-keyframes -amp-start{{from{{visibility:hidden}}to{{visibility:visible}}}}@-ms-keyframes -amp-start{{from{{visibility:hidden}}to{{visibility:visible}}}}@-o-keyframes -amp-start{{from{{visibility:hidden}}to{{visibility:visible}}}}@keyframes -amp-start{{from{{visibility:hidden}}to{{visibility:visible}}}}</style><noscript><style amp-boilerplate>body{{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}}</style></noscript>
+
+    <!-- AMP Analytics -->
+    <script async custom-element="amp-analytics" src="https://cdn.ampproject.org/v0/amp-analytics-0.1.js"></script>
+
+    <!-- JSON-LD -->
+    <script type="application/ld+json">
+    {{
+        "@context": "https://schema.org",
+        "@type": "NewsArticle",
+        "headline": "{title_escaped}",
+        "description": "{summary_escaped}",
+        "datePublished": "{article.date}T06:00:00Z",
+        "dateModified": "{article.date}T06:00:00Z",
+        "author": {{
+            "@type": "Person",
+            "name": "Brad Shannon"
+        }},
+        "publisher": {{
+            "@type": "Organization",
+            "name": "DailyTrending.info",
+            "logo": {{
+                "@type": "ImageObject",
+                "url": "https://dailytrending.info/icons/icon-512.png"
+            }}
+        }},
+        "mainEntityOfPage": "https://dailytrending.info{article.url}"
+    }}
+    </script>
+
+    <style amp-custom>
+        {amp_styles}
+    </style>
+</head>
+<body>
+    <amp-analytics type="gtag" data-credentials="include">
+        <script type="application/json">
+        {{
+            "vars": {{
+                "gtag_id": "G-XZNXRW8S7L",
+                "config": {{
+                    "G-XZNXRW8S7L": {{"groups": "default"}}
+                }}
+            }}
+        }}
+        </script>
+    </amp-analytics>
+
+    <header>
+        <a href="/" class="logo">DailyTrending.info</a>
+    </header>
+
+    <article class="container">
+        <div class="article-meta">
+            <time datetime="{article.date}">{date_formatted}</time>
+            <span>{article.word_count} words</span>
+        </div>
+
+        <h1>{article.title}</h1>
+        <p class="summary">{article.summary}</p>
+
+        <div class="content">
+            {article.content}
+        </div>
+
+        <div class="sources">
+            <h3>Stories Referenced</h3>
+            <ul>
+                {''.join(f'<li>{story}</li>' for story in article.top_stories[:5])}
+            </ul>
+        </div>
+
+        <div class="keywords">
+            {''.join(f'<span class="keyword">{kw}</span>' for kw in article.keywords[:8])}
+        </div>
+
+        <footer>
+            <a href="/" class="back-link">Back to Today's Trends</a>
+            <p style="margin-top: 1rem; font-size: 0.875rem; color: {tokens['muted_color']};">
+                <a href="https://dailytrending.info{article.url}" style="color: {tokens['accent_color']};">View full version</a>
+            </p>
+        </footer>
+    </article>
 </body>
 </html>"""
 
@@ -2092,11 +2338,23 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
 
         # Alternative section names that are acceptable
         section_aliases = {
-            "what's actually happening": ["what is actually happening", "what's happening", "what is happening"],
+            "what's actually happening": [
+                "what is actually happening",
+                "what's happening",
+                "what is happening",
+            ],
             "the hidden tradeoffs": ["hidden tradeoffs", "the tradeoffs", "tradeoffs"],
-            "the best counterarguments": ["best counterarguments", "counterarguments", "the counterarguments"],
+            "the best counterarguments": [
+                "best counterarguments",
+                "counterarguments",
+                "the counterarguments",
+            ],
             "what this means next": ["what comes next", "what's next", "next steps"],
-            "practical framework": ["framework", "the framework", "a practical framework"],
+            "practical framework": [
+                "framework",
+                "the framework",
+                "a practical framework",
+            ],
         }
 
         content_lower = content.lower()

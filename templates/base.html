@@ -256,6 +256,7 @@
                 toggle.addEventListener('click', () => {
                     // Current state check
                     const isLight = body.classList.contains('light-mode');
+                    const newTheme = isLight ? 'dark' : 'light';
 
                     if (isLight) {
                         // Switch to Dark
@@ -267,6 +268,11 @@
                         body.classList.remove('dark-mode');
                         body.classList.add('light-mode');
                         localStorage.setItem('theme', 'light');
+                    }
+
+                    // GA4 Event: theme_toggle
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'theme_toggle', { 'theme': newTheme });
                     }
                 });
             }
@@ -298,40 +304,50 @@
                 });
             };
 
-            const applyDensity = (value) => {
+            const applyDensity = (value, track = false) => {
                 densityClasses.forEach((cls) => body.classList.remove(cls));
                 if (value) {
                     body.classList.add(`density-${value}`);
                     localStorage.setItem('reading_density', value);
                 }
                 setDensityActive(value);
+
+                // GA4 Event: density_change
+                if (track && typeof gtag !== 'undefined') {
+                    gtag('event', 'density_change', { 'density': value });
+                }
             };
 
-            const applyView = (value) => {
+            const applyView = (value, track = false) => {
                 body.classList.toggle('view-list', value === 'list');
                 localStorage.setItem('reading_view', value);
                 setViewActive(value);
+
+                // GA4 Event: view_change
+                if (track && typeof gtag !== 'undefined') {
+                    gtag('event', 'view_change', { 'view_mode': value });
+                }
             };
 
             if (densityButtons.length) {
                 const savedDensity = localStorage.getItem('reading_density');
                 // Default to compact for new users
-                applyDensity(savedDensity || 'compact');
+                applyDensity(savedDensity || 'compact', false);
                 if (!savedDensity) localStorage.setItem('reading_density', 'compact');
 
                 densityButtons.forEach((btn) => {
-                    btn.addEventListener('click', () => applyDensity(btn.dataset.density));
+                    btn.addEventListener('click', () => applyDensity(btn.dataset.density, true));
                 });
             }
 
             if (viewButtons.length) {
                 const savedView = localStorage.getItem('reading_view');
                 // Default to grid for new users
-                applyView(savedView || 'grid');
+                applyView(savedView || 'grid', false);
                 if (!savedView) localStorage.setItem('reading_view', 'grid');
 
                 viewButtons.forEach((btn) => {
-                    btn.addEventListener('click', () => applyView(btn.dataset.view));
+                    btn.addEventListener('click', () => applyView(btn.dataset.view, true));
                 });
             }
 
@@ -374,6 +390,8 @@
 
                     const items = getSaved();
                     const index = items.findIndex(item => item.url === targetUrl);
+                    const action = index >= 0 ? 'unsave' : 'save';
+
                     if (index >= 0) {
                         items.splice(index, 1);
                         updateSaveButton(btn, false);
@@ -387,6 +405,16 @@
                         updateSaveButton(btn, true);
                     }
                     setSaved(items);
+
+                    // GA4 Event: save_article
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'save_article', {
+                            'action': action,
+                            'article_title': btn.dataset.title || '',
+                            'article_source': btn.dataset.source || '',
+                            'saved_count': items.length
+                        });
+                    }
                 });
             });
 
@@ -395,16 +423,28 @@
                     event.preventDefault();
                     const url = btn.dataset.url || window.location.href;
                     const title = btn.dataset.title || document.title;
+                    let shareMethod = 'prompt';
 
                     try {
                         if (navigator.share) {
                             await navigator.share({ title, url });
+                            shareMethod = 'native';
                         } else if (navigator.clipboard && navigator.clipboard.writeText) {
                             await navigator.clipboard.writeText(url);
                             btn.setAttribute('data-shared', 'true');
                             setTimeout(() => btn.removeAttribute('data-shared'), 1500);
+                            shareMethod = 'clipboard';
                         } else {
                             window.prompt('Copy this link', url);
+                        }
+
+                        // GA4 Event: share_article
+                        if (typeof gtag !== 'undefined') {
+                            gtag('event', 'share_article', {
+                                'method': shareMethod,
+                                'article_title': title,
+                                'article_url': url
+                            });
                         }
                     } catch (e) {
                         // Ignore user-cancelled share

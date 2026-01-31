@@ -128,6 +128,16 @@ def generate_sitemap(
                             ET.SubElement(article_page, "lastmod").text = article_date
                             ET.SubElement(article_page, "changefreq").text = "never"
                             ET.SubElement(article_page, "priority").text = "0.8"
+
+                            # Add AMP version of article
+                            amp_url = f"{base_url}/amp{article_url}"
+                            if amp_url not in added_urls:
+                                added_urls.add(amp_url)
+                                amp_page = ET.SubElement(urlset, "url")
+                                ET.SubElement(amp_page, "loc").text = amp_url
+                                ET.SubElement(amp_page, "lastmod").text = article_date
+                                ET.SubElement(amp_page, "changefreq").text = "never"
+                                ET.SubElement(amp_page, "priority").text = "0.6"
                 except Exception:
                     continue
 
