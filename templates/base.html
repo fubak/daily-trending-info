@@ -42,6 +42,14 @@
     <meta name="date" content="{{ date_iso }}">
     <meta name="last-modified" content="{{ last_modified }}">
 
+    <!-- Google News -->
+    <meta name="news_keywords" content="{{ news_keywords }}">
+
+    <!-- Google Search Console Verification -->
+    {% if google_site_verification %}
+    <meta name="google-site-verification" content="{{ google_site_verification }}">
+    {% endif %}
+
     <!-- Structured Data -->
     {{ structured_data | safe }}
 
@@ -138,6 +146,70 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-XZNXRW8S7L');
+
+      // GA4 Custom Event Tracking
+      document.addEventListener('DOMContentLoaded', function() {
+        // Track article clicks
+        document.querySelectorAll('.story-card a, .story-link, [data-story-url]').forEach(function(link) {
+          link.addEventListener('click', function(e) {
+            var title = this.closest('.story-card')?.querySelector('.story-title')?.textContent || this.textContent;
+            var category = this.closest('[data-category]')?.dataset.category || 'unknown';
+            gtag('event', 'click_article', {
+              'article_title': title.substring(0, 100),
+              'article_category': category,
+              'article_url': this.href
+            });
+          });
+        });
+
+        // Track category section views with Intersection Observer
+        var categoryObserver = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+              var categoryName = entry.target.querySelector('h2')?.textContent || entry.target.id;
+              gtag('event', 'category_view', {
+                'category_name': categoryName
+              });
+              categoryObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.3 });
+
+        document.querySelectorAll('.category-section, [data-category]').forEach(function(section) {
+          categoryObserver.observe(section);
+        });
+
+        // Track scroll depth (25%, 50%, 75%, 100%)
+        var scrollDepths = [25, 50, 75, 100];
+        var trackedDepths = {};
+        window.addEventListener('scroll', function() {
+          var scrollPercent = Math.round((window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100);
+          scrollDepths.forEach(function(depth) {
+            if (scrollPercent >= depth && !trackedDepths[depth]) {
+              trackedDepths[depth] = true;
+              gtag('event', 'scroll_depth', {
+                'depth_percentage': depth
+              });
+            }
+          });
+        }, { passive: true });
+
+        // Track search if search exists
+        var searchInput = document.querySelector('#search-input, [data-search]');
+        if (searchInput) {
+          var searchTimeout;
+          searchInput.addEventListener('input', function(e) {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function() {
+              if (e.target.value.length > 2) {
+                gtag('event', 'search_query', {
+                  'search_term': e.target.value
+                });
+              }
+            }, 1000);
+          });
+        }
+      });
     </script>
 
     <!-- Google AdSense -->
@@ -572,5 +644,7 @@
             }
         })();
     </script>
+
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>

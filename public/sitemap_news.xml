@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+  <url>
+    <loc>https://dailytrending.info/</loc>
+    <news:news>
+      <news:publication>
+        <news:name>DailyTrending.info</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-01-31T06:00:00Z</news:publication_date>
+      <news:title>Daily Trending News - January 31, 2026</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://dailytrending.info/cmmc/</loc>
+    <news:news>
+      <news:publication>
+        <news:name>DailyTrending.info</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-01-31T06:00:00Z</news:publication_date>
+      <news:title>CMMC Watch - Defense Industrial Base News</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://dailytrending.info/archive/2026-01-31/</loc>
+    <news:news>
+      <news:publication>
+        <news:name>DailyTrending.info</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-01-31T06:00:00Z</news:publication_date>
+      <news:title>Trending News Archive - 2026-01-31</news:title>
+    </news:news>
+  </url>
+</urlset>

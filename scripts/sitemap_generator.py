@@ -259,7 +259,7 @@ Sitemap: {base_url}/sitemap.xml
 
 def generate_sitemap_index(base_url: str = "https://dailytrending.info") -> str:
     """
-    Generate a sitemap index pointing to the main sitemap.
+    Generate a sitemap index pointing to the main sitemap and news sitemap.
 
     Args:
         base_url: Base URL of the website
@@ -274,8 +274,140 @@ def generate_sitemap_index(base_url: str = "https://dailytrending.info") -> str:
     <loc>{base_url}/sitemap_main.xml</loc>
     <lastmod>{today}</lastmod>
   </sitemap>
+  <sitemap>
+    <loc>{base_url}/sitemap_news.xml</loc>
+    <lastmod>{today}</lastmod>
+  </sitemap>
 </sitemapindex>
 """
+
+
+def generate_news_sitemap(
+    base_url: str = "https://dailytrending.info",
+    public_dir: Optional[Path] = None,
+    trends: Optional[List[Dict]] = None,
+) -> str:
+    """
+    Generate Google News sitemap with news: namespace.
+
+    Per Google News guidelines, only includes content from the last 2 days.
+
+    Args:
+        base_url: Base URL of the website
+        public_dir: Path to public directory to scan for articles
+        trends: Optional list of trend dictionaries with title, url, timestamp
+
+    Returns:
+        XML string for sitemap_news.xml
+    """
+    # Create root element with news namespace
+    urlset = ET.Element("urlset")
+    urlset.set("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")
+    urlset.set("xmlns:news", "http://www.google.com/schemas/sitemap-news/0.9")
+
+    today = datetime.now()
+    today_str = today.strftime("%Y-%m-%d")
+
+    # Add homepage as news source
+    homepage = ET.SubElement(urlset, "url")
+    ET.SubElement(homepage, "loc").text = f"{base_url}/"
+    news = ET.SubElement(homepage, "news:news")
+    publication = ET.SubElement(news, "news:publication")
+    ET.SubElement(publication, "news:name").text = "DailyTrending.info"
+    ET.SubElement(publication, "news:language").text = "en"
+    ET.SubElement(news, "news:publication_date").text = f"{today_str}T06:00:00Z"
+    ET.SubElement(news, "news:title").text = (
+        f"Daily Trending News - {today.strftime('%B %d, %Y')}"
+    )
+
+    # Add CMMC Watch page
+    cmmc = ET.SubElement(urlset, "url")
+    ET.SubElement(cmmc, "loc").text = f"{base_url}/cmmc/"
+    cmmc_news = ET.SubElement(cmmc, "news:news")
+    cmmc_pub = ET.SubElement(cmmc_news, "news:publication")
+    ET.SubElement(cmmc_pub, "news:name").text = "DailyTrending.info"
+    ET.SubElement(cmmc_pub, "news:language").text = "en"
+    ET.SubElement(cmmc_news, "news:publication_date").text = f"{today_str}T06:00:00Z"
+    ET.SubElement(cmmc_news, "news:title").text = (
+        "CMMC Watch - Defense Industrial Base News"
+    )
+
+    # Add recent archive pages (last 2 days per Google News guidelines)
+    if public_dir:
+        archive_dir = public_dir / "archive"
+        if archive_dir.exists():
+            recent_dates = []
+            for item in archive_dir.iterdir():
+                if item.is_dir() and len(item.name) == 10:
+                    try:
+                        archive_date = datetime.strptime(item.name, "%Y-%m-%d")
+                        days_ago = (today - archive_date).days
+                        if days_ago <= 2:  # Only last 2 days for Google News
+                            recent_dates.append(item.name)
+                    except ValueError:
+                        continue
+
+            for date in sorted(recent_dates, reverse=True):
+                archive_url = ET.SubElement(urlset, "url")
+                ET.SubElement(archive_url, "loc").text = f"{base_url}/archive/{date}/"
+                archive_news = ET.SubElement(archive_url, "news:news")
+                archive_pub = ET.SubElement(archive_news, "news:publication")
+                ET.SubElement(archive_pub, "news:name").text = "DailyTrending.info"
+                ET.SubElement(archive_pub, "news:language").text = "en"
+                ET.SubElement(archive_news, "news:publication_date").text = (
+                    f"{date}T06:00:00Z"
+                )
+                ET.SubElement(archive_news, "news:title").text = (
+                    f"Trending News Archive - {date}"
+                )
+
+    # Add recent articles (last 2 days)
+    if public_dir:
+        articles_dir = public_dir / "articles"
+        if articles_dir.exists():
+            for metadata_file in articles_dir.rglob("metadata.json"):
+                try:
+                    with open(metadata_file) as f:
+                        article_meta = json.load(f)
+                    article_url = article_meta.get("url", "")
+                    article_date = article_meta.get("date", "")
+                    article_title = article_meta.get("title", "")
+
+                    if article_url and article_date and article_title:
+                        # Check if article is within last 2 days
+                        try:
+                            pub_date = datetime.strptime(article_date, "%Y-%m-%d")
+                            days_ago = (today - pub_date).days
+                            if days_ago > 2:
+                                continue
+                        except ValueError:
+                            continue
+
+                        article_entry = ET.SubElement(urlset, "url")
+                        ET.SubElement(article_entry, "loc").text = (
+                            f"{base_url}{article_url}"
+                        )
+                        article_news = ET.SubElement(article_entry, "news:news")
+                        article_pub = ET.SubElement(article_news, "news:publication")
+                        ET.SubElement(article_pub, "news:name").text = (
+                            "DailyTrending.info"
+                        )
+                        ET.SubElement(article_pub, "news:language").text = "en"
+                        ET.SubElement(article_news, "news:publication_date").text = (
+                            f"{article_date}T06:00:00Z"
+                        )
+                        ET.SubElement(article_news, "news:title").text = article_title[
+                            :200
+                        ]
+                except Exception:
+                    continue
+
+    # Add proper indentation
+    ET.indent(urlset, space="  ")
+
+    # Convert to string with declaration
+    xml_string = ET.tostring(urlset, encoding="unicode", method="xml")
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n{xml_string}'
 
 
 def save_sitemap(
@@ -301,7 +433,15 @@ def save_sitemap(
     main_sitemap_path.write_text(sitemap_content)
     print(f"  Created {main_sitemap_path}")
 
-    # Also save as sitemap.xml (sitemap index pointing to main)
+    # Generate and save Google News sitemap
+    news_sitemap_content = generate_news_sitemap(
+        base_url=base_url, public_dir=public_dir
+    )
+    news_sitemap_path = public_dir / "sitemap_news.xml"
+    news_sitemap_path.write_text(news_sitemap_content)
+    print(f"  Created {news_sitemap_path} (Google News)")
+
+    # Also save as sitemap.xml (sitemap index pointing to main and news)
     sitemap_index_content = generate_sitemap_index(base_url=base_url)
     sitemap_path = public_dir / "sitemap.xml"
     sitemap_path.write_text(sitemap_index_content)

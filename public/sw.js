@@ -1,7 +1,7 @@
 // DailyTrending.info Service Worker
-// Cache version: 20260117
+// Cache version: 20260131
 
-const CACHE_NAME = 'dailytrending-v20260117';
+const CACHE_NAME = 'dailytrending-v20260131';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache immediately

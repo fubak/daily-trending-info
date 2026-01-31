@@ -536,14 +536,19 @@ class WebsiteBuilder:
         """Generate comprehensive JSON-LD structured data for SEO and LLMs."""
         import json
 
-        # Organization schema
+        # NewsMediaOrganization schema (enhanced for Google News)
         organization_schema = {
             "@context": "https://schema.org",
-            "@type": "Organization",
+            "@type": "NewsMediaOrganization",
             "name": "DailyTrending.info",
             "url": "https://dailytrending.info/",
-            "logo": "https://dailytrending.info/icons/icon-512.png",
-            "description": "AI-curated tech, science, and world news aggregator",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://dailytrending.info/icons/icon-512.png",
+                "width": 512,
+                "height": 512,
+            },
+            "description": "AI-curated tech, science, and world news aggregator delivering daily trending stories from 15+ sources including Hacker News, NPR, BBC, Reddit, and GitHub.",
             "founder": {
                 "@type": "Person",
                 "name": "Brad Shannon",
@@ -559,6 +564,8 @@ class WebsiteBuilder:
                 "contactType": "customer support",
                 "url": "https://www.linkedin.com/in/bradshannon/",
             },
+            "publishingPrinciples": "https://dailytrending.info/about",
+            "actionableFeedbackPolicy": "https://dailytrending.info/contact",
         }
 
         # BreadcrumbList schema for homepage
@@ -809,6 +816,8 @@ class WebsiteBuilder:
             "page_title": self._build_page_title(),
             "meta_description": self._build_meta_description(),
             "keywords_str": ", ".join(self.ctx.keywords[:15]),
+            "news_keywords": ", ".join(self.ctx.keywords[:10]),  # Google News meta
+            "google_site_verification": os.environ.get("GOOGLE_SITE_VERIFICATION", ""),
             "canonical_url": "https://dailytrending.info/",
             "date_str": self.ctx.generated_at,
             "date_iso": datetime.now().strftime("%Y-%m-%d"),

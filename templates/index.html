@@ -135,9 +135,13 @@
         </div>
     </section>
 
-    <!-- Category Sections -->
+    <!-- Category Sections with Progressive Loading -->
     {% for category in categories %}
-    <section class="section category-section" aria-labelledby="cat-{{ category.title|lower|replace(' ', '-') }}">
+    <section class="section category-section{% if loop.index > 3 %} lazy-category{% endif %}"
+             data-category="{{ category.title }}"
+             data-category-index="{{ loop.index }}"
+             aria-labelledby="cat-{{ category.title|lower|replace(' ', '-') }}"
+             {% if loop.index > 3 %}style="display: none;"{% endif %}>
         <div class="section-header">
             <h2 id="cat-{{ category.title|lower|replace(' ', '-') }}" class="section-title">{{ category.title }}</h2>
             <span class="section-count">{{ category.count }}</span>
@@ -183,5 +187,137 @@
     </section>
     {% endfor %}
 
+    <!-- Load More Section -->
+    <div id="load-more-container" class="load-more-container" {% if categories|length <= 3 %}style="display: none;"{% endif %}>
+        <button id="load-more-btn" class="load-more-btn" type="button">
+            <span class="load-more-text">Load More Categories</span>
+            <span class="load-more-count">(<span id="remaining-categories">{{ categories|length - 3 }}</span> remaining)</span>
+        </button>
+        <div class="load-more-progress">
+            <span id="loaded-count">3</span> / {{ categories|length }} categories loaded
+        </div>
+    </div>
+
 </main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+    'use strict';
+
+    // Progressive Category Loading
+    const INITIAL_VISIBLE = 3;
+    const LOAD_INCREMENT = 3;
+    let currentlyVisible = INITIAL_VISIBLE;
+
+    const lazyCategories = document.querySelectorAll('.lazy-category');
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const loadMoreContainer = document.getElementById('load-more-container');
+    const remainingCount = document.getElementById('remaining-categories');
+    const loadedCount = document.getElementById('loaded-count');
+    const totalCategories = {{ categories|length }};
+
+    function showMoreCategories(count) {
+        let shown = 0;
+        lazyCategories.forEach((cat, index) => {
+            if (cat.style.display === 'none' && shown < count) {
+                cat.style.display = '';
+                cat.classList.add('fade-in');
+                shown++;
+            }
+        });
+
+        currentlyVisible = Math.min(currentlyVisible + shown, totalCategories);
+
+        // Update counts
+        if (remainingCount) remainingCount.textContent = Math.max(0, totalCategories - currentlyVisible);
+        if (loadedCount) loadedCount.textContent = currentlyVisible;
+
+        // Hide button if all loaded
+        if (currentlyVisible >= totalCategories && loadMoreContainer) {
+            loadMoreContainer.style.display = 'none';
+        }
+
+        // Track in GA4
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'load_more_categories', {
+                'categories_loaded': currentlyVisible,
+                'categories_total': totalCategories
+            });
+        }
+    }
+
+    // Load More button click handler
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function() {
+            showMoreCategories(LOAD_INCREMENT);
+        });
+    }
+
+    // Infinite scroll - load more when near bottom
+    let scrollTimeout;
+    const scrollHandler = function() {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(function() {
+            if (currentlyVisible >= totalCategories) return;
+
+            const scrollPosition = window.innerHeight + window.scrollY;
+            const documentHeight = document.documentElement.scrollHeight;
+            const threshold = 800; // Load more when 800px from bottom
+
+            if (scrollPosition >= documentHeight - threshold) {
+                showMoreCategories(LOAD_INCREMENT);
+            }
+        }, 100);
+    };
+
+    window.addEventListener('scroll', scrollHandler, { passive: true });
+
+    // Add fade-in animation style
+    const style = document.createElement('style');
+    style.textContent = `
+        .fade-in {
+            animation: categoryFadeIn 0.4s ease-out forwards;
+        }
+        @keyframes categoryFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .load-more-container {
+            text-align: center;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        .load-more-btn {
+            background: var(--color-accent);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .load-more-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        .load-more-count {
+            opacity: 0.8;
+            font-weight: 400;
+        }
+        .load-more-progress {
+            margin-top: 1rem;
+            color: var(--color-muted);
+            font-size: 0.875rem;
+        }
+    `;
+    document.head.appendChild(style);
+})();
+</script>
 {% endblock %}
