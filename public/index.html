@@ -44,7 +44,7 @@
     <!-- Additional SEO -->
     <meta name="generator" content="DailyTrending.info Pipeline">
     <meta name="date" content="2026-02-11">
-    <meta name="last-modified" content="2026-02-11T08:05:09.248823">
+    <meta name="last-modified" content="2026-02-11T10:27:31.661929">
 
     <!-- Google News -->
     <meta name="news_keywords" content="trained, speech, model, surely, crash, economy, peerweb, decentralized, website, antirender">
@@ -138,7 +138,7 @@
       "name": "Daily Trending Topics - February 11, 2026",
       "description": "Real-time dashboard of trending tech, science, and world news stories. AI-curated daily from Hacker News, NPR, BBC, Reddit, and 12+ sources. Updated February 11, 2026 with 638 stories.",
       "url": "https://dailytrending.info/",
-      "datePublished": "2026-02-11T08:05:10.085194",
+      "datePublished": "2026-02-11T10:27:32.526436",
       "mainEntity": {
         "@type": "ItemList",
         "numberOfItems": 9,
@@ -155,7 +155,7 @@
                 "@type": "Organization",
                 "name": "Hackernews"
               },
-              "image": "https://images.pexels.com/photos/27523299/pexels-photo-27523299.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+              "image": "https://images.pexels.com/photos/27523299/pexels-photo-27523299.jpeg?auto=compress\u0026cs=tinysrgb\u0026h=650\u0026w=940",
               "description": "A tiny on-device speech model to grade Mandarin pronunciation and tones."
             }
           },
@@ -201,7 +201,7 @@
                 "@type": "Organization",
                 "name": "Finance Cnbc"
               },
-              "image": "https://image.cnbcfm.com/api/v1/image/108169512-1752067297521-gettyimages-2211325619-IMF_WORLD_BANK.jpeg?v=1769788274&amp;w=1920&amp;h=1080",
+              "image": "https://image.cnbcfm.com/api/v1/image/108169512-1752067297521-gettyimages-2211325619-IMF_WORLD_BANK.jpeg?v=1769788274\u0026amp;w=1920\u0026amp;h=1080",
               "description": "Kevin Warsh, a former Fed governor, has emerged as Donald Trump\u2019s pick to lead the Federal Reserve. Here\u2019s his background, views and why it matters."
             }
           },
@@ -211,7 +211,7 @@
             "item": {
               "@type": "NewsArticle",
               "headline": "Israeli air strikes kill at least 27 Palestinians in Gaza, rescue officials say",
-              "url": "https://www.bbc.com/news/articles/c701g1g00gdo?at_medium=RSS&at_campaign=rss",
+              "url": "https://www.bbc.com/news/articles/c701g1g00gdo?at_medium=RSS\u0026at_campaign=rss",
               "datePublished": "2026-01-31 09:55:33.594961",
               "publisher": {
                 "@type": "Organization",
@@ -227,7 +227,7 @@
             "item": {
               "@type": "NewsArticle",
               "headline": "US government partially shuts down despite last minute funding deal",
-              "url": "https://www.bbc.com/news/articles/ce8rk33dpvmo?at_medium=RSS&at_campaign=rss",
+              "url": "https://www.bbc.com/news/articles/ce8rk33dpvmo?at_medium=RSS\u0026at_campaign=rss",
               "datePublished": "2026-01-31 09:55:33.919097",
               "publisher": {
                 "@type": "Organization",
@@ -3183,16 +3183,48 @@ body.light-mode .nav-links a.active {
     overflow-y: auto;
 }
 
+.on-this-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
 .on-this-page-title {
     font-family: var(--font-primary);
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0;
     color: var(--color-muted);
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--color-border);
+}
+
+.on-this-page-collapse-btn {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 0.375rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.on-this-page-collapse-btn:hover {
+    color: var(--color-text);
+    border-color: var(--color-accent);
+}
+
+.on-this-page-collapse-btn svg {
+    transition: transform 0.2s;
 }
 
 .on-this-page-list {
@@ -3379,9 +3411,41 @@ body.light-mode .nav-links a.active {
     transform: rotate(45deg);
 }
 
+/* Desktop collapse/expand behavior */
+@media (min-width: 1025px) {
+    .on-this-page.collapsed {
+        width: 56px;
+        max-height: none;
+    }
+
+    .on-this-page.collapsed .on-this-page-sticky {
+        padding: 0.75rem 0.5rem;
+        overflow: visible;
+    }
+
+    .on-this-page.collapsed .on-this-page-title,
+    .on-this-page.collapsed .on-this-page-nav,
+    .on-this-page.collapsed .reading-progress,
+    .on-this-page.collapsed .page-actions {
+        display: none;
+    }
+
+    .on-this-page.collapsed .on-this-page-header {
+        justify-content: center;
+    }
+
+    .on-this-page.collapsed .on-this-page-collapse-btn svg {
+        transform: rotate(180deg);
+    }
+}
+
 @media (max-width: 1024px) {
     .on-this-page-mobile-toggle {
         display: flex;
+    }
+
+    .on-this-page-collapse-btn {
+        display: none;
     }
 }
 
@@ -7788,7 +7852,21 @@ body.light-mode .nav-links a.active {
     <!-- On This Page Navigation - Floating -->
 <aside class="on-this-page hidden" id="on-this-page" role="navigation" aria-labelledby="on-this-page-heading">
     <div class="on-this-page-sticky">
-        <h3 id="on-this-page-heading" class="on-this-page-title">On this page</h3>
+        <div class="on-this-page-header">
+            <h3 id="on-this-page-heading" class="on-this-page-title">On this page</h3>
+            <button
+                class="on-this-page-collapse-btn"
+                id="on-this-page-collapse-btn"
+                type="button"
+                aria-label="Collapse page navigation"
+                aria-expanded="true"
+                title="Collapse navigation"
+            >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </button>
+        </div>
         <nav class="on-this-page-nav">
             <ul class="on-this-page-list" id="on-this-page-list">
                 <!-- Section links populated by JavaScript -->
@@ -8154,8 +8232,35 @@ body.light-mode .nav-links a.active {
             const progressFill = document.getElementById('reading-progress-fill');
             const scrollToTopBtn = document.getElementById('scroll-to-top');
             const mobileToggle = document.getElementById('on-this-page-toggle');
+            const collapseBtn = document.getElementById('on-this-page-collapse-btn');
+            const COLLAPSE_STORAGE_KEY = 'on_this_page_collapsed';
 
             if (!onThisPage || !onThisPageList) return;
+            
+            const isDesktopViewport = () => window.matchMedia('(min-width: 1025px)').matches;
+            const getSavedCollapsed = () => {
+                try {
+                    return localStorage.getItem(COLLAPSE_STORAGE_KEY) === 'true';
+                } catch (_) {
+                    return false;
+                }
+            };
+            const saveCollapsed = (collapsed) => {
+                try {
+                    localStorage.setItem(COLLAPSE_STORAGE_KEY, collapsed ? 'true' : 'false');
+                } catch (_) {
+                    // No-op if storage is unavailable
+                }
+            };
+            const applyCollapsedState = (collapsed) => {
+                const shouldCollapse = collapsed && isDesktopViewport();
+                onThisPage.classList.toggle('collapsed', shouldCollapse);
+                if (collapseBtn) {
+                    collapseBtn.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+                    collapseBtn.setAttribute('aria-label', shouldCollapse ? 'Expand page navigation' : 'Collapse page navigation');
+                    collapseBtn.title = shouldCollapse ? 'Expand navigation' : 'Collapse navigation';
+                }
+            };
 
             // Find only section headings (h2.section-title), not article titles
             const sectionHeadings = document.querySelectorAll('h2.section-title');
@@ -8200,6 +8305,9 @@ body.light-mode .nav-links a.active {
                 if (mobileToggle) mobileToggle.classList.add('no-sections');
                 return;
             }
+
+            // Apply saved collapse state on desktop
+            applyCollapsedState(getSavedCollapsed());
 
             // Update visibility based on scroll position
             const updateVisibility = () => {
@@ -8309,12 +8417,23 @@ body.light-mode .nav-links a.active {
                     }
                 });
             }
+            
+            // Desktop collapse toggle
+            if (collapseBtn) {
+                collapseBtn.addEventListener('click', () => {
+                    if (!isDesktopViewport()) return;
+                    const nextCollapsed = !onThisPage.classList.contains('collapsed');
+                    applyCollapsedState(nextCollapsed);
+                    saveCollapsed(nextCollapsed);
+                });
+            }
 
             // Initialize
             window.addEventListener('scroll', handleScroll, { passive: true });
             window.addEventListener('resize', () => {
                 updateReadingProgress();
                 updateVisibility();
+                applyCollapsedState(getSavedCollapsed());
             });
 
             // Initial state

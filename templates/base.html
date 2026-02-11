@@ -505,8 +505,35 @@
             const progressFill = document.getElementById('reading-progress-fill');
             const scrollToTopBtn = document.getElementById('scroll-to-top');
             const mobileToggle = document.getElementById('on-this-page-toggle');
+            const collapseBtn = document.getElementById('on-this-page-collapse-btn');
+            const COLLAPSE_STORAGE_KEY = 'on_this_page_collapsed';
 
             if (!onThisPage || !onThisPageList) return;
+            
+            const isDesktopViewport = () => window.matchMedia('(min-width: 1025px)').matches;
+            const getSavedCollapsed = () => {
+                try {
+                    return localStorage.getItem(COLLAPSE_STORAGE_KEY) === 'true';
+                } catch (_) {
+                    return false;
+                }
+            };
+            const saveCollapsed = (collapsed) => {
+                try {
+                    localStorage.setItem(COLLAPSE_STORAGE_KEY, collapsed ? 'true' : 'false');
+                } catch (_) {
+                    // No-op if storage is unavailable
+                }
+            };
+            const applyCollapsedState = (collapsed) => {
+                const shouldCollapse = collapsed && isDesktopViewport();
+                onThisPage.classList.toggle('collapsed', shouldCollapse);
+                if (collapseBtn) {
+                    collapseBtn.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+                    collapseBtn.setAttribute('aria-label', shouldCollapse ? 'Expand page navigation' : 'Collapse page navigation');
+                    collapseBtn.title = shouldCollapse ? 'Expand navigation' : 'Collapse navigation';
+                }
+            };
 
             // Find only section headings (h2.section-title), not article titles
             const sectionHeadings = document.querySelectorAll('h2.section-title');
@@ -551,6 +578,9 @@
                 if (mobileToggle) mobileToggle.classList.add('no-sections');
                 return;
             }
+
+            // Apply saved collapse state on desktop
+            applyCollapsedState(getSavedCollapsed());
 
             // Update visibility based on scroll position
             const updateVisibility = () => {
@@ -660,12 +690,23 @@
                     }
                 });
             }
+            
+            // Desktop collapse toggle
+            if (collapseBtn) {
+                collapseBtn.addEventListener('click', () => {
+                    if (!isDesktopViewport()) return;
+                    const nextCollapsed = !onThisPage.classList.contains('collapsed');
+                    applyCollapsedState(nextCollapsed);
+                    saveCollapsed(nextCollapsed);
+                });
+            }
 
             // Initialize
             window.addEventListener('scroll', handleScroll, { passive: true });
             window.addEventListener('resize', () => {
                 updateReadingProgress();
                 updateVisibility();
+                applyCollapsedState(getSavedCollapsed());
             });
 
             // Initial state
