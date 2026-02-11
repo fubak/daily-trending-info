@@ -92,7 +92,7 @@ All settings persist in localStorage:
 ### Pipeline (14 Steps)
 ```
 Archive → Collect → Images → Enrich → Load Yesterday →
-AI Design → Editorial → Topics → Build HTML → RSS →
+Fixed Design → Editorial → Topics → Build HTML → RSS →
 PWA → Sitemap → Cleanup → Save
 ```
 
@@ -102,7 +102,7 @@ PWA → Sitemap → Cleanup → Save
 | `main.py` | Pipeline orchestrator with quality gates |
 | `collect_trends.py` | 15+ source collectors, deduplication |
 | `fetch_images.py` | Pexels/Unsplash with 7-day cache |
-| `generate_design.py` | AI-driven design generation |
+| `fixed_design.py` | Fixed, deterministic design profile |
 | `build_website.py` | Jinja2-based HTML builder |
 | `editorial_generator.py` | 8-section article generator |
 | `cmmc_page_generator.py` | CMMC Watch standalone page |

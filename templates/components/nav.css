@@ -42,12 +42,12 @@
 
 .nav-links a:hover {
     color: var(--color-text);
-    background: rgba(255, 255, 255, 0.05);
+    background: color-mix(in srgb, var(--color-text) 10%, transparent);
 }
 
 .nav-links a.active {
     color: var(--color-accent);
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
 }
 
 .nav-actions {
@@ -71,13 +71,26 @@
 
 .theme-toggle:hover, .nav-github:hover {
     color: var(--color-text);
-    background: rgba(255, 255, 255, 0.05);
+    background: color-mix(in srgb, var(--color-text) 10%, transparent);
 }
 
 .theme-toggle .sun-icon { display: none; }
 .theme-toggle .moon-icon { display: block; }
 body.light-mode .theme-toggle .sun-icon { display: block; }
 body.light-mode .theme-toggle .moon-icon { display: none; }
+
+/* Light mode nav refinements */
+body.light-mode .nav {
+    background: color-mix(in srgb, var(--color-bg) 92%, white 8%);
+}
+
+body.light-mode .nav-links a:hover {
+    background: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+body.light-mode .nav-links a.active {
+    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
 
 /* Mobile menu */
 .mobile-menu-toggle {

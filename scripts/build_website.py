@@ -6,7 +6,7 @@ Features:
 - Multiple layout templates (newspaper, magazine, dashboard, minimal, bold)
 - Source-grouped sections (News, Tech, Reddit, etc.)
 - Word cloud visualization
-- Dynamic hero styles
+- Consistent hero treatment
 - Responsive design with CSS Grid
 - Jinja2 templating
 """
@@ -14,8 +14,6 @@ Features:
 import os
 import json
 import html
-import random
-import hashlib
 import re
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
@@ -28,30 +26,10 @@ from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from fetch_images import FallbackImageGenerator
-from shared_components import (
-    build_header,
-    build_footer,
-    get_header_styles,
-    get_footer_styles,
-    get_theme_script,
-)
 
 
-LAYOUT_TEMPLATES = ["newspaper", "magazine", "bold", "mosaic"]
-HERO_STYLES = [
-    "cinematic",
-    "glassmorphism",
-    "neon",
-    "duotone",
-    "particles",
-    "waves",
-    "geometric",
-    "spotlight",
-    "glitch",
-    "aurora",
-    "mesh",
-    "retro",
-]
+DEFAULT_LAYOUT = "newspaper"
+DEFAULT_HERO_STYLE = "glassmorphism"
 
 
 @dataclass
@@ -81,6 +59,7 @@ class WebsiteBuilder:
         self.ctx = context
         self.design = context.design
         self._description_cache = {}
+        self._sanitize_trends()
 
         # Setup Jinja2 environment
         # Assuming templates are in a 'templates' folder at the project root
@@ -91,10 +70,6 @@ class WebsiteBuilder:
             loader=FileSystemLoader(template_dir),
             autoescape=select_autoescape(["html", "xml"]),
         )
-
-        # Use timestamp as seed for unique randomization on each generation
-        timestamp_seed = datetime.now().isoformat()
-        self.rng = random.Random(timestamp_seed)
 
         if isinstance(self.design, dict):
             layout_style = self.design.get("layout_style")
@@ -111,8 +86,9 @@ class WebsiteBuilder:
                 else None
             )
 
-        self.layout = layout_style or self.rng.choice(LAYOUT_TEMPLATES)
-        self.hero_style = hero_style or self.rng.choice(HERO_STYLES)
+        # Single deterministic layout/hero defaults (no random style fallback).
+        self.layout = layout_style or DEFAULT_LAYOUT
+        self.hero_style = hero_style or DEFAULT_HERO_STYLE
 
         # Group trends by category
         self.grouped_trends = self._group_trends()
@@ -123,6 +99,52 @@ class WebsiteBuilder:
         # Find the best hero image based on headline content
         self._hero_image = self._find_relevant_hero_image()
         self._category_card_limit = 8  # 2 rows × 4 columns (must be multiple of 4)
+
+    @staticmethod
+    def _sanitize_text(value: Optional[str]) -> str:
+        """Strip HTML tags and normalize whitespace in user/content text."""
+        if not isinstance(value, str):
+            return ""
+        clean = re.sub(r"<[^>]*>", "", value)
+        clean = re.sub(r"\s+", " ", clean).strip()
+        return clean
+
+    @staticmethod
+    def _sanitize_url(value: Optional[str]) -> Optional[str]:
+        """Allow only http(s) URLs for outbound links."""
+        if not isinstance(value, str):
+            return None
+        value = value.strip()
+        if value.startswith(("http://", "https://")):
+            return value
+        return None
+
+    def _sanitize_trends(self) -> None:
+        """Sanitize trend fields once before any rendering/SEO generation."""
+        sanitized = []
+        for trend in self.ctx.trends:
+            if not isinstance(trend, dict):
+                sanitized.append(trend)
+                continue
+
+            row = dict(trend)
+            row["title"] = self._sanitize_text(row.get("title"))
+            row["source"] = self._sanitize_text(row.get("source"))
+            row["description"] = self._sanitize_text(row.get("description"))
+            row["summary"] = self._sanitize_text(row.get("summary"))
+            row["url"] = self._sanitize_url(row.get("url"))
+            row["image_url"] = self._sanitize_url(row.get("image_url"))
+
+            if isinstance(row.get("keywords"), list):
+                row["keywords"] = [
+                    self._sanitize_text(k).lower()
+                    for k in row["keywords"]
+                    if self._sanitize_text(k)
+                ]
+
+            sanitized.append(row)
+
+        self.ctx.trends = sanitized
 
     def _choose_column_count(self, count: int) -> int:
         """Always use 4-column layout for consistency."""
@@ -535,6 +557,18 @@ class WebsiteBuilder:
     def _build_structured_data(self) -> str:
         """Generate comprehensive JSON-LD structured data for SEO and LLMs."""
         import json
+        
+        def _clean_text(value: str) -> str:
+            if not isinstance(value, str):
+                return ""
+            clean = re.sub(r"<[^>]*>", "", value)
+            return re.sub(r"\s+", " ", clean).strip()
+
+        def _clean_url(value: str) -> str:
+            if not isinstance(value, str):
+                return ""
+            value = value.strip()
+            return value if value.startswith(("http://", "https://")) else ""
 
         # NewsMediaOrganization schema (enhanced for Google News)
         organization_schema = {
@@ -618,13 +652,19 @@ class WebsiteBuilder:
         item_list_elements = []
 
         for idx, story in enumerate(top_stories[:10], 1):
+            story_title = _clean_text(story.get("title", ""))
+            story_url = _clean_url(story.get("url", ""))
+            story_source = _clean_text(story.get("source", "")).replace("_", " ").title()
+            story_summary = _clean_text(story.get("summary") or story.get("description") or "")
+            story_image = _clean_url(story.get("image_url", ""))
+
             item = {
                 "@type": "ListItem",
                 "position": idx,
                 "item": {
                     "@type": "NewsArticle",
-                    "headline": story.get("title", ""),
-                    "url": story.get("url", ""),
+                    "headline": story_title,
+                    "url": story_url,
                     "datePublished": (
                         story.get("timestamp", datetime.now().isoformat())
                         if isinstance(story.get("timestamp"), str)
@@ -632,20 +672,18 @@ class WebsiteBuilder:
                     ),
                     "publisher": {
                         "@type": "Organization",
-                        "name": story.get("source", "").replace("_", " ").title(),
+                        "name": story_source,
                     },
                 },
             }
 
             # Add image if available
-            if story.get("image_url"):
-                item["item"]["image"] = story.get("image_url")
+            if story_image:
+                item["item"]["image"] = story_image
 
             # Add description if available
-            if story.get("summary") or story.get("description"):
-                item["item"]["description"] = story.get("summary") or story.get(
-                    "description"
-                )
+            if story_summary:
+                item["item"]["description"] = story_summary
 
             item_list_elements.append(item)
 
@@ -707,7 +745,13 @@ class WebsiteBuilder:
             ],
         }
 
-        return f'<script type="application/ld+json">\n{json.dumps(combined_schema, indent=2)}\n</script>'
+        safe_json = json.dumps(combined_schema, indent=2)
+        safe_json = (
+            safe_json.replace("<", "\\u003c")
+            .replace(">", "\\u003e")
+            .replace("&", "\\u0026")
+        )
+        return f'<script type="application/ld+json">\n{safe_json}\n</script>'
 
     def build(self) -> str:
         """Render the website using Jinja2 templates."""

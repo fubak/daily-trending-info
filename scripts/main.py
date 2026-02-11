@@ -6,7 +6,7 @@ Pipeline steps:
 1. Archive previous website (if exists)
 2. Collect trends from multiple sources
 3. Fetch images based on trending keywords
-4. Generate design specification (AI or preset)
+4. Apply fixed design specification
 5. Build the HTML/CSS website
 6. Clean up old archives
 
@@ -38,8 +38,8 @@ from config import (
 )
 from collect_trends import TrendCollector
 from fetch_images import ImageFetcher
-from generate_design import DesignGenerator, DesignSpec
 from build_website import WebsiteBuilder, BuildContext
+from fixed_design import build_fixed_design
 from archive_manager import ArchiveManager
 from generate_rss import generate_rss_feed, generate_cmmc_rss_feed
 from enrich_content import ContentEnricher, EnrichedContent
@@ -82,7 +82,6 @@ class Pipeline:
         # Initialize components
         self.trend_collector = TrendCollector()
         self.image_fetcher = ImageFetcher()
-        self.design_generator = DesignGenerator()
         self.archive_manager = ArchiveManager(public_dir=str(self.public_dir))
         self.keyword_tracker = KeywordTracker()
         self.content_enricher = ContentEnricher()
@@ -101,26 +100,8 @@ class Pipeline:
         self.yesterday_trends = []
         self.media_data = None
 
-    def _load_daily_design(self) -> dict:
-        """Load today's design spec if it already exists."""
-        design_file = self.data_dir / "design.json"
-        if not design_file.exists():
-            return {}
-
-        try:
-            with open(design_file) as f:
-                design_data = json.load(f)
-        except Exception:
-            return {}
-
-        today = datetime.now().strftime("%Y-%m-%d")
-        if design_data.get("design_seed") == today:
-            return design_data
-
-        return {}
-
     def _persist_daily_design(self, design) -> None:
-        """Persist today's design spec for deterministic rebuilds."""
+        """Persist fixed design spec for deterministic rebuilds."""
         design_file = self.data_dir / "design.json"
         design_data = (
             asdict(design) if hasattr(design, "__dataclass_fields__") else design
@@ -146,27 +127,7 @@ class Pipeline:
                 "Images will use fallback gradients."
             )
 
-        # Check AI API keys for design generation
-        google_key = os.getenv("GOOGLE_AI_API_KEY")
-        groq_key = os.getenv("GROQ_API_KEY")
-        openrouter_key = os.getenv("OPENROUTER_API_KEY")
-
-        # Log available LLM providers
-        available_providers = []
-        if google_key:
-            available_providers.append("Google AI (primary)")
-        if openrouter_key:
-            available_providers.append("OpenRouter")
-        if groq_key:
-            available_providers.append("Groq")
-
-        if available_providers:
-            logger.info(f"LLM providers available: {', '.join(available_providers)}")
-        else:
-            warnings.append(
-                "No AI API keys configured (GOOGLE_AI_API_KEY, GROQ_API_KEY, or OPENROUTER_API_KEY). "
-                "Design will use preset themes."
-            )
+        # Design is now fixed and deterministic, no LLM keys required.
 
         # Check directory permissions
         try:
@@ -223,8 +184,8 @@ class Pipeline:
             # Step 5: Enrich content (Word of Day, Grokipedia, summaries)
             self._step_enrich_content()
 
-            # Step 6: Generate design
-            self._step_generate_design()
+            # Step 6: Apply fixed design
+            self._step_apply_fixed_design()
 
             # Step 7: Generate editorial article and Why This Matters
             if not dry_run:
@@ -669,23 +630,18 @@ class Pipeline:
             )
         logger.info(f"  Story summaries: {len(self.enriched_content.story_summaries)}")
 
-    def _step_generate_design(self):
-        """Generate the design specification."""
-        logger.info("[6/16] Generating design...")
+    def _step_apply_fixed_design(self):
+        """Apply fixed design specification (no automatic style variation)."""
+        logger.info("[6/16] Applying fixed design...")
 
-        cached_design = self._load_daily_design()
-        if cached_design:
-            self.design = cached_design
-            logger.info("Using persisted design for today")
-        else:
-            # Convert trends to dict format for the generator
-            trends_data = [
-                asdict(t) if hasattr(t, "__dataclass_fields__") else t
-                for t in self.trends
-            ]
+        # Convert trends to dict format for deterministic content text generation.
+        trends_data = [
+            asdict(t) if hasattr(t, "__dataclass_fields__") else t for t in self.trends
+        ]
 
-            self.design = self.design_generator.generate(trends_data, self.keywords)
-            self._persist_daily_design(self.design)
+        self.design = build_fixed_design(trends_data, self.keywords)
+        self._persist_daily_design(self.design)
+        logger.info("Using fixed design profile: Signal Desk")
 
         if isinstance(self.design, dict):
             logger.info(f"Theme: {self.design.get('theme_name')}")
@@ -2862,8 +2818,8 @@ Examples:
     python main.py --dry-run    # Collect data only, don't build
 
 Environment variables:
-    GROQ_API_KEY        - Groq API key for AI design generation
-    OPENROUTER_API_KEY  - OpenRouter API key (backup AI)
+    GROQ_API_KEY        - Groq API key for enrichment/editorial generation
+    OPENROUTER_API_KEY  - OpenRouter API key (backup LLM provider)
     PEXELS_API_KEY      - Pexels API key for images
     UNSPLASH_ACCESS_KEY - Unsplash API key (backup images)
         """,
@@ -2876,7 +2832,7 @@ Environment variables:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Collect trends and generate design, but don't build website",
+        help="Collect trends and apply fixed design, but don't build website",
     )
 
     parser.add_argument(

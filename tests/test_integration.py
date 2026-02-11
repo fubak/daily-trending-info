@@ -29,10 +29,9 @@ class TestPipelineIntegration:
             pipeline = Pipeline(project_root=temp_dir)
             warnings = pipeline._validate_environment()
 
-            # Should have warnings about missing API keys
-            assert len(warnings) >= 2
+            # Should have warning about missing image API keys
+            assert len(warnings) >= 1
             assert any('image' in w.lower() for w in warnings)
-            assert any('ai' in w.lower() for w in warnings)
 
     def test_validate_environment_with_keys(self, temp_dir):
         """Test environment validation with API keys set."""
@@ -47,9 +46,8 @@ class TestPipelineIntegration:
             pipeline = Pipeline(project_root=temp_dir)
             warnings = pipeline._validate_environment()
 
-            # Should not have API key warnings
+            # Should not have image API key warnings
             assert not any('image api' in w.lower() for w in warnings)
-            assert not any('ai api' in w.lower() for w in warnings)
 
     def test_pipeline_data_flow(self, temp_dir, sample_trends, sample_images, sample_design):
         """Test data flows correctly through pipeline components."""
@@ -71,8 +69,7 @@ class TestPipelineIntegration:
 
     @patch('main.TrendCollector')
     @patch('main.ImageFetcher')
-    @patch('main.DesignGenerator')
-    def test_pipeline_step_collect_trends(self, mock_design, mock_images, mock_collector, temp_dir, sample_trends):
+    def test_pipeline_step_collect_trends(self, mock_images, mock_collector, temp_dir, sample_trends):
         """Test trend collection step."""
         from main import Pipeline
         from collect_trends import Trend

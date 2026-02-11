@@ -16,14 +16,14 @@ Required in `.env` or GitHub Secrets:
 
 ## Architecture
 
-**Pipeline (16 steps in `main.py`):** Archive → Load yesterday → Collect (15+ sources) → Images → Enrich → AI design → Editorial → Topics → CMMC Watch → Media → Build HTML → RSS → PWA → Sitemap → Cleanup → Save
+**Pipeline (16 steps in `main.py`):** Archive → Load yesterday → Collect (15+ sources) → Images → Enrich → Fixed design → Editorial → Topics → CMMC Watch → Media → Build HTML → RSS → PWA → Sitemap → Cleanup → Save
 
 | Module | Purpose |
 |--------|---------|
 | `main.py` | Orchestrator, quality gates |
 | `collect_trends.py` | 15+ sources, deduplication |
 | `fetch_images.py` | Pexels/Unsplash, 7-day cache |
-| `generate_design.py` | 9 personalities, 20+ colors, 12 hero styles |
+| `fixed_design.py` | Fixed deterministic design profile |
 | `build_website.py` | Single-file HTML/CSS/JS builder |
 | `enrich_content.py` | Word of Day, Grokipedia |
 | `editorial_generator.py` | 8-section articles |
@@ -43,7 +43,7 @@ Required in `.env` or GitHub Secrets:
 
 ## Design System
 
-9 personalities (brutalist, editorial, minimal, corporate, playful, tech, news, magazine, dashboard) | 12 hero styles (cinematic, glassmorphism, neon, particles) | 20+ color schemes | Typography scales | Animation levels | AI-driven (Groq) or preset fallback
+Single deterministic design profile ("Signal Desk") | Fixed layout (`newspaper`) | Fixed hero (`glassmorphism`) | Typography: Newsreader + Inter | Theme toggle supports dark/light
 
 ## Editorial Articles
 

@@ -341,13 +341,13 @@
     text-decoration: none;
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
-    background: rgba(255, 255, 255, 0.05);
+    background: color-mix(in srgb, var(--color-text) 8%, transparent);
     transition: color 0.2s ease, background 0.2s ease;
 }
 
 .footer-actions a:hover {
     color: var(--color-text);
-    background: rgba(255, 255, 255, 0.1);
+    background: color-mix(in srgb, var(--color-text) 14%, transparent);
 }
 
 /* ===== MICRO-INTERACTIONS ===== */
@@ -392,6 +392,13 @@
     color: var(--color-muted);
     cursor: pointer;
     transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+body.light-mode .save-btn,
+body.light-mode .share-btn {
+    background: rgba(255, 255, 255, 0.88);
+    color: #0f172a;
+    border-color: rgba(15, 23, 42, 0.2);
 }
 
 .save-btn:hover,

@@ -121,8 +121,8 @@ trends.json ──► fetch_images.py ──► images.json
 ### Data → Design → Website
 ```
 trends.json  ─┐
-images.json  ─┼─► generate_design.py ──► design.json
-content.json ─┘        (AI-driven)
+images.json  ─┼─► fixed_design.py ──► design.json
+content.json ─┘        (deterministic)
 
 design.json  ─┐
 trends.json  ─┼─► build_website.py ──► public/index.html
@@ -219,34 +219,26 @@ data/image_cache/
 
 ---
 
-#### `generate_design.py` (AI Design System)
-**Purpose**: Generate unique daily designs with AI
+#### `fixed_design.py` (Fixed Design System)
+**Purpose**: Provide one deterministic design spec for all builds
 
 **Responsibilities**:
-- AI-driven design generation (Groq/OpenRouter/Google)
-- 9 personality presets
-- 20+ color schemes
-- 12 hero styles
+- Single modern news profile
+- Stable typography and color tokens
+- Deterministic layout and hero style
 - WCAG AA contrast validation
 
 **Design Dimensions**:
 ```python
-@dataclass
-class DesignSpec:
-    personality: str      # brutalist, editorial, minimal, etc.
-    font_primary: str     # 25+ font options
-    font_secondary: str
-    color_bg: str
-    color_accent: str
-    hero_style: str       # cinematic, glassmorphism, neon, etc.
-    animation_level: str  # none, subtle, moderate, playful
+FIXED_DESIGN_BASE = {
+    "theme_name": "Signal Desk",
+    "layout_style": "newspaper",
+    "hero_style": "glassmorphism",
+    "font_primary": "Newsreader",
+    "font_secondary": "Inter",
+    ...
+}
 ```
-
-**Provider Chain**:
-1. **Groq** (llama-3.3-70b-versatile) - Primary, fastest
-2. **OpenRouter** (multiple free models) - Backup
-3. **Google AI** (gemini-2.5-flash-lite) - Secondary backup
-4. **Preset Themes** - Final fallback
 
 ---
 
@@ -344,7 +336,7 @@ def run(self):
     self._step_archive()
     self._step_collect_trends()
     self._step_fetch_images()
-    self._step_generate_design()
+    self._step_apply_fixed_design()
     self._step_build_website()
     self._step_deploy()
 ```

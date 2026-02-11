@@ -88,15 +88,10 @@ def generate_rss_feed(
         The RSS XML as a string
     """
     # Create root element with content namespace for full text
-    rss = ET.Element(
-        "rss",
-        {
-            "version": "2.0",
-            "xmlns:atom": "http://www.w3.org/2005/Atom",
-            "xmlns:content": "http://purl.org/rss/1.0/modules/content/",
-            "xmlns:dc": "http://purl.org/dc/elements/1.1/",
-        },
-    )
+    # Namespaces are registered globally via ET.register_namespace above.
+    # Avoid redefining xmlns attributes here to prevent duplicate attributes
+    # in serialized XML.
+    rss = ET.Element("rss", {"version": "2.0"})
 
     # Create channel
     channel = ET.SubElement(rss, "channel")

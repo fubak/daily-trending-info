@@ -20,13 +20,14 @@ class TestFullPipelineExecution:
     @pytest.fixture
     def mock_trends_data(self):
         """Sample trends data for testing."""
+        now = datetime.now()
         return [
             {
                 'title': 'Major Tech Announcement',
                 'source': 'hackernews',
                 'url': 'https://example.com/tech',
                 'score': 150,
-                'timestamp': datetime.now(),
+                'timestamp': now,
                 'keywords': ['tech', 'announcement', 'major']
             },
             {
@@ -34,7 +35,7 @@ class TestFullPipelineExecution:
                 'source': 'science_nature',
                 'url': 'https://example.com/science',
                 'score': 120,
-                'timestamp': datetime.now(),
+                'timestamp': now,
                 'keywords': ['science', 'breakthrough', 'research']
             },
             {
@@ -42,8 +43,24 @@ class TestFullPipelineExecution:
                 'source': 'news_reuters',
                 'url': 'https://example.com/world',
                 'score': 100,
-                'timestamp': datetime.now(),
+                'timestamp': now,
                 'keywords': ['world', 'news', 'update']
+            },
+            {
+                'title': 'Finance Market Snapshot',
+                'source': 'finance_bloomberg',
+                'url': 'https://example.com/finance',
+                'score': 95,
+                'timestamp': now,
+                'keywords': ['finance', 'market', 'snapshot']
+            },
+            {
+                'title': 'Policy Regulation Update',
+                'source': 'politics_ap',
+                'url': 'https://example.com/policy',
+                'score': 90,
+                'timestamp': now,
+                'keywords': ['policy', 'regulation', 'update']
             },
         ]
 
@@ -71,14 +88,14 @@ class TestFullPipelineExecution:
 
     def test_pipeline_with_minimal_data(self, mock_trends_data, mock_images_data):
         """Test pipeline can execute with minimum required data."""
-        assert len(mock_trends_data) >= 3  # MIN_TRENDS requirement
+        assert len(mock_trends_data) >= 5  # MIN_TRENDS requirement
         assert len(mock_images_data) >= 2
 
         # Simulate pipeline steps
         trends_collected = len(mock_trends_data)
         images_fetched = len(mock_images_data)
 
-        assert trends_collected >= 3
+        assert trends_collected >= 5
         assert images_fetched >= 2
 
     def test_quality_gates_enforced(self, mock_trends_data):

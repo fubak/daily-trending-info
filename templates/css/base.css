@@ -200,12 +200,26 @@ body.density-spacious {
 body.light-mode {
     --color-bg: #ffffff;
     --color-bg-rgb: 255, 255, 255;
-    --color-text: #1a1a2e;
-    --color-muted: #64748b;
+    --color-text: #0f172a;
+    --color-muted: #475569;
     --color-card-bg: #f8fafc;
-    --color-border: #e2e8f0;
+    --color-border: #dbe4f0;
+    --color-accent: #2563eb;
+    --color-accent-secondary: #0891b2;
     background-color: #ffffff !important;
-    color: #1a1a2e !important;
+    color: #0f172a !important;
+}
+
+body.light-mode .section-header {
+    border-bottom-color: color-mix(in srgb, var(--color-accent) 60%, var(--color-border));
+}
+
+body.light-mode .story-card {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+body.light-mode .story-card:hover {
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
 }
 
 body.dark-mode {
