@@ -700,7 +700,7 @@ class TrendCollector:
     def get_freshness_ratio(self) -> float:
         """Calculate the ratio of fresh trends (from past 24 hours)."""
         if not self.trends:
-            return 1.0
+            return 0.0
         fresh_count = sum(1 for t in self.trends if t.is_fresh())
         return fresh_count / len(self.trends)
 
