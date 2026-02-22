@@ -11,7 +11,7 @@ Sources:
 import os
 import re
 from datetime import datetime
-from typing import Optional, Dict, List
+from typing import Any, Dict, Optional
 from dataclasses import dataclass, asdict
 import requests
 import feedparser
@@ -54,7 +54,7 @@ class VideoOfTheDay:
 class MediaOfDayFetcher:
     """Fetches daily curated media content."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.session = requests.Session()
         self.session.headers.update(
             {"User-Agent": "DailyTrending/1.0 (https://dailytrending.info)"}
@@ -62,7 +62,7 @@ class MediaOfDayFetcher:
         self.image_of_day: Optional[ImageOfTheDay] = None
         self.video_of_day: Optional[VideoOfTheDay] = None
 
-    def fetch_all(self) -> Dict:
+    def fetch_all(self) -> Dict[str, Any]:
         """Fetch both image and video of the day."""
         logger.info("Fetching Media of the Day...")
 
@@ -270,7 +270,7 @@ class MediaOfDayFetcher:
         match = re.search(r"vimeo\.com/(?:channels/[^/]+/)?(\d+)", url)
         return match.group(1) if match else None
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert media data to dictionary format."""
         return {
             "image_of_day": asdict(self.image_of_day) if self.image_of_day else None,
@@ -279,7 +279,7 @@ class MediaOfDayFetcher:
         }
 
 
-def main():
+def main() -> None:
     """Test the media fetcher."""
     fetcher = MediaOfDayFetcher()
     data = fetcher.fetch_all()
