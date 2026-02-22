@@ -21,9 +21,10 @@ import os
 import json
 import re
 import time
-import random
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
+from typing import Any, List, Dict, Optional, Tuple
 from dataclasses import dataclass, asdict, field
 from urllib.parse import quote_plus
 from difflib import SequenceMatcher
@@ -44,6 +45,11 @@ from config import (
     CMMC_KEYWORDS,
     CMMC_LINKEDIN_PROFILES,
     setup_logging,
+)
+from source_registry import (
+    source_metadata_dict,
+    format_source_label,
+    source_quality_multiplier,
 )
 
 # Setup logging
@@ -84,6 +90,79 @@ def is_english_text(text: str) -> bool:
     return True
 
 
+def _normalize_datetime(value: datetime) -> datetime:
+    """Convert timezone-aware datetimes to naive UTC for consistent comparisons."""
+    if value.tzinfo:
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
+
+
+def parse_timestamp(value: Any) -> Optional[datetime]:
+    """Best-effort timestamp parser for API and feed values."""
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        return _normalize_datetime(value)
+
+    if isinstance(value, (int, float)):
+        # LinkedIn/other APIs may return milliseconds.
+        ts_value = float(value)
+        if ts_value > 10_000_000_000:
+            ts_value = ts_value / 1000.0
+        try:
+            return datetime.fromtimestamp(ts_value, tz=timezone.utc).replace(tzinfo=None)
+        except (OverflowError, OSError, ValueError):
+            return None
+
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+
+        # Common ISO formats
+        normalized = cleaned.replace("Z", "+00:00")
+        try:
+            return _normalize_datetime(datetime.fromisoformat(normalized))
+        except ValueError:
+            pass
+
+        # RFC2822 / pubDate-like strings
+        try:
+            return _normalize_datetime(parsedate_to_datetime(cleaned))
+        except (TypeError, ValueError):
+            pass
+
+        # Date-only format fallback
+        for fmt in ("%Y-%m-%d", "%Y/%m/%d"):
+            try:
+                return datetime.strptime(cleaned, fmt)
+            except ValueError:
+                continue
+
+    return None
+
+
+def parse_feed_entry_timestamp(entry) -> Optional[datetime]:
+    """Extract and parse timestamp fields from feedparser entries."""
+    # feedparser exposes parsed fields as struct_time
+    for parsed_key in ("published_parsed", "updated_parsed", "created_parsed"):
+        parsed_value = entry.get(parsed_key)
+        if parsed_value:
+            try:
+                return datetime(*parsed_value[:6])
+            except Exception:
+                continue
+
+    # Fallback to string fields
+    for key in ("published", "updated", "created", "dc_date", "pubDate"):
+        parsed = parse_timestamp(entry.get(key))
+        if parsed:
+            return parsed
+
+    return None
+
+
 @dataclass
 class Trend:
     """Represents a single trending topic."""
@@ -97,10 +176,36 @@ class Trend:
     keywords: List[str] = None
     timestamp: datetime = field(default_factory=datetime.now)
     image_url: Optional[str] = None  # Article image from RSS feed
+    source_metadata: Dict[str, Optional[str]] = None
+    source_label: Optional[str] = None
+    corroborating_sources: List[str] = None
+    corroborating_urls: List[str] = None
+    source_diversity: int = 1
 
     def __post_init__(self):
+        parsed_timestamp = parse_timestamp(self.timestamp)
+        self.timestamp = parsed_timestamp or datetime.now()
+
         if self.keywords is None:
             self.keywords = self._extract_keywords()
+
+        if self.source_metadata is None:
+            self.source_metadata = source_metadata_dict(self.source)
+
+        if self.source_label is None:
+            self.source_label = format_source_label(self.source)
+
+        if self.corroborating_sources is None:
+            self.corroborating_sources = [self.source]
+        elif self.source not in self.corroborating_sources:
+            self.corroborating_sources.append(self.source)
+
+        if self.corroborating_urls is None:
+            self.corroborating_urls = [self.url] if self.url else []
+        elif self.url and self.url not in self.corroborating_urls:
+            self.corroborating_urls.append(self.url)
+
+        self.source_diversity = max(1, len(set(self.corroborating_sources)))
 
     def is_fresh(self, max_hours: int = TREND_FRESHNESS_HOURS) -> bool:
         """Check if this trend is from within the specified hours."""
@@ -108,6 +213,34 @@ class Trend:
             return True  # Assume fresh if no timestamp
         age = datetime.now() - self.timestamp
         return age < timedelta(hours=max_hours)
+
+    def register_corroboration(self, other: "Trend") -> None:
+        """Merge corroborating source details from a duplicate/related trend."""
+        other_sources = other.corroborating_sources or [other.source]
+        for source in other_sources:
+            if source and source not in self.corroborating_sources:
+                self.corroborating_sources.append(source)
+
+        other_urls = other.corroborating_urls
+        if other_urls is None:
+            other_urls = [other.url] if other.url else []
+        for url in other_urls:
+            if url and url not in self.corroborating_urls:
+                self.corroborating_urls.append(url)
+
+        # Prefer richer descriptions and available images from corroborating stories.
+        if not self.description and other.description:
+            self.description = other.description
+        elif other.description and len(other.description) > len(self.description or ""):
+            self.description = other.description
+
+        if not self.image_url and other.image_url:
+            self.image_url = other.image_url
+
+        if other.timestamp and other.timestamp > self.timestamp:
+            self.timestamp = other.timestamp
+
+        self.source_diversity = max(1, len(set(self.corroborating_sources)))
 
     def _extract_keywords(self) -> List[str]:
         """Extract meaningful keywords from title."""
@@ -348,15 +481,25 @@ class TrendCollector:
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
         self.trends: List[Trend] = []
+        self.default_timeout = float(TIMEOUTS.get("default", 15))
+        self.feed_timeout = float(TIMEOUTS.get("rss_feed", self.default_timeout))
+        self.hn_story_timeout = float(TIMEOUTS.get("hackernews_story", 5))
+        self.request_delay = float(DELAYS.get("between_requests", 0.15))
+
+    def _get_limit(self, key: str, fallback: int) -> int:
+        """Resolve configured collection limits with a safe fallback."""
+        return max(1, int(LIMITS.get(key, fallback)))
 
     def _fetch_rss(
         self,
         url: str,
-        timeout: float = 10.0,
-        allowed_status: tuple = (200, 301, 302, 404),
+        timeout: Optional[float] = None,
+        allowed_status: tuple = (200, 301, 302),
+        headers: Optional[Dict[str, str]] = None,
     ) -> Optional[requests.Response]:
+        timeout = timeout or self.feed_timeout
         try:
-            response = self.session.get(url, timeout=timeout)
+            response = self.session.get(url, timeout=timeout, headers=headers)
         except Exception as exc:
             logger.warning(f"RSS fetch error for {url}: {exc}")
             return None
@@ -366,6 +509,15 @@ class TrendCollector:
                 f"RSS fetch: unexpected status {response.status_code} for {url}"
             )
             return None
+
+        content_type = response.headers.get("content-type", "").lower()
+        if "xml" not in content_type and "rss" not in content_type:
+            head = response.content[:120].lower()
+            if b"<rss" not in head and b"<?xml" not in head and b"<feed" not in head:
+                logger.warning(
+                    f"RSS fetch: non-feed response for {url} (content-type: {content_type or 'unknown'})"
+                )
+                return None
 
         return response
 
@@ -410,6 +562,7 @@ class TrendCollector:
     def _collect_sports_rss(self) -> List[Trend]:
         """Collect trends from Sports RSS feeds."""
         trends = []
+        limit = self._get_limit("sports_rss", 6)
         feeds = [
             ("ESPN", "https://www.espn.com/espn/rss/news"),
             ("BBC Sport", "https://feeds.bbci.co.uk/sport/rss.xml"),
@@ -419,9 +572,12 @@ class TrendCollector:
 
         for name, url in feeds:
             try:
-                response = self.session.get(url, timeout=10)
+                response = self._fetch_rss(url)
+                if not response:
+                    continue
+
                 feed = feedparser.parse(response.content)
-                for entry in feed.entries[:6]:
+                for entry in feed.entries[:limit]:
                     if is_english_text(entry.title):
                         trend = Trend(
                             title=entry.title,
@@ -429,16 +585,21 @@ class TrendCollector:
                             url=entry.link,
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.4,
+                            timestamp=parse_feed_entry_timestamp(entry),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
-            except Exception:
+            except Exception as exc:
+                logger.warning(f"{name} sports RSS error: {exc}")
                 continue
+
+            time.sleep(self.request_delay)
         return trends
 
     def _collect_entertainment_rss(self) -> List[Trend]:
         """Collect trends from Entertainment RSS feeds."""
         trends = []
+        limit = self._get_limit("entertainment_rss", 6)
         feeds = [
             ("Variety", "https://variety.com/feed/"),
             ("Hollywood Reporter", "https://www.hollywoodreporter.com/feed/"),
@@ -448,9 +609,12 @@ class TrendCollector:
 
         for name, url in feeds:
             try:
-                response = self.session.get(url, timeout=10)
+                response = self._fetch_rss(url)
+                if not response:
+                    continue
+
                 feed = feedparser.parse(response.content)
-                for entry in feed.entries[:6]:
+                for entry in feed.entries[:limit]:
                     if is_english_text(entry.title):
                         trend = Trend(
                             title=entry.title,
@@ -458,11 +622,15 @@ class TrendCollector:
                             url=entry.link,
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.4,
+                            timestamp=parse_feed_entry_timestamp(entry),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
-            except Exception:
+            except Exception as exc:
+                logger.warning(f"{name} entertainment RSS error: {exc}")
                 continue
+
+            time.sleep(self.request_delay)
         return trends
 
     def collect_all(self) -> List[Trend]:
@@ -522,7 +690,7 @@ class TrendCollector:
                 if trend.image_url:
                     logger.info(f"  Found OG image for: {trend.title[:30]}...")
                     scraped_count += 1
-                time.sleep(0.3)  # Be polite but faster
+                time.sleep(DELAYS.get("between_images", 0.3))
 
         logger.info(f"  Scraped {scraped_count} additional images from OG tags")
 
@@ -532,7 +700,7 @@ class TrendCollector:
     def get_freshness_ratio(self) -> float:
         """Calculate the ratio of fresh trends (from past 24 hours)."""
         if not self.trends:
-            return 0.0
+            return 1.0
         fresh_count = sum(1 for t in self.trends if t.is_fresh())
         return fresh_count / len(self.trends)
 
@@ -606,17 +774,19 @@ class TrendCollector:
     def _collect_google_trends(self) -> List[Trend]:
         """Collect trends from Google Trends RSS."""
         trends = []
+        limit = self._get_limit("google_trends", 20)
 
         # Google Trends Daily RSS
         url = "https://trends.google.com/trending/rss?geo=US"
 
         try:
-            response = self.session.get(url, timeout=15)
-            response.raise_for_status()
+            response = self._fetch_rss(url, timeout=self.feed_timeout)
+            if not response:
+                return trends
 
             feed = feedparser.parse(response.content)
 
-            for entry in feed.entries[:20]:
+            for entry in feed.entries[:limit]:
                 title = entry.get("title", "").strip()
                 # Only include English content
                 if title and is_english_text(title):
@@ -630,6 +800,7 @@ class TrendCollector:
                             else None
                         ),
                         score=2.0,  # Google Trends gets higher base score
+                        timestamp=parse_feed_entry_timestamp(entry),
                         image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
@@ -642,6 +813,7 @@ class TrendCollector:
     def _collect_news_rss(self) -> List[Trend]:
         """Collect trends from major news RSS feeds."""
         trends = []
+        limit = self._get_limit("news_rss", 8)
 
         # English-only news sources
         feeds = [
@@ -661,14 +833,14 @@ class TrendCollector:
 
         for name, url in feeds:
             try:
-                timeout = 15 if "washingtonpost" in url else 10
+                timeout = self.feed_timeout if "washingtonpost" in url else self.default_timeout
                 response = self._fetch_rss(url, timeout=timeout)
                 if not response:
                     continue
 
                 feed = feedparser.parse(response.content)
 
-                for entry in feed.entries[:8]:
+                for entry in feed.entries[:limit]:
                     title = entry.get("title", "").strip()
 
                     # Clean up common suffixes
@@ -692,6 +864,7 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.8,  # News sources get good score
+                            timestamp=parse_feed_entry_timestamp(entry),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -700,13 +873,14 @@ class TrendCollector:
                 logger.warning(f"{name} RSS error: {e}")
                 continue
 
-            time.sleep(0.15)
+            time.sleep(self.request_delay)
 
         return trends
 
     def _collect_tech_rss(self) -> List[Trend]:
         """Collect trends from tech-focused RSS feeds."""
         trends = []
+        limit = self._get_limit("tech_rss", 6)
 
         feeds = [
             ("Verge", "https://www.theverge.com/rss/index.xml"),
@@ -723,12 +897,13 @@ class TrendCollector:
 
         for name, url in feeds:
             try:
-                response = self.session.get(url, timeout=10)
-                response.raise_for_status()
+                response = self._fetch_rss(url, timeout=self.default_timeout)
+                if not response:
+                    continue
 
                 feed = feedparser.parse(response.content)
 
-                for entry in feed.entries[:6]:
+                for entry in feed.entries[:limit]:
                     title = entry.get("title", "").strip()
 
                     # Clean up title
@@ -744,6 +919,7 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
+                            timestamp=parse_feed_entry_timestamp(entry),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -752,13 +928,14 @@ class TrendCollector:
                 logger.warning(f"{name} RSS error: {e}")
                 continue
 
-            time.sleep(0.15)
+            time.sleep(self.request_delay)
 
         return trends
 
     def _collect_science_rss(self) -> List[Trend]:
         """Collect trends from science and health RSS feeds."""
         trends = []
+        limit = self._get_limit("science_rss", 6)
 
         feeds = [
             ("Science Daily", "https://www.sciencedaily.com/rss/all.xml"),
@@ -778,12 +955,13 @@ class TrendCollector:
 
         for name, url in feeds:
             try:
-                response = self.session.get(url, timeout=10)
-                response.raise_for_status()
+                response = self._fetch_rss(url, timeout=self.default_timeout)
+                if not response:
+                    continue
 
                 feed = feedparser.parse(response.content)
 
-                for entry in feed.entries[:6]:
+                for entry in feed.entries[:limit]:
                     title = entry.get("title", "").strip()
                     title = re.sub(r"\s+", " ", title)
 
@@ -794,6 +972,7 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
+                            timestamp=parse_feed_entry_timestamp(entry),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -802,13 +981,14 @@ class TrendCollector:
                 logger.warning(f"{name} RSS error: {e}")
                 continue
 
-            time.sleep(0.15)
+            time.sleep(self.request_delay)
 
         return trends
 
     def _collect_politics_rss(self) -> List[Trend]:
         """Collect trends from politics-focused RSS feeds."""
         trends = []
+        limit = self._get_limit("politics_rss", 6)
 
         feeds = [
             ("The Hill", "https://thehill.com/feed/"),
@@ -830,12 +1010,13 @@ class TrendCollector:
 
         for name, url in feeds:
             try:
-                response = self.session.get(url, timeout=10)
-                response.raise_for_status()
+                response = self._fetch_rss(url, timeout=self.default_timeout)
+                if not response:
+                    continue
 
                 feed = feedparser.parse(response.content)
 
-                for entry in feed.entries[:6]:
+                for entry in feed.entries[:limit]:
                     title = entry.get("title", "").strip()
                     title = re.sub(r"\s+", " ", title)
 
@@ -854,6 +1035,7 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.6,
+                            timestamp=parse_feed_entry_timestamp(entry),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -862,13 +1044,14 @@ class TrendCollector:
                 logger.warning(f"{name} RSS error: {e}")
                 continue
 
-            time.sleep(0.15)
+            time.sleep(self.request_delay)
 
         return trends
 
     def _collect_finance_rss(self) -> List[Trend]:
         """Collect trends from business and finance RSS feeds."""
         trends = []
+        limit = self._get_limit("finance_rss", 6)
 
         feeds = [
             ("CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
@@ -884,12 +1067,13 @@ class TrendCollector:
 
         for name, url in feeds:
             try:
-                response = self.session.get(url, timeout=10)
-                response.raise_for_status()
+                response = self._fetch_rss(url, timeout=self.default_timeout)
+                if not response:
+                    continue
 
                 feed = feedparser.parse(response.content)
 
-                for entry in feed.entries[:6]:
+                for entry in feed.entries[:limit]:
                     title = entry.get("title", "").strip()
                     title = re.sub(r"\s+", " ", title)
 
@@ -904,6 +1088,7 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
+                            timestamp=parse_feed_entry_timestamp(entry),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -912,46 +1097,69 @@ class TrendCollector:
                 logger.warning(f"{name} RSS error: {e}")
                 continue
 
-            time.sleep(0.15)
+            time.sleep(self.request_delay)
 
         return trends
 
     def _collect_hackernews(self) -> List[Trend]:
         """Collect top stories from Hacker News API."""
         trends = []
+        limit = self._get_limit("hackernews", 25)
 
         try:
             # Get top story IDs
             response = self.session.get(
-                "https://hacker-news.firebaseio.com/v0/topstories.json", timeout=10
+                "https://hacker-news.firebaseio.com/v0/topstories.json",
+                timeout=self.default_timeout,
             )
             response.raise_for_status()
 
-            story_ids = response.json()[:25]
+            story_ids = response.json()[: max(limit * 2, limit)]
 
-            for story_id in story_ids:
+            def _fetch_story(index: int, story_id: int) -> Optional[Tuple[int, Trend]]:
                 try:
                     story_response = self.session.get(
                         f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json",
-                        timeout=5,
+                        timeout=self.hn_story_timeout,
                     )
                     story_response.raise_for_status()
                     story = story_response.json()
-
-                    if story and story.get("title") and is_english_text(story["title"]):
-                        score = story.get("score", 0)
-                        normalized_score = min(score / 100, 3.0)  # Cap at 3x
-
-                        trend = Trend(
-                            title=story["title"],
-                            source="hackernews",
-                            url=story.get("url"),
-                            score=1.0 + normalized_score,
-                        )
-                        trends.append(trend)
-
                 except Exception:
-                    continue
+                    return None
+
+                title = (story or {}).get("title", "")
+                if not title or not is_english_text(title):
+                    return None
+
+                score = story.get("score", 0)
+                normalized_score = min(score / 100, 3.0)
+                story_url = story.get("url") or f"https://news.ycombinator.com/item?id={story_id}"
+
+                trend = Trend(
+                    title=title,
+                    source="hackernews",
+                    url=story_url,
+                    description=self._clean_html(story.get("text", "")),
+                    score=1.0 + normalized_score,
+                    timestamp=parse_timestamp(story.get("time")),
+                )
+                return (index, trend)
+
+            max_workers = max(2, min(8, limit // 2 or 2))
+            fetched: List[Tuple[int, Trend]] = []
+
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [
+                    executor.submit(_fetch_story, idx, story_id)
+                    for idx, story_id in enumerate(story_ids)
+                ]
+                for future in as_completed(futures):
+                    result = future.result()
+                    if result:
+                        fetched.append(result)
+
+            fetched.sort(key=lambda item: item[0])
+            trends = [trend for _, trend in fetched[:limit]]
 
         except Exception as e:
             logger.warning(f"Hacker News error: {e}")
@@ -961,6 +1169,15 @@ class TrendCollector:
     def _collect_reddit(self) -> List[Trend]:
         """Collect trending posts from Reddit using RSS feeds (more reliable than JSON API)."""
         trends = []
+        limit = self._get_limit("reddit", 6)
+        reddit_headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 "
+                "DailyTrendingBot/1.0"
+            ),
+            "Accept": "application/rss+xml, application/xml;q=0.9, */*;q=0.8",
+        }
 
         # Use RSS feeds instead of JSON API - much more reliable
         # Balanced for diverse content across all categories
@@ -996,12 +1213,15 @@ class TrendCollector:
 
         for subreddit, url in subreddit_feeds:
             try:
-                response = self.session.get(url, timeout=10)
-                response.raise_for_status()
+                response = self._fetch_rss(
+                    url, timeout=self.feed_timeout, headers=reddit_headers
+                )
+                if not response:
+                    continue
 
                 feed = feedparser.parse(response.content)
 
-                for entry in feed.entries[:6]:
+                for entry in feed.entries[:limit]:
                     title = entry.get("title", "").strip()
 
                     # Only include English content
@@ -1012,6 +1232,8 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
+                            timestamp=parse_feed_entry_timestamp(entry),
+                            image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
@@ -1019,22 +1241,23 @@ class TrendCollector:
                 logger.warning(f"Reddit r/{subreddit} RSS error: {e}")
                 continue
 
-            time.sleep(0.15)
+            time.sleep(self.request_delay)
 
         return trends
 
     def _collect_github_trending(self) -> List[Trend]:
         """Collect trending repositories from GitHub (English descriptions)."""
         trends = []
+        limit = self._get_limit("github_trending", 15)
 
         try:
             # GitHub trending page with English spoken language filter
             url = "https://github.com/trending?since=daily&spoken_language_code=en"
-            response = self.session.get(url, timeout=15)
+            response = self.session.get(url, timeout=self.default_timeout)
             response.raise_for_status()
 
             soup = BeautifulSoup(response.text, "html.parser")
-            repos = soup.select("article.Box-row")[:15]
+            repos = soup.select("article.Box-row")[:limit]
 
             for repo in repos:
                 # Get repo name
@@ -1073,75 +1296,212 @@ class TrendCollector:
                         url=f"https://github.com{name_elem.get('href', '')}",
                         description=description,
                         score=1.3 + min(stars / 500, 1.5),
+                        timestamp=parse_timestamp(datetime.now(timezone.utc)),
                     )
                     trends.append(trend)
 
         except Exception as e:
             logger.warning(f"GitHub Trending error: {e}")
 
+        if len(trends) >= max(3, limit // 2):
+            return trends[:limit]
+
+        logger.warning(
+            "GitHub Trending HTML parser yielded limited results, using API fallback"
+        )
+        fallback = self._collect_github_trending_api(limit)
+        if not trends:
+            return fallback[:limit]
+
+        seen_urls = {t.url for t in trends if t.url}
+        for trend in fallback:
+            if trend.url and trend.url in seen_urls:
+                continue
+            trends.append(trend)
+            if trend.url:
+                seen_urls.add(trend.url)
+            if len(trends) >= limit:
+                break
+
+        return trends[:limit]
+
+    def _collect_github_trending_api(self, limit: int) -> List[Trend]:
+        """Fallback collector using GitHub's repository search API."""
+        trends = []
+        since = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+        per_page = max(10, min(limit, 50))
+
+        try:
+            response = self.session.get(
+                "https://api.github.com/search/repositories",
+                params={
+                    "q": f"created:>{since}",
+                    "sort": "stars",
+                    "order": "desc",
+                    "per_page": per_page,
+                },
+                timeout=self.default_timeout,
+                headers={"Accept": "application/vnd.github+json"},
+            )
+            response.raise_for_status()
+            items = response.json().get("items", [])
+        except Exception as exc:
+            logger.warning(f"GitHub Trending API fallback failed: {exc}")
+            return trends
+
+        for repo in items[:limit]:
+            name = repo.get("full_name") or repo.get("name")
+            if not name:
+                continue
+
+            description = (repo.get("description") or "").strip()
+            language = (repo.get("language") or "").strip()
+            stars = int(repo.get("stargazers_count", 0) or 0)
+
+            title = name
+            if language:
+                title += f" ({language})"
+            if description:
+                title += f": {description[:80]}"
+
+            if description and not is_english_text(description):
+                continue
+
+            trends.append(
+                Trend(
+                    title=title[:120],
+                    source="github_trending",
+                    url=repo.get("html_url"),
+                    description=description,
+                    score=1.2 + min(stars / 50000, 2.0),
+                    timestamp=parse_timestamp(repo.get("updated_at") or repo.get("created_at")),
+                )
+            )
+
         return trends
 
     def _collect_wikipedia_current(self) -> List[Trend]:
         """Collect current events from Wikipedia."""
         trends = []
+        limit = self._get_limit("wikipedia", 20)
+        page_url = "https://en.wikipedia.org/wiki/Portal:Current_events"
 
         try:
-            # Wikipedia Current Events Portal
-            url = "https://en.wikipedia.org/wiki/Portal:Current_events"
-            response = self.session.get(url, timeout=15)
+            response = self.session.get(page_url, timeout=self.default_timeout)
             response.raise_for_status()
-
-            soup = BeautifulSoup(response.text, "html.parser")
-
-            # Find the current events content
-            content = soup.select(".current-events-content li")[:20]
-
-            for item in content:
-                text = item.get_text(strip=True)
-
-                # Clean up the text
-                text = re.sub(r"\s+", " ", text)
-                text = re.sub(r"\[.*?\]", "", text)  # Remove citations
-
-                # Verify content is English
-                if (
-                    text
-                    and len(text) > 20
-                    and len(text) < 200
-                    and is_english_text(text)
-                ):
-                    # Get the first link if available
-                    link = item.select_one("a")
-                    url = None
-                    if link and link.get("href", "").startswith("/wiki/"):
-                        url = f"https://en.wikipedia.org{link.get('href')}"
-
-                    trend = Trend(
-                        title=text[:150], source="wikipedia_current", url=url, score=1.4
-                    )
-                    trends.append(trend)
-
+            trends = self._parse_wikipedia_current_html(response.text, limit, page_url)
         except Exception as e:
-            logger.warning(f"Wikipedia Current Events error: {e}")
+            logger.warning(f"Wikipedia Current Events HTML scrape error: {e}")
+
+        if len(trends) >= max(3, limit // 3):
+            return trends[:limit]
+
+        try:
+            response = self.session.get(
+                "https://en.wikipedia.org/w/api.php",
+                params={
+                    "action": "parse",
+                    "page": "Portal:Current_events",
+                    "prop": "text",
+                    "format": "json",
+                    "formatversion": "2",
+                },
+                timeout=self.default_timeout,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            html_content = payload.get("parse", {}).get("text", "")
+            if html_content:
+                api_trends = self._parse_wikipedia_current_html(html_content, limit, page_url)
+                if not trends:
+                    trends = api_trends
+                else:
+                    seen_titles = {re.sub(r"[^\w\s]", "", t.title.lower()) for t in trends}
+                    for trend in api_trends:
+                        normalized = re.sub(r"[^\w\s]", "", trend.title.lower())
+                        if normalized in seen_titles:
+                            continue
+                        trends.append(trend)
+                        seen_titles.add(normalized)
+                        if len(trends) >= limit:
+                            break
+        except Exception as e:
+            logger.warning(f"Wikipedia Current Events API fallback error: {e}")
+
+        return trends
+
+    def _parse_wikipedia_current_html(
+        self, html_content: str, limit: int, base_url: str
+    ) -> List[Trend]:
+        """Parse Wikipedia Current Events HTML into trends."""
+        soup = BeautifulSoup(html_content, "html.parser")
+        candidate_items = []
+
+        selectors = [
+            ".current-events-content li",
+            "#mw-content-text .current-events-content li",
+            "#mw-content-text .vevent li",
+            ".vevent li",
+        ]
+        for selector in selectors:
+            candidate_items = soup.select(selector)
+            if candidate_items:
+                break
+
+        if not candidate_items:
+            return []
+
+        trends = []
+        seen_titles = set()
+
+        for item in candidate_items[: max(limit * 3, limit)]:
+            text = item.get_text(" ", strip=True)
+            text = re.sub(r"\s+", " ", text)
+            text = re.sub(r"\[[^\]]+\]", "", text).strip()
+
+            if not text or len(text) < 20 or len(text) > 220:
+                continue
+            if not is_english_text(text):
+                continue
+
+            normalized = re.sub(r"[^\w\s]", "", text.lower())
+            if normalized in seen_titles:
+                continue
+            seen_titles.add(normalized)
+
+            story_url = None
+            link = item.select_one("a")
+            if link:
+                href = link.get("href", "")
+                if href.startswith("/wiki/"):
+                    story_url = f"https://en.wikipedia.org{href}"
+                elif href.startswith("http"):
+                    story_url = href
+
+            trends.append(
+                Trend(
+                    title=text[:150],
+                    source="wikipedia_current",
+                    url=story_url or base_url,
+                    score=1.4,
+                    timestamp=parse_timestamp(datetime.now(timezone.utc)),
+                )
+            )
+            if len(trends) >= limit:
+                break
 
         return trends
 
     def _collect_lobsters(self) -> List[Trend]:
         """Collect trending posts from Lobsters (tech community)."""
         trends = []
+        limit = self._get_limit("lobsters", 15)
 
         try:
             # Main RSS feed - hottest.rss was removed, use main feed
             url = "https://lobste.rs/rss"
-            response = self.session.get(url, timeout=10)
-            response.raise_for_status()
-
-            # Check if response is actually RSS/XML, not HTML
-            content_type = response.headers.get("content-type", "").lower()
-            content_start = response.content[:100].lower()
-
-            if b"<!doctype html" in content_start or b"<html" in content_start:
-                logger.warning(f"Lobsters returned HTML instead of RSS, skipping")
+            response = self._fetch_rss(url, timeout=self.feed_timeout)
+            if not response:
                 return trends
 
             feed = feedparser.parse(response.content)
@@ -1151,7 +1511,7 @@ class TrendCollector:
                 logger.warning(f"Lobsters feed parse error: {feed.bozo_exception}")
                 return trends
 
-            for entry in feed.entries[:15]:
+            for entry in feed.entries[:limit]:
                 title = entry.get("title", "").strip()
 
                 if title and len(title) > 10 and is_english_text(title):
@@ -1161,6 +1521,7 @@ class TrendCollector:
                         url=entry.get("link"),
                         description=self._clean_html(entry.get("summary", "")),
                         score=1.6,  # Good quality tech content
+                        timestamp=parse_feed_entry_timestamp(entry),
                         image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
@@ -1173,16 +1534,18 @@ class TrendCollector:
     def _collect_product_hunt(self) -> List[Trend]:
         """Collect trending products from Product Hunt."""
         trends = []
+        limit = self._get_limit("product_hunt", 10)
 
         try:
             # Product Hunt RSS feed
             url = "https://www.producthunt.com/feed"
-            response = self.session.get(url, timeout=10)
-            response.raise_for_status()
+            response = self._fetch_rss(url, timeout=self.feed_timeout)
+            if not response:
+                return trends
 
             feed = feedparser.parse(response.content)
 
-            for entry in feed.entries[:10]:
+            for entry in feed.entries[:limit]:
                 title = entry.get("title", "").strip()
 
                 if title and len(title) > 5 and is_english_text(title):
@@ -1192,6 +1555,8 @@ class TrendCollector:
                         url=entry.get("link"),
                         description=self._clean_html(entry.get("summary", "")),
                         score=1.4,
+                        timestamp=parse_feed_entry_timestamp(entry),
+                        image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
 
@@ -1203,14 +1568,17 @@ class TrendCollector:
     def _collect_devto(self) -> List[Trend]:
         """Collect trending posts from Dev.to."""
         trends = []
+        limit = self._get_limit("devto", 15)
 
         try:
             # Dev.to top articles API
-            url = "https://dev.to/api/articles?top=1&per_page=15"
-            response = self.session.get(url, timeout=10)
+            url = f"https://dev.to/api/articles?top=1&per_page={limit}"
+            response = self.session.get(url, timeout=self.default_timeout)
             response.raise_for_status()
 
             articles = response.json()
+            if not isinstance(articles, list):
+                return trends
 
             for article in articles:
                 title = article.get("title", "").strip()
@@ -1226,6 +1594,12 @@ class TrendCollector:
                         url=article.get("url"),
                         description=article.get("description", ""),
                         score=1.3 + score_boost,
+                        timestamp=parse_timestamp(
+                            article.get("published_timestamp")
+                            or article.get("published_at")
+                            or article.get("readable_publish_date")
+                        ),
+                        image_url=article.get("cover_image"),
                     )
                     trends.append(trend)
 
@@ -1237,15 +1611,17 @@ class TrendCollector:
     def _collect_slashdot(self) -> List[Trend]:
         """Collect stories from Slashdot."""
         trends = []
+        limit = self._get_limit("slashdot", 12)
 
         try:
             url = "https://rss.slashdot.org/Slashdot/slashdotMain"
-            response = self.session.get(url, timeout=10)
-            response.raise_for_status()
+            response = self._fetch_rss(url, timeout=self.feed_timeout)
+            if not response:
+                return trends
 
             feed = feedparser.parse(response.content)
 
-            for entry in feed.entries[:12]:
+            for entry in feed.entries[:limit]:
                 title = entry.get("title", "").strip()
 
                 if title and len(title) > 10 and is_english_text(title):
@@ -1255,6 +1631,7 @@ class TrendCollector:
                         url=entry.get("link"),
                         description=self._clean_html(entry.get("summary", "")),
                         score=1.4,
+                        timestamp=parse_feed_entry_timestamp(entry),
                         image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
@@ -1267,15 +1644,17 @@ class TrendCollector:
     def _collect_ars_frontpage(self) -> List[Trend]:
         """Collect front page stories from Ars Technica (high quality tech journalism)."""
         trends = []
+        limit = self._get_limit("ars_technica", 8)
 
         try:
             url = "https://feeds.arstechnica.com/arstechnica/features"
-            response = self.session.get(url, timeout=10)
-            response.raise_for_status()
+            response = self._fetch_rss(url, timeout=self.feed_timeout)
+            if not response:
+                return trends
 
             feed = feedparser.parse(response.content)
 
-            for entry in feed.entries[:8]:
+            for entry in feed.entries[:limit]:
                 title = entry.get("title", "").strip()
                 title = title.replace(" | Ars Technica", "")
 
@@ -1286,6 +1665,7 @@ class TrendCollector:
                         url=entry.get("link"),
                         description=self._clean_html(entry.get("summary", "")),
                         score=1.7,  # High quality long-form content
+                        timestamp=parse_feed_entry_timestamp(entry),
                         image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
@@ -1302,6 +1682,9 @@ class TrendCollector:
         Used for the standalone CMMC Watch page.
         """
         trends = []
+        rss_limit = self._get_limit("cmmc_rss", 8)
+        keyword_scan_limit = max(20, rss_limit * 3)
+        reddit_limit = max(6, min(15, rss_limit * 2))
 
         # Federal IT, defense, and cybersecurity news sources
         feeds = [
@@ -1328,12 +1711,13 @@ class TrendCollector:
 
         for name, url in feeds:
             try:
-                response = self.session.get(url, timeout=15)
-                response.raise_for_status()
+                response = self._fetch_rss(url, timeout=self.feed_timeout)
+                if not response:
+                    continue
 
                 feed = feedparser.parse(response.content)
 
-                for entry in feed.entries[:25]:  # Check more entries, filter by keyword
+                for entry in feed.entries[:keyword_scan_limit]:
                     title = entry.get("title", "").strip()
                     description = entry.get("summary", "")
 
@@ -1358,15 +1742,18 @@ class TrendCollector:
                             description=self._clean_html(description),
                             category="cmmc",  # Explicit categorization
                             score=1.6,  # Good quality federal news
+                            timestamp=parse_feed_entry_timestamp(entry),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
+                        if len(trends) >= rss_limit * len(feeds):
+                            break
 
             except Exception as e:
                 logger.warning(f"CMMC {name} RSS error: {e}")
                 continue
 
-            time.sleep(0.15)
+            time.sleep(self.request_delay)
 
         logger.info(f"CMMC collector found {len(trends)} stories from RSS feeds")
 
@@ -1378,18 +1765,28 @@ class TrendCollector:
         ]
 
         reddit_count = 0
+        reddit_headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 "
+                "CMMCWatch/1.0"
+            ),
+            "Accept": "application/rss+xml, application/xml;q=0.9, */*;q=0.8",
+        }
+
         for name, url in cmmc_subreddits:
             try:
-                response = self.session.get(
+                response = self._fetch_rss(
                     url,
-                    timeout=15,
-                    headers={"User-Agent": "Mozilla/5.0 (compatible; CMMCWatch/1.0)"},
+                    timeout=self.feed_timeout,
+                    headers=reddit_headers,
                 )
-                response.raise_for_status()
+                if not response:
+                    continue
 
                 feed = feedparser.parse(response.content)
 
-                for entry in feed.entries[:15]:  # Get top 15 posts per subreddit
+                for entry in feed.entries[:reddit_limit]:
                     title = entry.get("title", "").strip()
                     description = entry.get("summary", "")
 
@@ -1420,6 +1817,7 @@ class TrendCollector:
                             description=self._clean_html(description),
                             category="cmmc",
                             score=1.4,  # Reddit community content
+                            timestamp=parse_feed_entry_timestamp(entry),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -1429,7 +1827,7 @@ class TrendCollector:
                 logger.warning(f"CMMC Reddit r/{name} error: {e}")
                 continue
 
-            time.sleep(0.2)
+            time.sleep(self.request_delay)
 
         logger.info(f"CMMC collector: {len(trends)} total ({reddit_count} from Reddit)")
 
@@ -1474,6 +1872,7 @@ class TrendCollector:
                     category=td.get("category"),
                     score=td.get("score", 1.5),
                     keywords=td.get("keywords"),
+                    timestamp=parse_timestamp(td.get("timestamp") or td.get("published_at")),
                     image_url=td.get("image_url"),
                 )
                 trends.append(trend)
@@ -1537,8 +1936,7 @@ class TrendCollector:
         if not self.trends:
             return
 
-        unique_trends = []
-        seen_normalized = []  # List of (normalized_title, words_set)
+        clusters: List[Dict[str, Any]] = []
 
         for trend in self.trends:
             # Normalize title for comparison
@@ -1549,33 +1947,71 @@ class TrendCollector:
             if not words:
                 continue
 
-            is_dupe = False
+            match_idx = None
+            match_reason = ""
+            match_value = 0.0
 
-            for seen_norm, seen_words in seen_normalized:
-                # Fast check: word overlap (O(1) set operations)
+            for idx, cluster in enumerate(clusters):
+                seen_norm = cluster["normalized"]
+                seen_words = cluster["words"]
+
+                overlap = 0.0
                 if seen_words:
                     overlap = len(words & seen_words) / min(len(words), len(seen_words))
-                    if overlap > DEDUP_SIMILARITY_THRESHOLD:
-                        is_dupe = True
-                        logger.debug(
-                            f"Duplicate (word overlap {overlap:.0%}): {trend.title[:50]}"
-                        )
-                        break
-
-                # Semantic check using SequenceMatcher for stories about same event
-                # E.g., "Sam Altman fired from OpenAI" vs "OpenAI removes Sam Altman as CEO"
-                similarity = SequenceMatcher(None, normalized, seen_norm).ratio()
-                if similarity > DEDUP_SEMANTIC_THRESHOLD:
-                    is_dupe = True
-                    logger.debug(
-                        f"Duplicate (semantic {similarity:.0%}): {trend.title[:50]}"
-                    )
+                if overlap > DEDUP_SIMILARITY_THRESHOLD:
+                    match_idx = idx
+                    match_reason = "word overlap"
+                    match_value = overlap
                     break
 
-            if not is_dupe:
-                seen_normalized.append((normalized, words))
-                unique_trends.append(trend)
+                # Semantic check using SequenceMatcher for same-event headlines.
+                similarity = SequenceMatcher(None, normalized, seen_norm).ratio()
+                if similarity > DEDUP_SEMANTIC_THRESHOLD:
+                    match_idx = idx
+                    match_reason = "semantic"
+                    match_value = similarity
+                    break
 
+                # Order-insensitive token similarity catches wording rearrangements.
+                token_similarity = SequenceMatcher(
+                    None,
+                    " ".join(sorted(words)),
+                    " ".join(sorted(seen_words)),
+                ).ratio()
+                if token_similarity > DEDUP_SEMANTIC_THRESHOLD:
+                    match_idx = idx
+                    match_reason = "token semantic"
+                    match_value = token_similarity
+                    break
+
+            if match_idx is None:
+                clusters.append(
+                    {"trend": trend, "normalized": normalized, "words": words}
+                )
+                continue
+
+            cluster = clusters[match_idx]
+            canonical = cluster["trend"]
+            canonical_quality = canonical.score * source_quality_multiplier(
+                canonical.source
+            )
+            candidate_quality = trend.score * source_quality_multiplier(trend.source)
+
+            if candidate_quality > canonical_quality:
+                trend.register_corroboration(canonical)
+                cluster["trend"] = trend
+                cluster["normalized"] = normalized
+                cluster["words"] = words
+                logger.debug(
+                    f"Duplicate ({match_reason} {match_value:.0%}) promoted: {trend.title[:50]}"
+                )
+            else:
+                canonical.register_corroboration(trend)
+                logger.debug(
+                    f"Duplicate ({match_reason} {match_value:.0%}) merged: {trend.title[:50]}"
+                )
+
+        unique_trends = [cluster["trend"] for cluster in clusters]
         removed_count = len(self.trends) - len(unique_trends)
         if removed_count > 0:
             logger.info(f"Removed {removed_count} duplicate trends")
@@ -1628,6 +2064,14 @@ class TrendCollector:
                 0.1 for kw in trend.keywords if story_word_counts.get(kw, 0) > 1
             )
             trend.score += keyword_boost
+
+            # Apply source quality calibration from the source registry.
+            trend.score *= source_quality_multiplier(trend.source)
+
+            # Reward stories corroborated by multiple independent sources.
+            if trend.source_diversity > 1:
+                diversity_boost = 1.0 + min((trend.source_diversity - 1) * 0.08, 0.35)
+                trend.score *= diversity_boost
 
     def get_global_keywords(self) -> List[str]:
         """Get keywords that appear across multiple stories (meta-trends)."""

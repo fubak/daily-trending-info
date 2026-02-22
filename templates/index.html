@@ -39,7 +39,7 @@
         {% for trend in trends[:15] %}
         <div class="ticker-item">
             {# Display derived category or source part as badge #}
-            {% set source_display = trend.source | replace('_', ' ') | title %}
+            {% set source_display = trend.source_label if trend.source_label else (trend.source | replace('_', ' ') | title) %}
             {% set category_badge_class = trend.source.split('_')[0] if '_' in trend.source else trend.source %}
             <span class="ticker-source">{{ source_display }}</span>
             <strong><a href="{{ trend.url }}" target="_blank" rel="noopener">{{ trend.title }}</a></strong>
@@ -85,9 +85,10 @@
         <div class="top-stories">
             {% for story in display_top_stories %}
             {% set summary = story.summary or story.description %}
+            {% set source_display = story.source_label if story.source_label else (story.source | replace('_', ' ') | title) %}
             <article class="story-card {% if loop.first %}featured{% endif %}{% if not summary %} no-summary{% endif %}">
                 <div class="story-actions">
-                    <button class="save-btn" type="button" data-url="{{ story.url }}" data-title="{{ story.title }}" data-source="{{ story.source | replace('_', ' ') | title }}" aria-label="Save story" aria-pressed="false" title="Save for later">
+                    <button class="save-btn" type="button" data-url="{{ story.url }}" data-title="{{ story.title }}" data-source="{{ source_display }}" aria-label="Save story" aria-pressed="false" title="Save for later">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                     </button>
                     <button class="share-btn" type="button" data-url="{{ story.url }}" data-title="{{ story.title }}" aria-label="Share story" title="Share">
@@ -97,7 +98,7 @@
                 <div class="story-wrapper">
                     <figure class="story-media">
                         {% set img_src = story.image_url or placeholder_image_url %}
-                        {% set alt_text = story.title if story.image_url else ((story.category if story.category else story.source | replace('_', ' ') | title) + ' story: ' + story.title) %}
+                        {% set alt_text = story.title if story.image_url else ((story.category if story.category else source_display) + ' story: ' + story.title) %}
                         <img src="{{ img_src }}"
                              alt="{{ alt_text }}"
                              class="story-image{% if not story.image_url %} placeholder{% endif %}"
@@ -110,7 +111,7 @@
                     <div class="story-content">
                         <header>
                             {# Use derived category or source part for badge class and display #}
-                            {% set category_display = story.category if story.category else story.source | replace('_', ' ') | title %}
+                            {% set category_display = story.category if story.category else source_display %}
                             {% set category_class = category_display | lower | replace(' ', '-') %}
                             <span class="source-badge {{ category_class }}">{{ category_display }}</span>
                             
@@ -124,7 +125,7 @@
                         {% endif %}
                         
                         <footer class="story-meta">
-                            <span>{{ story.source | replace('_', ' ') | title }}</span>
+                            <span>{{ source_display }}</span>
                             <span aria-hidden="true">•</span>
                             <time datetime="{{ story.timestamp }}">{{ story.time_ago }}</time>
                         </footer>
@@ -149,9 +150,10 @@
         <div class="stories-grid" style="--category-columns: {{ category.columns }}">
             {% set category_stories = category.stories %}
             {% for story in category_stories %}
+            {% set source_display = story.source_label if story.source_label else (story.source | replace('_', ' ') | title) %}
             <article class="story-card no-summary">
                 <div class="story-actions">
-                    <button class="save-btn" type="button" data-url="{{ story.url }}" data-title="{{ story.title }}" data-source="{{ story.source | replace('_', ' ') | title }}" aria-label="Save story" aria-pressed="false" title="Save for later">
+                    <button class="save-btn" type="button" data-url="{{ story.url }}" data-title="{{ story.title }}" data-source="{{ source_display }}" aria-label="Save story" aria-pressed="false" title="Save for later">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                     </button>
                     <button class="share-btn" type="button" data-url="{{ story.url }}" data-title="{{ story.title }}" aria-label="Share story" title="Share">
@@ -161,7 +163,7 @@
                 <div class="story-wrapper">
                     <figure class="story-media">
                         {% set img_src = story.image_url or placeholder_image_url %}
-                        {% set alt_text = story.title if story.image_url else ((story.category if story.category else story.source | replace('_', ' ') | title) + ' story: ' + story.title) %}
+                        {% set alt_text = story.title if story.image_url else ((story.category if story.category else source_display) + ' story: ' + story.title) %}
                         <img src="{{ img_src }}"
                              alt="{{ alt_text }}"
                              class="story-image{% if not story.image_url %} placeholder{% endif %}"
@@ -175,7 +177,7 @@
                             <a href="{{ story.url }}" target="_blank" rel="noopener">{{ story.title }}</a>
                         </h3>
                         <footer class="story-meta">
-                            <span>{{ story.source | replace('_', ' ') | title }}</span>
+                            <span>{{ source_display }}</span>
                             <span aria-hidden="true">•</span>
                             <time datetime="{{ story.timestamp }}">{{ story.time_ago }}</time>
                         </footer>

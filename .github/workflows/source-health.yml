@@ -1,0 +1,52 @@
+name: Source Health Check
+
+on:
+  schedule:
+    - cron: '30 11 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  source-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run source health check
+        run: |
+          python scripts/source_health_check.py --output data/source_health.json
+
+      - name: Upload source health report
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-health-report
+          path: data/source_health.json
+
+      - name: Commit updated report
+        run: |
+          if git diff --quiet data/source_health.json; then
+            echo "No source health changes"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/source_health.json
+          git commit -m "chore: update source health report"
+          git push

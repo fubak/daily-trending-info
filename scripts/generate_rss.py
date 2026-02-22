@@ -30,7 +30,12 @@ logger = setup_logging("rss")
 
 
 def _build_content_html(
-    title: str, description: str, source: str, url: str, why_matters: str = ""
+    title: str,
+    description: str,
+    source: str,
+    url: str,
+    why_matters: str = "",
+    source_label: str = "",
 ) -> str:
     """
     Build rich HTML content for RSS content:encoded element.
@@ -41,11 +46,14 @@ def _build_content_html(
         source: Source name
         url: Story URL
         why_matters: Optional 'Why This Matters' context
+        source_label: Optional pre-formatted source label
 
     Returns:
         HTML string wrapped in CDATA
     """
-    source_formatted = source.replace("_", " ").title() if source else "Unknown"
+    source_formatted = source_label or (
+        source.replace("_", " ").title() if source else "Unknown"
+    )
 
     html_parts = [f"<h3>{title}</h3>"]
 
@@ -216,8 +224,9 @@ def generate_rss_feed(
         # Full content (content:encoded) with rich HTML
         full_desc = trend.get("description") or trend.get("title", "")
         why_matters = trend.get("why_this_matters", "")
+        source_label = trend.get("source_label", "")
         content_html = _build_content_html(
-            title_text, full_desc, source, url, why_matters
+            title_text, full_desc, source, url, why_matters, source_label
         )
         content_encoded = ET.SubElement(
             item, "{http://purl.org/rss/1.0/modules/content/}encoded"

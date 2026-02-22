@@ -897,9 +897,15 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
         featured_story.get("title", "CMMC Compliance News")[:100]
     )
     featured_url = html_module.escape(featured_story.get("url", "#"))
-    featured_source = html_module.escape(
-        featured_story.get("source", "").replace("cmmc_", "").replace("_", " ").title()
-    )
+    featured_source_raw = featured_story.get("source_label")
+    if not featured_source_raw:
+        featured_source_raw = (
+            featured_story.get("source", "")
+            .replace("cmmc_", "")
+            .replace("_", " ")
+            .title()
+        )
+    featured_source = html_module.escape(featured_source_raw)
     featured_desc = html_module.escape(
         (featured_story.get("summary") or featured_story.get("description") or "")[:200]
     )
@@ -908,9 +914,12 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
     def build_story_card(trend, images, used_image_ids):
         title = html_module.escape(trend.get("title", "")[:100])
         url = html_module.escape(trend.get("url", "#"))
-        source = html_module.escape(
-            trend.get("source", "").replace("cmmc_", "").replace("_", " ").title()
-        )
+        source_raw = trend.get("source_label")
+        if not source_raw:
+            source_raw = (
+                trend.get("source", "").replace("cmmc_", "").replace("_", " ").title()
+            )
+        source = html_module.escape(source_raw)
         summary = html_module.escape(
             (trend.get("summary") or trend.get("description") or "")[:150]
         )

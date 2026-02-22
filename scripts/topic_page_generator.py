@@ -127,9 +127,14 @@ def extract_headline_keywords(headline: str) -> List[str]:
     }
 
     headline_lower = headline.lower()
-    words = [w.strip('.,!?()[]{}":;\'') for w in headline_lower.split()]
-    # Normalize possessives: giant's -> giant
-    words = [w[:-2] if w.endswith("'s") else w for w in words]
+    words = []
+    for raw_word in headline_lower.split():
+        word = raw_word.strip('.,!?()[]{}":;\'')
+        word = word.replace("’", "'")
+        if word.endswith("'s"):
+            word = word[:-2]
+        word = word.strip("'")
+        words.append(word)
     return [w for w in words if len(w) > 2 and w not in stop_words]
 
 

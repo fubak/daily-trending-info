@@ -26,6 +26,7 @@ from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from fetch_images import FallbackImageGenerator
+from source_registry import format_source_label
 
 
 DEFAULT_LAYOUT = "newspaper"
@@ -90,6 +91,9 @@ class WebsiteBuilder:
         self.layout = layout_style or DEFAULT_LAYOUT
         self.hero_style = hero_style or DEFAULT_HERO_STYLE
 
+        # Normalize source labels up front so templates avoid rendering raw source keys.
+        self._apply_source_labels()
+
         # Group trends by category
         self.grouped_trends = self._group_trends()
 
@@ -151,6 +155,14 @@ class WebsiteBuilder:
         # Always return 4 columns for uniform grid layout
         # Card counts should be multiples of 4 for even distribution
         return 4
+
+    def _apply_source_labels(self) -> None:
+        """Ensure each trend has a safe, human-readable source label."""
+        for trend in self.ctx.trends:
+            if not isinstance(trend, dict):
+                continue
+            source = trend.get("source", "")
+            trend["source_label"] = format_source_label(source)
 
     def _prepare_categories(self) -> List[dict]:
         categories = []
@@ -654,7 +666,10 @@ class WebsiteBuilder:
         for idx, story in enumerate(top_stories[:10], 1):
             story_title = _clean_text(story.get("title", ""))
             story_url = _clean_url(story.get("url", ""))
-            story_source = _clean_text(story.get("source", "")).replace("_", " ").title()
+            story_source = _clean_text(
+                story.get("source_label")
+                or story.get("source", "").replace("_", " ").title()
+            )
             story_summary = _clean_text(story.get("summary") or story.get("description") or "")
             story_image = _clean_url(story.get("image_url", ""))
 
@@ -745,13 +760,14 @@ class WebsiteBuilder:
             ],
         }
 
-        safe_json = json.dumps(combined_schema, indent=2)
-        safe_json = (
-            safe_json.replace("<", "\\u003c")
+        schema_json = json.dumps(combined_schema, indent=2)
+        # Prevent script-breakout vectors from untrusted content in JSON-LD.
+        schema_json = (
+            schema_json.replace("<", "\\u003c")
             .replace(">", "\\u003e")
             .replace("&", "\\u0026")
         )
-        return f'<script type="application/ld+json">\n{safe_json}\n</script>'
+        return f'<script type="application/ld+json">\n{schema_json}\n</script>'
 
     def build(self) -> str:
         """Render the website using Jinja2 templates."""

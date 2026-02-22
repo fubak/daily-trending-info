@@ -1265,9 +1265,12 @@ class Pipeline:
         featured_story = trends[0] if trends else {}
         featured_title = html_module.escape((featured_story.get("title") or "")[:100])
         featured_url = html_module.escape(featured_story.get("url") or "#")
-        featured_source = html_module.escape(
-            (featured_story.get("source") or "").replace("_", " ").title()
-        )
+        featured_source_raw = featured_story.get("source_label")
+        if not featured_source_raw:
+            featured_source_raw = (featured_story.get("source") or "").replace(
+                "_", " "
+            ).title()
+        featured_source = html_module.escape(featured_source_raw)
         featured_desc = html_module.escape(
             (featured_story.get("summary") or featured_story.get("description") or "")[
                 :200
@@ -1282,9 +1285,10 @@ class Pipeline:
         for i, t in enumerate(trends[1:20]):  # Start from index 1, skip featured
             title = html_module.escape((t.get("title") or "")[:100])
             url = html_module.escape(t.get("url") or "#")
-            source = html_module.escape(
-                (t.get("source") or "").replace("_", " ").title()
-            )
+            source_raw = t.get("source_label")
+            if not source_raw:
+                source_raw = (t.get("source") or "").replace("_", " ").title()
+            source = html_module.escape(source_raw)
             raw_image_url = t.get("image_url") or ""
 
             # Validate and sanitize the image URL for reliability

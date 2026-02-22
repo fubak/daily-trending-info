@@ -47,8 +47,12 @@ class TestKeywordTracker:
 
         # Record for different dates
         today = datetime.now()
-        tracker.record_keywords(["python", "ai"], date=(today - timedelta(days=2)).strftime("%Y-%m-%d"))
-        tracker.record_keywords(["python", "rust"], date=(today - timedelta(days=1)).strftime("%Y-%m-%d"))
+        tracker.record_keywords(
+            ["python", "ai"], date=(today - timedelta(days=2)).strftime("%Y-%m-%d")
+        )
+        tracker.record_keywords(
+            ["python", "rust"], date=(today - timedelta(days=1)).strftime("%Y-%m-%d")
+        )
         tracker.record_keywords(["python", "go"], date=today.strftime("%Y-%m-%d"))
 
         with open(history_file) as f:
