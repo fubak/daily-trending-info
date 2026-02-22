@@ -16,14 +16,14 @@ import json
 import hashlib
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, asdict
 
 import requests
 from bs4 import BeautifulSoup
 
 # Monitoring sources
-MONITORING_SOURCES = {
+MONITORING_SOURCES: Dict[str, Dict[str, Any]] = {
     "search_engine_land": {
         "name": "Search Engine Land",
         "url": "https://searchengineland.com/library/google/google-news",
@@ -45,7 +45,7 @@ MONITORING_SOURCES = {
 }
 
 # Competitors to monitor
-COMPETITORS = {
+COMPETITORS: Dict[str, Dict[str, Any]] = {
     "theresanaiforthat": {
         "name": "There's An AI For That",
         "url": "https://theresanaiforthat.com/",
@@ -102,7 +102,7 @@ class CompetitorMonitor:
         """Get cache file path for a source."""
         return self.cache_dir / f"{source_id}_cache.json"
 
-    def _load_cache(self, source_id: str) -> Dict:
+    def _load_cache(self, source_id: str) -> Dict[str, Any]:
         """Load cached data for a source."""
         cache_path = self._get_cache_path(source_id)
         if cache_path.exists():
@@ -112,12 +112,12 @@ class CompetitorMonitor:
                 pass
         return {"seen_urls": [], "last_check": None}
 
-    def _save_cache(self, source_id: str, cache_data: Dict):
+    def _save_cache(self, source_id: str, cache_data: Dict[str, Any]) -> None:
         """Save cache data for a source."""
         cache_path = self._get_cache_path(source_id)
         cache_path.write_text(json.dumps(cache_data, indent=2))
 
-    def _fetch_rss(self, url: str) -> List[Dict]:
+    def _fetch_rss(self, url: str) -> List[Dict[str, str]]:
         """Fetch and parse RSS feed."""
         try:
             response = self.session.get(url, timeout=15)
@@ -200,13 +200,13 @@ class CompetitorMonitor:
                     seen_urls.add(url)
 
             # Update cache
-            cache["seen_urls"] = list(seen_urls)[-100]  # Keep last 100
+            cache["seen_urls"] = list(seen_urls)[-100:]  # Keep last 100
             cache["last_check"] = datetime.now().isoformat()
             self._save_cache(source_id, cache)
 
         return alerts
 
-    def check_competitor_status(self) -> Dict[str, Dict]:
+    def check_competitor_status(self) -> Dict[str, Dict[str, Any]]:
         """Check competitor websites for availability and basic metrics."""
         print("\nChecking competitor status...")
         results = {}
@@ -240,8 +240,10 @@ class CompetitorMonitor:
         return results
 
     def generate_report(
-        self, alerts: List[MonitoringAlert], competitor_status: Dict
-    ) -> Dict:
+        self,
+        alerts: List[MonitoringAlert],
+        competitor_status: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
         """Generate monitoring report."""
         high_priority = [a for a in alerts if a.relevance == "high"]
         medium_priority = [a for a in alerts if a.relevance == "medium"]

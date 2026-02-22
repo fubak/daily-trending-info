@@ -16,7 +16,7 @@ import json
 import html
 import re
 from datetime import datetime
-from typing import List, Dict, Optional, Tuple
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from collections import defaultdict
 
@@ -48,7 +48,7 @@ class BuildContext:
     keyword_history: Optional[Dict] = None
     generated_at: str = ""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.generated_at:
             self.generated_at = datetime.now().strftime("%B %d, %Y")
 
@@ -56,10 +56,10 @@ class BuildContext:
 class WebsiteBuilder:
     """Builds dynamic news-style websites using Jinja2 templates."""
 
-    def __init__(self, context: BuildContext):
+    def __init__(self, context: BuildContext) -> None:
         self.ctx = context
         self.design = context.design
-        self._description_cache = {}
+        self._description_cache: Dict[str, str] = {}
         self._sanitize_trends()
 
         # Setup Jinja2 environment
@@ -164,8 +164,8 @@ class WebsiteBuilder:
             source = trend.get("source", "")
             trend["source_label"] = format_source_label(source)
 
-    def _prepare_categories(self) -> List[dict]:
-        categories = []
+    def _prepare_categories(self) -> List[Dict[str, Any]]:
+        categories: List[Dict[str, Any]] = []
         sorted_groups = sorted(
             self.grouped_trends.items(), key=lambda x: len(x[1]), reverse=True
         )
@@ -182,7 +182,7 @@ class WebsiteBuilder:
             )
         return categories
 
-    def _find_relevant_hero_image(self) -> Optional[Dict]:
+    def _find_relevant_hero_image(self) -> Optional[Dict[str, Any]]:
         """Find an image that matches the headline/top story content.
 
         Priority:
@@ -283,12 +283,12 @@ class WebsiteBuilder:
         keywords = [w for w in words if len(w) > 2 and w not in stop_words]
 
         # Score each image based on keyword matches in query/description
-        best_image = None
-        best_score = 0
+        best_image: Optional[Dict[str, Any]] = None
+        best_score = 0.0
 
         for img in self.ctx.images:
             img_text = f"{img.get('query', '')} {img.get('description', '')}".lower()
-            score = sum(1 for kw in keywords if kw in img_text)
+            score = float(sum(1 for kw in keywords if kw in img_text))
 
             # Prefer larger images
             if img.get("width", 0) >= 1200:
@@ -304,9 +304,9 @@ class WebsiteBuilder:
 
         return best_image
 
-    def _group_trends(self) -> Dict[str, List[Dict]]:
+    def _group_trends(self) -> Dict[str, List[Dict[str, Any]]]:
         """Group trends by their source category."""
-        groups = defaultdict(list)
+        groups: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
 
         category_map = {
             # RSS feeds by category prefix
@@ -398,31 +398,36 @@ class WebsiteBuilder:
 
         return dict(groups)
 
-    def _select_top_stories(self) -> List[Dict]:
+    def _select_top_stories(self) -> List[Dict[str, Any]]:
         """
         Select top stories using the 'Diversity Mix' algorithm.
         Ensures representation from World, Tech, and Finance.
         Enforces source diversity: max 2 stories per source.
         """
-        selected_urls = set()
-        top_stories = []
-        source_counts = defaultdict(int)  # Track stories per source
+        selected_urls: set[str] = set()
+        top_stories: List[Dict[str, Any]] = []
+        source_counts: DefaultDict[str, int] = defaultdict(int)
         MAX_PER_SOURCE = 2
 
-        def can_add_story(story: Dict) -> bool:
+        def can_add_story(story: Dict[str, Any]) -> bool:
             """Check if story can be added based on source diversity limits."""
             source = story.get("source", "unknown")
             return source_counts[source] < MAX_PER_SOURCE
 
-        def add_story(story: Dict) -> None:
+        def add_story(story: Dict[str, Any]) -> None:
             """Add story and update tracking."""
-            selected_urls.add(story.get("url"))
-            source_counts[story.get("source", "unknown")] += 1
+            url = story.get("url")
+            if isinstance(url, str):
+                selected_urls.add(url)
+            source = story.get("source", "unknown")
+            source_counts[str(source)] += 1
             top_stories.append(story)
 
         # Helper to find best available story from a category
-        def get_best_from_category(category_names: List[str]) -> Optional[Dict]:
-            candidates = []
+        def get_best_from_category(
+            category_names: List[str],
+        ) -> Optional[Dict[str, Any]]:
+            candidates: List[Dict[str, Any]] = []
             for cat in category_names:
                 candidates.extend(self.grouped_trends.get(cat, []))
 
@@ -515,7 +520,7 @@ class WebsiteBuilder:
         self._description_cache[url] = description
         return description
 
-    def _ensure_story_description(self, story: Dict) -> None:
+    def _ensure_story_description(self, story: Dict[str, Any]) -> None:
         """Add a non-AI summary when a story lacks description content."""
         if story.get("summary") or story.get("description"):
             return
@@ -525,7 +530,7 @@ class WebsiteBuilder:
 
     def _calculate_keyword_freq(self) -> List[Tuple[str, int, int]]:
         """Calculate keyword frequencies and assign size classes 1-6."""
-        freq = defaultdict(int)
+        freq: DefaultDict[str, int] = defaultdict(int)
         for trend in self.ctx.trends:
             for kw in trend.get("keywords", []):
                 freq[kw.lower()] += 1
@@ -538,7 +543,7 @@ class WebsiteBuilder:
         max_freq = sorted_freq[0][1]
         min_freq = sorted_freq[-1][1]
 
-        result = []
+        result: List[Tuple[str, int, int]] = []
         for word, count in sorted_freq:
             if max_freq == min_freq:
                 size = 3
@@ -570,13 +575,13 @@ class WebsiteBuilder:
         """Generate comprehensive JSON-LD structured data for SEO and LLMs."""
         import json
         
-        def _clean_text(value: str) -> str:
+        def _clean_text(value: Any) -> str:
             if not isinstance(value, str):
                 return ""
             clean = re.sub(r"<[^>]*>", "", value)
             return re.sub(r"\s+", " ", clean).strip()
 
-        def _clean_url(value: str) -> str:
+        def _clean_url(value: Any) -> str:
             if not isinstance(value, str):
                 return ""
             value = value.strip()
@@ -673,32 +678,34 @@ class WebsiteBuilder:
             story_summary = _clean_text(story.get("summary") or story.get("description") or "")
             story_image = _clean_url(story.get("image_url", ""))
 
-            item = {
+            news_item: Dict[str, Any] = {
+                "@type": "NewsArticle",
+                "headline": story_title,
+                "url": story_url,
+                "datePublished": (
+                    story.get("timestamp", datetime.now().isoformat())
+                    if isinstance(story.get("timestamp"), str)
+                    else datetime.now().isoformat()
+                ),
+                "publisher": {
+                    "@type": "Organization",
+                    "name": story_source,
+                },
+            }
+
+            item: Dict[str, Any] = {
                 "@type": "ListItem",
                 "position": idx,
-                "item": {
-                    "@type": "NewsArticle",
-                    "headline": story_title,
-                    "url": story_url,
-                    "datePublished": (
-                        story.get("timestamp", datetime.now().isoformat())
-                        if isinstance(story.get("timestamp"), str)
-                        else datetime.now().isoformat()
-                    ),
-                    "publisher": {
-                        "@type": "Organization",
-                        "name": story_source,
-                    },
-                },
+                "item": news_item,
             }
 
             # Add image if available
             if story_image:
-                item["item"]["image"] = story_image
+                news_item["image"] = story_image
 
             # Add description if available
             if story_summary:
-                item["item"]["description"] = story_summary
+                news_item["description"] = story_summary
 
             item_list_elements.append(item)
 
@@ -926,7 +933,7 @@ class WebsiteBuilder:
 
         return template.render(render_context)
 
-    def save(self, output_path: str):
+    def save(self, output_path: str) -> None:
         """Build and save the website."""
         html_content = self.build()
         with open(output_path, "w", encoding="utf-8") as f:

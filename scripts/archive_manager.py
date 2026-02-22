@@ -31,7 +31,7 @@ class ArchiveManager:
         self.archive_dir = self.public_dir / archive_subdir
         self.archive_dir.mkdir(parents=True, exist_ok=True)
 
-    def archive_current(self, design: Dict = None) -> Optional[str]:
+    def archive_current(self, design: Optional[Dict] = None) -> Optional[str]:
         """
         Archive the current website to a dated folder.
         Returns the archive path if successful.

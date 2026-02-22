@@ -10,7 +10,7 @@ import logging
 import time
 import functools
 import uuid
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Any, Callable, Iterator, List
 from contextlib import contextmanager
 from datetime import datetime
 
@@ -51,7 +51,7 @@ class StructuredLogger:
             combined.update(extra)
         return combined
 
-    def set_context(self, **kwargs):
+    def set_context(self, **kwargs: Any) -> None:
         """
         Set persistent context fields for all subsequent logs.
 
@@ -60,33 +60,60 @@ class StructuredLogger:
         """
         self.context.update(kwargs)
 
-    def clear_context(self):
+    def clear_context(self) -> None:
         """Clear all persistent context fields."""
         self.context.clear()
 
-    def debug(self, msg: str, extra: Optional[Dict[str, Any]] = None, exc_info=False):
+    def debug(
+        self,
+        msg: str,
+        extra: Optional[Dict[str, Any]] = None,
+        exc_info: bool = False,
+    ) -> None:
         """Log debug message with context."""
         self.logger.debug(msg, extra=self._add_context(extra), exc_info=exc_info)
 
-    def info(self, msg: str, extra: Optional[Dict[str, Any]] = None, exc_info=False):
+    def info(
+        self,
+        msg: str,
+        extra: Optional[Dict[str, Any]] = None,
+        exc_info: bool = False,
+    ) -> None:
         """Log info message with context."""
         self.logger.info(msg, extra=self._add_context(extra), exc_info=exc_info)
 
-    def warning(self, msg: str, extra: Optional[Dict[str, Any]] = None, exc_info=False):
+    def warning(
+        self,
+        msg: str,
+        extra: Optional[Dict[str, Any]] = None,
+        exc_info: bool = False,
+    ) -> None:
         """Log warning message with context."""
         self.logger.warning(msg, extra=self._add_context(extra), exc_info=exc_info)
 
-    def error(self, msg: str, extra: Optional[Dict[str, Any]] = None, exc_info=True):
+    def error(
+        self,
+        msg: str,
+        extra: Optional[Dict[str, Any]] = None,
+        exc_info: bool = True,
+    ) -> None:
         """Log error message with context and exception info."""
         self.logger.error(msg, extra=self._add_context(extra), exc_info=exc_info)
 
-    def critical(self, msg: str, extra: Optional[Dict[str, Any]] = None, exc_info=True):
+    def critical(
+        self,
+        msg: str,
+        extra: Optional[Dict[str, Any]] = None,
+        exc_info: bool = True,
+    ) -> None:
         """Log critical message with context and exception info."""
         self.logger.critical(msg, extra=self._add_context(extra), exc_info=exc_info)
 
 
 @contextmanager
-def log_operation(logger: StructuredLogger, operation: str, **context):
+def log_operation(
+    logger: StructuredLogger, operation: str, **context: Any
+) -> Iterator[Dict[str, Any]]:
     """
     Context manager for logging operations with timing and error handling.
 
@@ -141,7 +168,9 @@ def log_operation(logger: StructuredLogger, operation: str, **context):
         raise
 
 
-def log_api_call(logger: StructuredLogger):
+def log_api_call(
+    logger: StructuredLogger,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for logging API calls with enhanced context.
 
@@ -158,9 +187,9 @@ def log_api_call(logger: StructuredLogger):
         Decorated function
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             func_name = func.__name__
             call_id = str(uuid.uuid4())
             start_time = time.time()
@@ -220,7 +249,9 @@ def log_api_call(logger: StructuredLogger):
     return decorator
 
 
-def log_performance_metrics(logger: StructuredLogger, metrics: Dict[str, Any]):
+def log_performance_metrics(
+    logger: StructuredLogger, metrics: Dict[str, Any]
+) -> None:
     """
     Log performance metrics in a structured format.
 
@@ -247,7 +278,7 @@ def log_performance_metrics(logger: StructuredLogger, metrics: Dict[str, Any]):
     )
 
 
-def log_quality_metrics(logger: StructuredLogger, metrics: Dict[str, Any]):
+def log_quality_metrics(logger: StructuredLogger, metrics: Dict[str, Any]) -> None:
     """
     Log quality metrics in a structured format.
 
@@ -289,12 +320,12 @@ class ErrorCollector:
             collector.log_summary(logger)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize error collector."""
-        self.errors: list = []
+        self.errors: List[Dict[str, Any]] = []
 
     @contextmanager
-    def capture(self, operation: str, **context):
+    def capture(self, operation: str, **context: Any) -> Iterator[None]:
         """
         Capture errors from an operation without raising.
 
@@ -322,11 +353,11 @@ class ErrorCollector:
         """Check if any errors were collected."""
         return len(self.errors) > 0
 
-    def get_errors(self) -> list:
+    def get_errors(self) -> List[Dict[str, Any]]:
         """Get list of collected errors."""
         return self.errors
 
-    def log_summary(self, logger: StructuredLogger):
+    def log_summary(self, logger: StructuredLogger) -> None:
         """
         Log summary of all collected errors.
 
@@ -341,7 +372,7 @@ class ErrorCollector:
             extra={"error_count": len(self.errors), "errors": self.errors},
         )
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear all collected errors."""
         self.errors.clear()
 

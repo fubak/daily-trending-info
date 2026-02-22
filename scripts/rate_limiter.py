@@ -699,9 +699,11 @@ class RateLimiter:
         )
 
         # Exhausted providers
-        exhausted = self.get_exhausted_providers()
-        if exhausted:
-            logger.warning(f"Exhausted this session: {', '.join(sorted(exhausted))}")
+        exhausted_providers = self.get_exhausted_providers()
+        if exhausted_providers:
+            logger.warning(
+                f"Exhausted this session: {', '.join(sorted(exhausted_providers))}"
+            )
 
         # OpenRouter credits (if configured and requested)
         if include_credits and self.openrouter_key:

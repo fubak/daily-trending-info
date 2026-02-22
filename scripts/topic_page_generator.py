@@ -162,7 +162,7 @@ def score_image_relevance(
     # Category keywords weighted lower (1 point each)
     category_score = sum(1 for kw in category_keywords if kw in img_text)
 
-    total_score = headline_score + category_score
+    total_score = float(headline_score + category_score)
 
     # Bonus for larger images (better quality)
     if image.get('width', 0) >= 1200:

@@ -21,10 +21,11 @@ import sys
 import json
 import argparse
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 from dataclasses import asdict
-from typing import List
+from typing import Any, Callable, Dict, List, Optional, Set
 
 # Add scripts directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -62,15 +63,18 @@ from image_utils import (
     get_image_quality_score,
     get_fallback_gradient_css,
 )
+from metrics_collector import MetricsCollector
 
 # Setup logging
 logger = setup_logging("pipeline")
+
+Record = Dict[str, Any]
 
 
 class Pipeline:
     """Orchestrates the complete website generation pipeline."""
 
-    def __init__(self, project_root: Path = None):
+    def __init__(self, project_root: Optional[Path] = None) -> None:
         self.project_root = project_root or Path(__file__).parent.parent
         self.public_dir = self.project_root / "public"
         self.data_dir = self.project_root / "data"
@@ -87,20 +91,43 @@ class Pipeline:
         self.content_enricher = ContentEnricher()
         self.editorial_generator = EditorialGenerator(public_dir=self.public_dir)
         self.media_fetcher = MediaOfDayFetcher()
+        self.metrics = MetricsCollector(self.data_dir / "metrics")
+        self._run_started_at: Optional[float] = None
 
         # Pipeline data
-        self.trends = []
-        self.images = []
-        self.design = None
-        self.keywords = []
-        self.global_keywords = []
-        self.enriched_content = None
-        self.editorial_article = None
-        self.why_this_matters = []
-        self.yesterday_trends = []
-        self.media_data = None
+        self.trends: List[Any] = []
+        self.images: List[Any] = []
+        self.design: Any = None
+        self.keywords: List[str] = []
+        self.global_keywords: List[str] = []
+        self.enriched_content: Optional[EnrichedContent] = None
+        self.editorial_article: Optional[Any] = None
+        self.why_this_matters: List[Any] = []
+        self.yesterday_trends: List[Record] = []
+        self.media_data: Optional[Record] = None
 
-    def _persist_daily_design(self, design) -> None:
+    def _run_step(
+        self, step_name: str, step_fn: Callable[[], None], *, enabled: bool = True
+    ) -> None:
+        """Run a pipeline step and record timing/success metrics."""
+        if not enabled:
+            self.metrics.record_step(step_name, 0.0, skipped=True)
+            return
+
+        start = time.perf_counter()
+        try:
+            step_fn()
+        except Exception as exc:
+            duration_ms = (time.perf_counter() - start) * 1000
+            self.metrics.record_step(
+                step_name, duration_ms, success=False, error=str(exc)
+            )
+            raise
+
+        duration_ms = (time.perf_counter() - start) * 1000
+        self.metrics.record_step(step_name, duration_ms, success=True)
+
+    def _persist_daily_design(self, design: Any) -> None:
         """Persist fixed design spec for deterministic rebuilds."""
         design_file = self.data_dir / "design.json"
         design_data = (
@@ -116,7 +143,7 @@ class Pipeline:
         Returns:
             List of warning messages (empty if all OK)
         """
-        warnings = []
+        warnings: List[str] = []
 
         # Check image API keys
         pexels_key = os.getenv("PEXELS_API_KEY")
@@ -164,74 +191,88 @@ class Pipeline:
 
         # Validate environment before starting
         env_warnings = self._validate_environment()
+        self.metrics.start_run({"archive": archive, "dry_run": dry_run})
+        self.metrics.set_counter("environment_warning_count", len(env_warnings))
+        self._run_started_at = time.perf_counter()
         for warning in env_warnings:
             logger.warning(f"Environment: {warning}")
 
         try:
             # Step 1: Archive previous website
-            if archive:
-                self._step_archive()
+            self._run_step("archive_previous_site", self._step_archive, enabled=archive)
 
             # Step 2: Load yesterday's trends for comparison
-            self._step_load_yesterday()
+            self._run_step("load_yesterday_trends", self._step_load_yesterday)
 
             # Step 3: Collect trends
-            self._step_collect_trends()
+            self._run_step("collect_trends", self._step_collect_trends)
 
             # Step 4: Fetch images
-            self._step_fetch_images()
+            self._run_step("fetch_images", self._step_fetch_images)
 
             # Step 5: Enrich content (Word of Day, Grokipedia, summaries)
-            self._step_enrich_content()
+            self._run_step("enrich_content", self._step_enrich_content)
 
             # Step 6: Apply fixed design
-            self._step_apply_fixed_design()
+            self._run_step("apply_fixed_design", self._step_apply_fixed_design)
 
             # Step 7: Generate editorial article and Why This Matters
-            if not dry_run:
-                self._step_generate_editorial()
+            self._run_step(
+                "generate_editorial", self._step_generate_editorial, enabled=not dry_run
+            )
 
             # Step 8: Build website
-            if not dry_run:
-                self._step_build_website()
+            self._run_step("build_website", self._step_build_website, enabled=not dry_run)
 
             # Step 9: Generate topic sub-pages
-            if not dry_run:
-                self._step_generate_topic_pages()
+            self._run_step(
+                "generate_topic_pages",
+                self._step_generate_topic_pages,
+                enabled=not dry_run,
+            )
 
             # Step 9b: Generate CMMC Watch page
-            if not dry_run:
-                self._step_generate_cmmc_page()
+            self._run_step(
+                "generate_cmmc_page", self._step_generate_cmmc_page, enabled=not dry_run
+            )
 
             # Step 10: Fetch media of the day
-            self._step_fetch_media_of_day()
+            self._run_step("fetch_media_of_day", self._step_fetch_media_of_day)
 
             # Step 11: Generate media page
-            if not dry_run:
-                self._step_generate_media_page()
+            self._run_step(
+                "generate_media_page", self._step_generate_media_page, enabled=not dry_run
+            )
 
             # Step 12: Generate RSS feed
-            if not dry_run:
-                self._step_generate_rss()
+            self._run_step("generate_rss", self._step_generate_rss, enabled=not dry_run)
 
             # Step 13: Generate PWA assets
-            if not dry_run:
-                self._step_generate_pwa()
+            self._run_step("generate_pwa", self._step_generate_pwa, enabled=not dry_run)
 
             # Step 14: Generate sitemap
-            if not dry_run:
-                self._step_generate_sitemap()
+            self._run_step(
+                "generate_sitemap", self._step_generate_sitemap, enabled=not dry_run
+            )
 
             # Step 15: Cleanup old archives (not articles - those are permanent)
-            if archive and not dry_run:
-                self._step_cleanup()
+            self._run_step(
+                "cleanup_archives", self._step_cleanup, enabled=(archive and not dry_run)
+            )
 
             # Step 16: Save pipeline data
-            self._save_data()
+            self._run_step("save_pipeline_data", self._save_data)
 
             logger.info("=" * 60)
             logger.info("PIPELINE COMPLETE")
             logger.info("=" * 60)
+
+            if self._run_started_at is not None:
+                total_ms = (time.perf_counter() - self._run_started_at) * 1000
+                self.metrics.set_counter("pipeline_duration_ms", round(total_ms, 2))
+
+            metrics_path = self.metrics.finalize(success=True, metadata={"dry_run": dry_run})
+            logger.info(f"Metrics report saved to {metrics_path}")
 
             if not dry_run:
                 logger.info(f"Website generated at: {self.public_dir / 'index.html'}")
@@ -248,9 +289,18 @@ class Pipeline:
             import traceback
 
             traceback.print_exc()
+            if self._run_started_at is not None:
+                total_ms = (time.perf_counter() - self._run_started_at) * 1000
+                self.metrics.set_counter("pipeline_duration_ms", round(total_ms, 2))
+            metrics_path = self.metrics.finalize(
+                success=False,
+                error=str(e),
+                metadata={"dry_run": dry_run},
+            )
+            logger.info(f"Metrics report saved to {metrics_path}")
             return False
 
-    def _step_archive(self):
+    def _step_archive(self) -> None:
         """Archive the previous website."""
         logger.info("[1/16] Archiving previous website...")
 
@@ -266,7 +316,7 @@ class Pipeline:
 
         self.archive_manager.archive_current(design=previous_design)
 
-    def _step_load_yesterday(self):
+    def _step_load_yesterday(self) -> None:
         """Load yesterday's trends for comparison feature."""
         logger.info("[2/16] Loading yesterday's trends...")
 
@@ -291,7 +341,7 @@ class Pipeline:
         if not self.yesterday_trends:
             logger.info("No previous trends available for comparison")
 
-    def _step_collect_trends(self):
+    def _step_collect_trends(self) -> None:
         """Collect trends from all sources."""
         logger.info("[3/16] Collecting trends...")
 
@@ -306,6 +356,17 @@ class Pipeline:
         logger.info(f"Extracted {len(self.keywords)} keywords")
         logger.info(f"Identified {len(self.global_keywords)} global meta-trends")
         logger.info(f"Freshness ratio: {freshness_ratio:.0%} from past 24h")
+
+        raw_trend_count = getattr(self.trend_collector, "pre_dedup_count", len(self.trends))
+        dedup_rate = 0.0
+        if raw_trend_count:
+            dedup_rate = max(0.0, 1.0 - (len(self.trends) / float(raw_trend_count)))
+
+        self.metrics.set_counter("trends_collected", len(self.trends))
+        self.metrics.set_counter("keywords_extracted", len(self.keywords))
+        self.metrics.set_counter("global_keywords_count", len(self.global_keywords))
+        self.metrics.set_quality_metric("freshness_ratio", round(freshness_ratio, 4))
+        self.metrics.set_quality_metric("deduplication_rate", round(dedup_rate, 4))
 
         # Log sample trends for debugging
         if self.trends:
@@ -337,11 +398,11 @@ class Pipeline:
                 f"Minimum recommended is {MIN_FRESH_RATIO:.0%}. Proceeding with caution."
             )
 
-    def _step_fetch_images(self):
+    def _step_fetch_images(self) -> None:
         """Fetch images based on trending keywords."""
         logger.info("[4/16] Fetching images...")
 
-        search_keywords = []
+        search_keywords: List[str] = []
 
         # Priority 0: Visual queries for the Top Story (Hero Image Fix)
         if self.trends:
@@ -399,6 +460,9 @@ class Pipeline:
             logger.info(f"Fetched {len(self.images)} images")
         else:
             logger.warning("No keywords for image search, using fallback gradients")
+
+        self.metrics.set_counter("image_search_keywords", len(search_keywords))
+        self.metrics.set_counter("images_fetched", len(self.images))
 
     def _extract_headline_keywords_for_images(self) -> List[str]:
         """Extract significant keywords from top headlines of each topic category.
@@ -505,7 +569,7 @@ class Pipeline:
             "you",
         }
 
-        def matches_prefix(source: str, prefixes: list) -> bool:
+        def matches_prefix(source: str, prefixes: List[str]) -> bool:
             for prefix in prefixes:
                 if prefix.endswith("_"):
                     if source.startswith(prefix):
@@ -515,7 +579,7 @@ class Pipeline:
                         return True
             return False
 
-        headline_keywords = []
+        headline_keywords: List[str] = []
 
         # Convert trends to dict if needed
         trends_data = [
@@ -579,14 +643,14 @@ class Pipeline:
         cleaned = re.sub(r"[^a-z0-9]+", " ", title.lower())
         return re.sub(r"\s+", " ", cleaned).strip()
 
-    def _apply_story_summaries(self, trends: List[dict]) -> None:
+    def _apply_story_summaries(self, trends: List[Record]) -> None:
         """Attach AI summaries to trend items when available."""
         if not self.enriched_content or not getattr(
             self.enriched_content, "story_summaries", None
         ):
             return
 
-        summary_map = {}
+        summary_map: Dict[str, str] = {}
         for item in self.enriched_content.story_summaries:
             title = getattr(item, "title", None) or item.get("title")
             summary = getattr(item, "summary", None) or item.get("summary")
@@ -607,7 +671,7 @@ class Pipeline:
                 if not trend.get("description"):
                     trend["description"] = summary
 
-    def _step_enrich_content(self):
+    def _step_enrich_content(self) -> None:
         """Enrich content with Word of Day, Grokipedia article, and story summaries."""
         logger.info("[5/16] Enriching content...")
 
@@ -630,7 +694,18 @@ class Pipeline:
             )
         logger.info(f"  Story summaries: {len(self.enriched_content.story_summaries)}")
 
-    def _step_apply_fixed_design(self):
+        self.metrics.set_counter(
+            "story_summaries_count", len(self.enriched_content.story_summaries)
+        )
+        self.metrics.set_counter(
+            "has_word_of_day", 1 if self.enriched_content.word_of_the_day else 0
+        )
+        self.metrics.set_counter(
+            "has_grokipedia_article",
+            1 if self.enriched_content.grokipedia_article else 0,
+        )
+
+    def _step_apply_fixed_design(self) -> None:
         """Apply fixed design specification (no automatic style variation)."""
         logger.info("[6/16] Applying fixed design...")
 
@@ -652,7 +727,7 @@ class Pipeline:
             logger.info(f"Mood: {self.design.mood}")
             logger.info(f"Headline: {self.design.headline}")
 
-    def _step_generate_editorial(self):
+    def _step_generate_editorial(self) -> None:
         """Generate editorial article and Why This Matters context."""
         logger.info("[7/16] Generating editorial content...")
 
@@ -694,7 +769,12 @@ class Pipeline:
         self.editorial_generator.generate_articles_index(design_data)
         logger.info("  Articles index updated")
 
-    def _step_build_website(self):
+        self.metrics.set_counter("why_this_matters_count", len(self.why_this_matters))
+        self.metrics.set_counter(
+            "has_editorial_article", 1 if self.editorial_article else 0
+        )
+
+    def _step_build_website(self) -> None:
         """Build the final HTML website."""
         logger.info("[8/16] Building website...")
         logger.info(
@@ -748,9 +828,10 @@ class Pipeline:
             # Log enriched content status
             if enriched_data.get("grokipedia_article"):
                 article = enriched_data["grokipedia_article"]
-                logger.info(
-                    f"Grokipedia article: '{article.get('title', '')}' ({len(article.get('summary', ''))} chars)"
-                )
+                if isinstance(article, dict):
+                    logger.info(
+                        f"Grokipedia article: '{article.get('title', '')}' ({len(article.get('summary', ''))} chars)"
+                    )
 
         # Convert why_this_matters to dict format
         why_this_matters_data = None
@@ -798,8 +879,9 @@ class Pipeline:
         builder.save(str(output_path))
 
         logger.info(f"Website saved to {output_path}")
+        self.metrics.set_counter("homepage_story_count", len(trends_data))
 
-    def _step_generate_topic_pages(self):
+    def _step_generate_topic_pages(self) -> None:
         """Generate topic-specific sub-pages (/tech, /world, /science, etc.)."""
         logger.info("[9/16] Generating topic sub-pages...")
 
@@ -960,12 +1042,12 @@ class Pipeline:
         ]
 
         def find_topic_image(
-            images: list,
+            images: List[Record],
             headline: str,
-            category_keywords: list,
+            category_keywords: List[str],
             fallback_index: int,
-            used_image_ids: set,
-        ) -> dict:
+            used_image_ids: Set[str],
+        ) -> Record:
             """Find an image matching headline content, excluding already-used images.
 
             Priority:
@@ -1072,8 +1154,8 @@ class Pipeline:
             headline_keywords = [w for w in words if len(w) > 2 and w not in stop_words]
 
             # Score images - prioritize headline keywords over category keywords
-            best_image = None
-            best_score = 0
+            best_image: Optional[Record] = None
+            best_score = 0.0
 
             for img in available_images:
                 img_text = f"{img.get('query', '')} {img.get('description', '')} {img.get('alt', '')}".lower()
@@ -1084,7 +1166,7 @@ class Pipeline:
                 # Add score for category keywords (weighted lower)
                 category_score = sum(1 for kw in category_keywords if kw in img_text)
 
-                total_score = headline_score + category_score
+                total_score = float(headline_score + category_score)
 
                 # Prefer larger images
                 if img.get("width", 0) >= 1200:
@@ -1107,7 +1189,7 @@ class Pipeline:
                 used_image_ids.add(selected["id"])
             return selected
 
-        def matches_topic(source: str, prefixes: list) -> bool:
+        def matches_topic(source: str, prefixes: List[str]) -> bool:
             """Check if a source matches any of the topic's prefixes."""
             for prefix in prefixes:
                 if prefix.endswith("_"):
@@ -1119,19 +1201,27 @@ class Pipeline:
             return False
 
         pages_created = 0
-        used_image_ids = set()  # Track used images to prevent reuse across topic pages
+        used_image_ids: Set[str] = set()
 
         for config in topic_configs:
+            source_prefixes = config.get("source_prefixes", [])
+            if not isinstance(source_prefixes, list):
+                continue
+            source_prefixes = [str(prefix) for prefix in source_prefixes]
+            slug = str(config.get("slug", "")).strip()
+            if not slug:
+                continue
+
             # Filter trends for this topic using prefix matching
             topic_trends = [
                 t
                 for t in trends_data
-                if matches_topic(t.get("source", ""), config["source_prefixes"])
+                if matches_topic(str(t.get("source", "")), source_prefixes)
             ]
 
             if len(topic_trends) < 3:
                 logger.info(
-                    f"  Skipping /{config['slug']}/ - only {len(topic_trends)} stories"
+                    f"  Skipping /{slug}/ - only {len(topic_trends)} stories"
                 )
                 continue
 
@@ -1153,20 +1243,32 @@ class Pipeline:
                     "id": f"article_{hash(article_image_url) % 100000}",
                 }
                 logger.debug(
-                    f"  Using article image for {config['slug']}: {article_image_url[:60]}..."
+                    f"  Using article image for {slug}: {article_image_url[:60]}..."
                 )
             else:
+                hero_keywords_value = config.get("hero_keywords", [])
+                hero_keywords = (
+                    [str(keyword) for keyword in hero_keywords_value]
+                    if isinstance(hero_keywords_value, list)
+                    else []
+                )
+                image_index_value = config.get("image_index", 0)
+                image_index = (
+                    int(image_index_value)
+                    if isinstance(image_index_value, (int, float))
+                    else 0
+                )
                 # Priority 2: Fall back to stock photo search
                 hero_image = find_topic_image(
                     images_data,
                     top_story_title,
-                    config.get("hero_keywords", []),
-                    config.get("image_index", 0),
+                    hero_keywords,
+                    image_index,
                     used_image_ids,
                 )
 
             # Create topic directory
-            topic_dir = self.public_dir / config["slug"]
+            topic_dir = self.public_dir / slug
             topic_dir.mkdir(parents=True, exist_ok=True)
 
             # Build topic page HTML
@@ -1176,12 +1278,13 @@ class Pipeline:
             (topic_dir / "index.html").write_text(html, encoding="utf-8")
             pages_created += 1
             logger.info(
-                f"  Created /{config['slug']}/ with {len(topic_trends)} stories"
+                f"  Created /{slug}/ with {len(topic_trends)} stories"
             )
 
         logger.info(f"Generated {pages_created} topic sub-pages")
+        self.metrics.set_counter("topic_pages_created", pages_created)
 
-    def _step_generate_cmmc_page(self):
+    def _step_generate_cmmc_page(self) -> None:
         """Generate CMMC Watch standalone page."""
         logger.info("[9b] Generating CMMC Watch page...")
 
@@ -1192,8 +1295,10 @@ class Pipeline:
 
         # Check if we have CMMC trends
         cmmc_trends = filter_cmmc_trends(trends_data)
+        self.metrics.set_counter("cmmc_trend_count", len(cmmc_trends))
         if not cmmc_trends:
             logger.info("  No CMMC trends found, skipping CMMC page generation")
+            self.metrics.set_counter("cmmc_page_generated", 0)
             return
 
         # Convert design to dict format
@@ -1219,11 +1324,17 @@ class Pipeline:
 
         if result:
             logger.info(f"  Created /cmmc/ with {len(cmmc_trends)} stories")
+            self.metrics.set_counter("cmmc_page_generated", 1)
         else:
             logger.warning("  Failed to generate CMMC page")
+            self.metrics.set_counter("cmmc_page_generated", 0)
 
     def _build_topic_page(
-        self, config: dict, trends: list, design: dict, hero_image: dict
+        self,
+        config: Record,
+        trends: List[Record],
+        design: Record,
+        hero_image: Record,
     ) -> str:
         """Build HTML for a topic sub-page with shared header/footer."""
         from datetime import datetime
@@ -1254,11 +1365,21 @@ class Pipeline:
         hero_image_url = ""
         hero_image_alt = ""
         if hero_image:
-            hero_image_url = hero_image.get(
-                "url_large", hero_image.get("url_medium", hero_image.get("url", ""))
+            hero_image_url = str(
+                hero_image.get(
+                    "url_large",
+                    hero_image.get("url_medium", hero_image.get("url", "")),
+                )
+                or ""
             )
-            hero_image_alt = hero_image.get(
-                "alt", hero_image.get("description", f'{config["title"]} hero image')
+            hero_image_alt = str(
+                hero_image.get(
+                    "alt",
+                    hero_image.get(
+                        "description", f"{str(config.get('title', 'Topic'))} hero image"
+                    ),
+                )
+                or ""
             )
 
         # Get featured story info (handle None values safely)
@@ -1281,7 +1402,7 @@ class Pipeline:
         placeholder_url = "/assets/nano-banana.png"
 
         # Build story cards with enhanced design (skip first since it's in hero)
-        cards = []
+        cards: List[str] = []
         for i, t in enumerate(trends[1:20]):  # Start from index 1, skip featured
             title = html_module.escape((t.get("title") or "")[:100])
             url = html_module.escape(t.get("url") or "#")
@@ -1950,7 +2071,7 @@ class Pipeline:
 </body>
 </html>"""
 
-    def _step_fetch_media_of_day(self):
+    def _step_fetch_media_of_day(self) -> None:
         """Fetch image and video of the day from curated sources."""
         logger.info("[10/16] Fetching Media of the Day...")
 
@@ -1967,16 +2088,28 @@ class Pipeline:
             else:
                 logger.warning("  No Video of the Day available")
 
+            self.metrics.set_counter(
+                "has_media_image",
+                1 if self.media_data.get("image_of_day") else 0,
+            )
+            self.metrics.set_counter(
+                "has_media_video",
+                1 if self.media_data.get("video_of_day") else 0,
+            )
+
         except Exception as e:
             logger.warning(f"Media of the Day fetch failed: {e}")
             self.media_data = None
+            self.metrics.set_counter("has_media_image", 0)
+            self.metrics.set_counter("has_media_video", 0)
 
-    def _step_generate_media_page(self):
+    def _step_generate_media_page(self) -> None:
         """Generate the Media of the Day page."""
         logger.info("[11/16] Generating Media of the Day page...")
 
         if not self.media_data:
             logger.warning("No media data available, skipping media page")
+            self.metrics.set_counter("media_page_generated", 0)
             return
 
         # Get design data for styling
@@ -1996,8 +2129,9 @@ class Pipeline:
         # Save
         (media_dir / "index.html").write_text(html, encoding="utf-8")
         logger.info(f"Media page saved to {media_dir / 'index.html'}")
+        self.metrics.set_counter("media_page_generated", 1)
 
-    def _build_media_page(self, media_data: dict, design: dict) -> str:
+    def _build_media_page(self, media_data: Record, design: Record) -> str:
         """Build HTML for the Media of the Day page."""
         from datetime import datetime
         import html as html_module
@@ -2022,7 +2156,7 @@ class Pipeline:
         base_mode = "dark-mode" if design.get("is_dark_mode", True) else "light-mode"
 
         # Helper to ensure value is a string before escaping
-        def safe_str(val, default=""):
+        def safe_str(val: Any, default: str = "") -> str:
             if val is None:
                 return default
             if isinstance(val, list):
@@ -2656,7 +2790,7 @@ class Pipeline:
 </body>
 </html>"""
 
-    def _step_generate_rss(self):
+    def _step_generate_rss(self) -> None:
         """Generate RSS feed."""
         logger.info("[12/16] Generating RSS feed...")
 
@@ -2669,23 +2803,26 @@ class Pipeline:
         output_path = self.public_dir / "feed.xml"
         generate_rss_feed(trends_data, output_path)
         logger.info(f"RSS feed saved to {output_path}")
+        self.metrics.set_counter("rss_items_count", len(trends_data))
 
         # Generate CMMC Watch RSS feed
         cmmc_output_path = self.public_dir / "cmmc" / "feed.xml"
         cmmc_result = generate_cmmc_rss_feed(trends_data, cmmc_output_path)
         if cmmc_result:
             logger.info(f"CMMC RSS feed saved to {cmmc_output_path}")
+            self.metrics.set_counter("cmmc_rss_generated", 1)
         else:
             logger.info("No CMMC trends found, skipping CMMC RSS feed")
+            self.metrics.set_counter("cmmc_rss_generated", 0)
 
-    def _step_generate_pwa(self):
+    def _step_generate_pwa(self) -> None:
         """Generate PWA assets (manifest, service worker, offline page)."""
         logger.info("[13/16] Generating PWA assets...")
 
         save_pwa_assets(self.public_dir)
         logger.info("PWA assets generated")
 
-    def _step_generate_sitemap(self):
+    def _step_generate_sitemap(self) -> None:
         """Generate sitemap.xml and robots.txt with articles and topic pages."""
         logger.info("[14/16] Generating sitemap...")
 
@@ -2717,18 +2854,20 @@ class Pipeline:
         logger.info(
             f"Sitemap generated with {len(article_urls)} articles, {len(topic_urls)} topic pages"
         )
+        self.metrics.set_counter("sitemap_article_urls", len(article_urls))
+        self.metrics.set_counter("sitemap_topic_urls", len(topic_urls))
 
-    def _step_cleanup(self):
+    def _step_cleanup(self) -> None:
         """Clean up old archives (NOT articles - those are permanent)."""
         logger.info("[15/16] Cleaning up old archives...")
 
         removed = self.archive_manager.cleanup_old(keep_days=30)
         logger.info(f"Removed {removed} old archives")
 
-    def _save_data(self):
+    def _save_data(self) -> None:
         """Save pipeline data for debugging/reference."""
-        saved_files = []
-        errors = []
+        saved_files: List[str] = []
+        errors: List[str] = []
 
         # Save trends
         try:
@@ -2809,8 +2948,11 @@ class Pipeline:
             for error in errors:
                 logger.error(f"Failed to save: {error}")
 
+        self.metrics.set_counter("data_files_saved", len(saved_files))
+        self.metrics.set_counter("data_save_errors", len(errors))
 
-def main():
+
+def main() -> None:
     """Main entry point with argument parsing."""
     parser = argparse.ArgumentParser(
         description="Generate a trending topics website",

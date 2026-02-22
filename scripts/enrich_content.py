@@ -1050,7 +1050,7 @@ class ContentEnricher:
                 trend_lines.append(f"   Context: {desc}")
 
         # Calculate theme categories
-        categories = {}
+        categories: Dict[str, int] = {}
         category_map = {
             "hackernews": "Technology",
             "lobsters": "Technology",
@@ -1131,7 +1131,7 @@ Respond with ONLY a valid JSON object:
 }"""
             )
             response = self._call_groq(prompt_with_json, max_tokens=400)
-            data = self._parse_json_response(response)
+            data = self._parse_json_response(response or "")
 
         if data and data.get("word"):
             return WordOfTheDay(
@@ -1224,7 +1224,7 @@ Respond with ONLY a valid JSON object:
 }"""
             )
             response = self._call_groq(prompt_with_json, max_tokens=200)
-            data = self._parse_json_response(response)
+            data = self._parse_json_response(response or "")
 
         if data and data.get("topic"):
             return data.get("topic")
@@ -1372,7 +1372,7 @@ Respond with ONLY a valid JSON object:
 }"""
             )
             response = self._call_groq(prompt_with_json, max_tokens=800)
-            data = self._parse_json_response(response)
+            data = self._parse_json_response(response or "")
 
         summaries = []
         if data and data.get("summaries"):

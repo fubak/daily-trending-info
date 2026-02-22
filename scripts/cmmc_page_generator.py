@@ -178,11 +178,11 @@ def get_cmmc_hero_image(
 
     # Score images by keyword relevance
     best_image = None
-    best_score = 0
+    best_score = 0.0
 
     for img in available:
         img_text = f"{img.get('query', '')} {img.get('description', '')} {img.get('alt', '')}".lower()
-        score = sum(1 for kw in cmmc_visual_keywords if kw in img_text)
+        score = float(sum(1 for kw in cmmc_visual_keywords if kw in img_text))
         if img.get("width", 0) >= 1200:
             score += 0.5
         if score > best_score:
@@ -885,7 +885,7 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
     date_iso = now.isoformat()
 
     # Get hero image
-    used_image_ids = set()
+    used_image_ids: Set[str] = set()
     featured_story = cmmc_trends[0] if cmmc_trends else {}
     hero_image = get_cmmc_hero_image(
         images, featured_story.get("title", "CMMC Cybersecurity"), used_image_ids

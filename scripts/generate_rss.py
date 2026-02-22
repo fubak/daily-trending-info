@@ -298,7 +298,7 @@ def generate_cmmc_rss_feed(
 
 
 def generate_cmmc_from_data_file(
-    trends_file: Path = None, output_path: Path = None
+    trends_file: Optional[Path] = None, output_path: Optional[Path] = None
 ) -> str:
     """
     Generate CMMC RSS feed from the saved trends.json data file.
@@ -327,7 +327,9 @@ def generate_cmmc_from_data_file(
     return generate_cmmc_rss_feed(trends, output_path)
 
 
-def generate_from_data_file(trends_file: Path = None, output_path: Path = None) -> str:
+def generate_from_data_file(
+    trends_file: Optional[Path] = None, output_path: Optional[Path] = None
+) -> str:
     """
     Generate RSS feed from the saved trends.json data file.
 

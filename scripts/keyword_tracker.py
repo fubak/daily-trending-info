@@ -11,7 +11,7 @@ Maintains a 30-day rolling history of keywords to identify:
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import Any, DefaultDict, Dict, List, Optional, Set, Tuple
 from collections import defaultdict
 from dataclasses import dataclass, asdict, field
 
@@ -39,11 +39,11 @@ class KeywordTrend:
 class KeywordTracker:
     """Tracks keyword frequency over a rolling 30-day period."""
 
-    def __init__(self, history_file: Path = None):
+    def __init__(self, history_file: Optional[Path] = None) -> None:
         self.history_file = history_file or KEYWORD_HISTORY_FILE
         self.history = self._load_history()
 
-    def _load_history(self) -> Dict:
+    def _load_history(self) -> Dict[str, Any]:
         """Load keyword history from disk."""
         if self.history_file.exists():
             try:
@@ -53,7 +53,7 @@ class KeywordTracker:
                 logger.warning(f"Could not load keyword history: {e}")
         return {"daily": {}, "metadata": {"created": datetime.now().isoformat()}}
 
-    def _save_history(self):
+    def _save_history(self) -> None:
         """Save keyword history to disk."""
         try:
             self.history_file.parent.mkdir(parents=True, exist_ok=True)
@@ -62,7 +62,7 @@ class KeywordTracker:
         except IOError as e:
             logger.error(f"Could not save keyword history: {e}")
 
-    def _cleanup_old_entries(self):
+    def _cleanup_old_entries(self) -> None:
         """Remove entries older than KEYWORD_HISTORY_DAYS."""
         cutoff = datetime.now() - timedelta(days=KEYWORD_HISTORY_DAYS)
         cutoff_str = cutoff.strftime("%Y-%m-%d")
@@ -76,7 +76,7 @@ class KeywordTracker:
         if dates_to_remove:
             logger.info(f"Cleaned up {len(dates_to_remove)} old keyword entries")
 
-    def record_keywords(self, keywords: List[str], date: str = None):
+    def record_keywords(self, keywords: List[str], date: Optional[str] = None) -> None:
         """
         Record keyword occurrences for a given date.
 
@@ -91,7 +91,7 @@ class KeywordTracker:
             self.history["daily"] = {}
 
         # Count keyword frequencies
-        counts = defaultdict(int)
+        counts: DefaultDict[str, int] = defaultdict(int)
         for kw in keywords:
             kw_lower = kw.lower().strip()
             if kw_lower and len(kw_lower) > 1:  # Skip single chars
@@ -133,12 +133,12 @@ class KeywordTracker:
         last_3_days = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(3)]
 
         # Aggregate counts
-        recent_counts = defaultdict(int)
-        previous_counts = defaultdict(int)
-        recent_3_day_counts = defaultdict(int)
-        all_time_counts = defaultdict(int)
-        first_seen = {}
-        last_seen = {}
+        recent_counts: DefaultDict[str, int] = defaultdict(int)
+        previous_counts: DefaultDict[str, int] = defaultdict(int)
+        recent_3_day_counts: DefaultDict[str, int] = defaultdict(int)
+        all_time_counts: DefaultDict[str, int] = defaultdict(int)
+        first_seen: Dict[str, str] = {}
+        last_seen: Dict[str, str] = {}
 
         for date in dates:
             day_counts = daily.get(date, {})
@@ -159,8 +159,8 @@ class KeywordTracker:
                     last_seen[kw] = date
 
         # Calculate trends
-        trends = []
-        all_keywords = set(recent_counts.keys()) | set(previous_counts.keys())
+        trends: List[KeywordTrend] = []
+        all_keywords: Set[str] = set(recent_counts.keys()) | set(previous_counts.keys())
 
         for kw in all_keywords:
             recent = recent_counts.get(kw, 0)

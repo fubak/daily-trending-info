@@ -25,7 +25,7 @@ import base64
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
-from typing import Any, List, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from urllib.parse import quote_plus, urlparse
@@ -153,7 +153,7 @@ def parse_timestamp(value: Any) -> Optional[datetime]:
     return None
 
 
-def parse_feed_entry_timestamp(entry) -> Optional[datetime]:
+def parse_feed_entry_timestamp(entry: Any) -> Optional[datetime]:
     """Extract and parse timestamp fields from feedparser entries."""
     # feedparser exposes parsed fields as struct_time
     for parsed_key in ("published_parsed", "updated_parsed", "created_parsed"):
@@ -183,34 +183,34 @@ class Trend:
     description: Optional[str] = None
     category: Optional[str] = None  # Added for explicit categorization
     score: float = 1.0
-    keywords: List[str] = None
+    keywords: List[str] = field(default_factory=list)
     timestamp: datetime = field(default_factory=datetime.now)
     image_url: Optional[str] = None  # Article image from RSS feed
-    source_metadata: Dict[str, Optional[str]] = None
+    source_metadata: Dict[str, Optional[str]] = field(default_factory=dict)
     source_label: Optional[str] = None
-    corroborating_sources: List[str] = None
-    corroborating_urls: List[str] = None
+    corroborating_sources: List[str] = field(default_factory=list)
+    corroborating_urls: List[str] = field(default_factory=list)
     source_diversity: int = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         parsed_timestamp = parse_timestamp(self.timestamp)
         self.timestamp = parsed_timestamp or datetime.now()
 
-        if self.keywords is None:
+        if not self.keywords:
             self.keywords = self._extract_keywords()
 
-        if self.source_metadata is None:
+        if not self.source_metadata:
             self.source_metadata = source_metadata_dict(self.source)
 
         if self.source_label is None:
             self.source_label = format_source_label(self.source)
 
-        if self.corroborating_sources is None:
+        if not self.corroborating_sources:
             self.corroborating_sources = [self.source]
         elif self.source not in self.corroborating_sources:
             self.corroborating_sources.append(self.source)
 
-        if self.corroborating_urls is None:
+        if not self.corroborating_urls:
             self.corroborating_urls = [self.url] if self.url else []
         elif self.url and self.url not in self.corroborating_urls:
             self.corroborating_urls.append(self.url)
@@ -474,7 +474,7 @@ from requests.adapters import HTTPAdapter
 class TrendCollector:
     """Collects and aggregates trends from multiple sources."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -499,10 +499,12 @@ class TrendCollector:
         self.feed_persistent_ttl_seconds = 24 * 60 * 60
         self.feed_cooldown_seconds = 5 * 60
         self.feed_failure_threshold = 2
+        self.pre_dedup_count = 0
         self.feed_failures: Dict[str, Dict[str, float]] = {}
         self.feed_cache: Dict[str, Dict[str, Any]] = {}
         self.feed_cache_file = Path(DATA_DIR) / "feed_runtime_cache.json"
         self.persistent_feed_cache: Dict[str, Dict[str, Any]] = {}
+        self.global_keywords: Set[str] = set()
         self._persistent_cache_dirty = False
         self._load_persistent_feed_cache()
 
@@ -798,7 +800,7 @@ class TrendCollector:
 
     def _collect_sports_rss(self) -> List[Trend]:
         """Collect trends from Sports RSS feeds."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("sports_rss", 6)
         feeds = self._collector_sources("sports_rss")
         for source in feeds:
@@ -819,7 +821,7 @@ class TrendCollector:
                             url=entry.link,
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.4,
-                            timestamp=parse_feed_entry_timestamp(entry),
+                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -832,7 +834,7 @@ class TrendCollector:
 
     def _collect_entertainment_rss(self) -> List[Trend]:
         """Collect trends from Entertainment RSS feeds."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("entertainment_rss", 6)
         feeds = self._collector_sources("entertainment_rss")
         for source in feeds:
@@ -853,7 +855,7 @@ class TrendCollector:
                             url=entry.link,
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.4,
-                            timestamp=parse_feed_entry_timestamp(entry),
+                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -903,6 +905,7 @@ class TrendCollector:
             time.sleep(DELAYS["between_sources"])
 
         # Deduplicate and score
+        self.pre_dedup_count = len(self.trends)
         self._deduplicate()
         self._calculate_scores()
 
@@ -916,7 +919,7 @@ class TrendCollector:
         )  # Scrape up to top 50 stories to ensure coverage
         scraped_count = 0
         for trend in self.trends[:scrape_limit]:
-            if not trend.image_url:
+            if trend.url and not trend.image_url:
                 trend.image_url = self._scrape_og_image(trend.url)
                 if trend.image_url:
                     logger.info(f"  Found OG image for: {trend.title[:30]}...")
@@ -936,7 +939,7 @@ class TrendCollector:
         fresh_count = sum(1 for t in self.trends if t.is_fresh())
         return fresh_count / len(self.trends)
 
-    def _extract_image_from_entry(self, entry) -> Optional[str]:
+    def _extract_image_from_entry(self, entry: Any) -> Optional[str]:
         """Extract image URL from RSS entry using multiple strategies.
 
         Priority order:
@@ -1005,7 +1008,7 @@ class TrendCollector:
 
     def _collect_google_trends(self) -> List[Trend]:
         """Collect trends from Google Trends RSS."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("google_trends", 20)
         sources = self._collector_sources("google_trends")
         source = sources[0] if sources else None
@@ -1036,7 +1039,7 @@ class TrendCollector:
                             else None
                         ),
                         score=2.0,  # Google Trends gets higher base score
-                        timestamp=parse_feed_entry_timestamp(entry),
+                        timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                         image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
@@ -1048,7 +1051,7 @@ class TrendCollector:
 
     def _collect_news_rss(self) -> List[Trend]:
         """Collect trends from major news RSS feeds."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("news_rss", 8)
         feeds = self._collector_sources("news_rss")
         for source in feeds:
@@ -1086,7 +1089,7 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.8,  # News sources get good score
-                            timestamp=parse_feed_entry_timestamp(entry),
+                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -1101,7 +1104,7 @@ class TrendCollector:
 
     def _collect_tech_rss(self) -> List[Trend]:
         """Collect trends from tech-focused RSS feeds."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("tech_rss", 6)
         feeds = self._collector_sources("tech_rss")
         for source in feeds:
@@ -1131,7 +1134,7 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
-                            timestamp=parse_feed_entry_timestamp(entry),
+                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -1146,7 +1149,7 @@ class TrendCollector:
 
     def _collect_science_rss(self) -> List[Trend]:
         """Collect trends from science and health RSS feeds."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("science_rss", 6)
         feeds = self._collector_sources("science_rss")
         for source in feeds:
@@ -1171,7 +1174,7 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
-                            timestamp=parse_feed_entry_timestamp(entry),
+                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -1186,7 +1189,7 @@ class TrendCollector:
 
     def _collect_politics_rss(self) -> List[Trend]:
         """Collect trends from politics-focused RSS feeds."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("politics_rss", 6)
         feeds = self._collector_sources("politics_rss")
         for source in feeds:
@@ -1219,7 +1222,7 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.6,
-                            timestamp=parse_feed_entry_timestamp(entry),
+                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -1234,7 +1237,7 @@ class TrendCollector:
 
     def _collect_finance_rss(self) -> List[Trend]:
         """Collect trends from business and finance RSS feeds."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("finance_rss", 6)
         feeds = self._collector_sources("finance_rss")
         for source in feeds:
@@ -1263,7 +1266,7 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
-                            timestamp=parse_feed_entry_timestamp(entry),
+                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -1278,7 +1281,7 @@ class TrendCollector:
 
     def _collect_hackernews(self) -> List[Trend]:
         """Collect top stories from Hacker News API."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("hackernews", 25)
         sources = self._collector_sources("hackernews")
         source = sources[0] if sources else None
@@ -1324,7 +1327,7 @@ class TrendCollector:
                     url=story_url,
                     description=self._clean_html(story.get("text", "")),
                     score=1.0 + normalized_score,
-                    timestamp=parse_timestamp(story.get("time")),
+                    timestamp=parse_timestamp(story.get("time")) or datetime.now(),
                 )
                 return (index, trend)
 
@@ -1351,7 +1354,7 @@ class TrendCollector:
 
     def _collect_reddit(self) -> List[Trend]:
         """Collect trending posts from Reddit using RSS feeds (more reliable than JSON API)."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("reddit", 6)
         feeds = self._collector_sources("reddit")
         for source in feeds:
@@ -1376,7 +1379,7 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
-                            timestamp=parse_feed_entry_timestamp(entry),
+                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -1391,7 +1394,7 @@ class TrendCollector:
 
     def _collect_github_trending(self) -> List[Trend]:
         """Collect trending repositories from GitHub (English descriptions)."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("github_trending", 15)
         sources = self._collector_sources("github_trending")
         source = sources[0] if sources else None
@@ -1442,7 +1445,8 @@ class TrendCollector:
                         url=f"https://github.com{name_elem.get('href', '')}",
                         description=description,
                         score=1.3 + min(stars / 500, 1.5),
-                        timestamp=parse_timestamp(datetime.now(timezone.utc)),
+                        timestamp=parse_timestamp(datetime.now(timezone.utc))
+                        or datetime.now(),
                     )
                     trends.append(trend)
 
@@ -1473,20 +1477,21 @@ class TrendCollector:
 
     def _collect_github_trending_api(self, limit: int) -> List[Trend]:
         """Fallback collector using GitHub's repository search API."""
-        trends = []
+        trends: List[Trend] = []
         source_key = "github_trending"
         since = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
         per_page = max(10, min(limit, 50))
 
         try:
+            query_params: Dict[str, str] = {
+                "q": f"created:>{since}",
+                "sort": "stars",
+                "order": "desc",
+                "per_page": str(per_page),
+            }
             response = self.session.get(
                 "https://api.github.com/search/repositories",
-                params={
-                    "q": f"created:>{since}",
-                    "sort": "stars",
-                    "order": "desc",
-                    "per_page": per_page,
-                },
+                params=query_params,
                 timeout=self.default_timeout,
                 headers={"Accept": "application/vnd.github+json"},
             )
@@ -1521,7 +1526,10 @@ class TrendCollector:
                     url=repo.get("html_url"),
                     description=description,
                     score=1.2 + min(stars / 50000, 2.0),
-                    timestamp=parse_timestamp(repo.get("updated_at") or repo.get("created_at")),
+                    timestamp=parse_timestamp(
+                        repo.get("updated_at") or repo.get("created_at")
+                    )
+                    or datetime.now(),
                 )
             )
 
@@ -1529,7 +1537,7 @@ class TrendCollector:
 
     def _collect_wikipedia_current(self) -> List[Trend]:
         """Collect current events from Wikipedia."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("wikipedia", 20)
         sources = self._collector_sources("wikipedia_current")
         source = sources[0] if sources else None
@@ -1611,7 +1619,7 @@ class TrendCollector:
         if not candidate_items:
             return []
 
-        trends = []
+        trends: List[Trend] = []
         seen_titles = set()
 
         for item in candidate_items[: max(limit * 3, limit)]:
@@ -1644,7 +1652,8 @@ class TrendCollector:
                     source=source_key,
                     url=story_url or base_url,
                     score=1.4,
-                    timestamp=parse_timestamp(datetime.now(timezone.utc)),
+                    timestamp=parse_timestamp(datetime.now(timezone.utc))
+                    or datetime.now(),
                 )
             )
             if len(trends) >= limit:
@@ -1654,7 +1663,7 @@ class TrendCollector:
 
     def _collect_lobsters(self) -> List[Trend]:
         """Collect trending posts from Lobsters (tech community)."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("lobsters", 15)
         sources = self._collector_sources("lobsters")
         source = sources[0] if sources else None
@@ -1686,7 +1695,7 @@ class TrendCollector:
                         url=entry.get("link"),
                         description=self._clean_html(entry.get("summary", "")),
                         score=1.6,  # Good quality tech content
-                        timestamp=parse_feed_entry_timestamp(entry),
+                        timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                         image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
@@ -1698,7 +1707,7 @@ class TrendCollector:
 
     def _collect_product_hunt(self) -> List[Trend]:
         """Collect trending products from Product Hunt."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("product_hunt", 10)
         sources = self._collector_sources("product_hunt")
         source = sources[0] if sources else None
@@ -1725,7 +1734,7 @@ class TrendCollector:
                         url=entry.get("link"),
                         description=self._clean_html(entry.get("summary", "")),
                         score=1.4,
-                        timestamp=parse_feed_entry_timestamp(entry),
+                        timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                         image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
@@ -1737,7 +1746,7 @@ class TrendCollector:
 
     def _collect_devto(self) -> List[Trend]:
         """Collect trending posts from Dev.to."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("devto", 15)
         sources = self._collector_sources("devto")
         source = sources[0] if sources else None
@@ -1780,7 +1789,8 @@ class TrendCollector:
                             article.get("published_timestamp")
                             or article.get("published_at")
                             or article.get("readable_publish_date")
-                        ),
+                        )
+                        or datetime.now(),
                         image_url=article.get("cover_image"),
                     )
                     trends.append(trend)
@@ -1792,7 +1802,7 @@ class TrendCollector:
 
     def _collect_slashdot(self) -> List[Trend]:
         """Collect stories from Slashdot."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("slashdot", 12)
         sources = self._collector_sources("slashdot")
         source = sources[0] if sources else None
@@ -1819,7 +1829,7 @@ class TrendCollector:
                         url=entry.get("link"),
                         description=self._clean_html(entry.get("summary", "")),
                         score=1.4,
-                        timestamp=parse_feed_entry_timestamp(entry),
+                        timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                         image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
@@ -1831,7 +1841,7 @@ class TrendCollector:
 
     def _collect_ars_frontpage(self) -> List[Trend]:
         """Collect front page stories from Ars Technica (high quality tech journalism)."""
-        trends = []
+        trends: List[Trend] = []
         limit = self._get_limit("ars_technica", 8)
         sources = self._collector_sources("ars_features")
         source = sources[0] if sources else None
@@ -1859,7 +1869,7 @@ class TrendCollector:
                         url=entry.get("link"),
                         description=self._clean_html(entry.get("summary", "")),
                         score=1.7,  # High quality long-form content
-                        timestamp=parse_feed_entry_timestamp(entry),
+                        timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                         image_url=self._extract_image_from_entry(entry),
                     )
                     trends.append(trend)
@@ -1875,7 +1885,7 @@ class TrendCollector:
         Filters content by CMMC-relevant keywords to ensure relevance.
         Used for the standalone CMMC Watch page.
         """
-        trends = []
+        trends: List[Trend] = []
         rss_limit = self._get_limit("cmmc_rss", 8)
         keyword_scan_limit = max(20, rss_limit * 3)
         reddit_limit = max(6, min(15, rss_limit * 2))
@@ -1916,7 +1926,7 @@ class TrendCollector:
                             description=self._clean_html(description),
                             category="cmmc",  # Explicit categorization
                             score=1.6,  # Good quality federal news
-                            timestamp=parse_feed_entry_timestamp(entry),
+                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -1975,7 +1985,7 @@ class TrendCollector:
                             description=self._clean_html(description),
                             category="cmmc",
                             score=1.4,  # Reddit community content
-                            timestamp=parse_feed_entry_timestamp(entry),
+                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
@@ -2006,7 +2016,7 @@ class TrendCollector:
 
     def _collect_cmmc_linkedin(self) -> List[Trend]:
         """Collect posts from key CMMC influencers on LinkedIn via Apify."""
-        trends = []
+        trends: List[Trend] = []
 
         try:
             from fetch_linkedin_posts import (
@@ -2029,8 +2039,11 @@ class TrendCollector:
                     description=td.get("description"),
                     category=td.get("category"),
                     score=td.get("score", 1.5),
-                    keywords=td.get("keywords"),
-                    timestamp=parse_timestamp(td.get("timestamp") or td.get("published_at")),
+                    keywords=td.get("keywords") or [],
+                    timestamp=parse_timestamp(
+                        td.get("timestamp") or td.get("published_at")
+                    )
+                    or datetime.now(),
                     image_url=td.get("image_url"),
                 )
                 trends.append(trend)
@@ -2084,7 +2097,7 @@ class TrendCollector:
         
         return clean
 
-    def _deduplicate(self):
+    def _deduplicate(self) -> None:
         """Cluster and deduplicate trends using token overlap + semantic similarity."""
         if not self.trends:
             return
@@ -2112,7 +2125,7 @@ class TrendCollector:
         }
 
         normalized_titles: List[str] = []
-        token_sets: List[set] = []
+        token_sets: List[Set[str]] = []
         inverted_index: Dict[str, List[int]] = {}
 
         for idx, trend in enumerate(self.trends):
@@ -2133,7 +2146,7 @@ class TrendCollector:
                 inverted_index.setdefault(token, []).append(idx)
 
         clusters: List[List[int]] = []
-        assigned = set()
+        assigned: Set[int] = set()
 
         for index, trend in enumerate(self.trends):
             if index in assigned:
@@ -2143,7 +2156,7 @@ class TrendCollector:
             tokens_i = token_sets[index]
             normalized_i = normalized_titles[index]
 
-            candidate_indices = set()
+            candidate_indices: Set[int] = set()
             for token in tokens_i:
                 for candidate_idx in inverted_index.get(token, []):
                     if candidate_idx > index:
@@ -2214,13 +2227,13 @@ class TrendCollector:
 
         self.trends = unique_trends
 
-    def _calculate_scores(self):
+    def _calculate_scores(self) -> None:
         """Recalculate trend scores based on various factors including global keyword frequency."""
         from collections import Counter
 
         # Count each keyword once per story (using sets) to find "meta-trends"
         # A word appearing in 3+ different stories is a global trend
-        story_word_counts = Counter()
+        story_word_counts: Counter[str] = Counter()
 
         for trend in self.trends:
             # Use set to count each word only once per story
@@ -2242,8 +2255,8 @@ class TrendCollector:
 
         for trend in self.trends:
             # Count how many global keywords this trend contains
-            global_keyword_matches = sum(
-                1 for kw in trend.keywords if kw in global_keywords
+            global_keyword_matches = len(
+                [kw for kw in trend.keywords if kw in global_keywords]
             )
 
             # Apply tiered boost based on global keyword matches
@@ -2256,8 +2269,8 @@ class TrendCollector:
                 trend.score *= 1.15
 
             # Additional small boost for keywords appearing in multiple stories
-            keyword_boost = sum(
-                0.1 for kw in trend.keywords if story_word_counts.get(kw, 0) > 1
+            keyword_boost = 0.1 * len(
+                [kw for kw in trend.keywords if story_word_counts.get(kw, 0) > 1]
             )
             trend.score += keyword_boost
 
@@ -2296,14 +2309,14 @@ class TrendCollector:
         """Export trends as JSON."""
         return json.dumps([asdict(t) for t in self.trends], indent=2, default=str)
 
-    def save(self, filepath: str):
+    def save(self, filepath: str) -> None:
         """Save trends to a JSON file."""
         with open(filepath, "w") as f:
             f.write(self.to_json())
         logger.info(f"Saved {len(self.trends)} trends to {filepath}")
 
 
-def main():
+def main() -> TrendCollector:
     """Main entry point for trend collection."""
     collector = TrendCollector()
     trends = collector.collect_all()

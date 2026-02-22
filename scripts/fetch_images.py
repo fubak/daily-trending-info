@@ -410,6 +410,7 @@ class ImageFetcher:
     ):
         # Support both single key and key rotation from config
         # Single key passed in constructor takes priority
+        env_pexels = os.getenv("PEXELS_API_KEY")
         if pexels_key:
             self._pexels_rotator = KeyRotator([pexels_key], "Pexels")
         else:
@@ -417,15 +418,12 @@ class ImageFetcher:
                 (
                     PEXELS_KEYS
                     if PEXELS_KEYS
-                    else (
-                        [os.getenv("PEXELS_API_KEY")]
-                        if os.getenv("PEXELS_API_KEY")
-                        else []
-                    )
+                    else ([env_pexels] if env_pexels else [])
                 ),
                 "Pexels",
             )
 
+        env_unsplash = os.getenv("UNSPLASH_ACCESS_KEY")
         if unsplash_key:
             self._unsplash_rotator = KeyRotator([unsplash_key], "Unsplash")
         else:
@@ -433,15 +431,12 @@ class ImageFetcher:
                 (
                     UNSPLASH_KEYS
                     if UNSPLASH_KEYS
-                    else (
-                        [os.getenv("UNSPLASH_ACCESS_KEY")]
-                        if os.getenv("UNSPLASH_ACCESS_KEY")
-                        else []
-                    )
+                    else ([env_unsplash] if env_unsplash else [])
                 ),
                 "Unsplash",
             )
 
+        env_pixabay = os.getenv("PIXABAY_API_KEY")
         if pixabay_key:
             self._pixabay_rotator = KeyRotator([pixabay_key], "Pixabay")
         else:
@@ -449,11 +444,7 @@ class ImageFetcher:
                 (
                     PIXABAY_KEYS
                     if PIXABAY_KEYS
-                    else (
-                        [os.getenv("PIXABAY_API_KEY")]
-                        if os.getenv("PIXABAY_API_KEY")
-                        else []
-                    )
+                    else ([env_pixabay] if env_pixabay else [])
                 ),
                 "Pixabay",
             )
@@ -775,7 +766,7 @@ class ImageFetcher:
 
         images = []
         # Pixabay uses query params for auth, not headers
-        headers = {}
+        headers: Dict[str, str] = {}
         params = {
             "key": current_key,
             "q": query,

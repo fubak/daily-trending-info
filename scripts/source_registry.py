@@ -22,7 +22,7 @@ class SourceMetadata:
     fallback_url: Optional[str] = None
     display_name: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Optional[str]]:
+    def to_dict(self) -> Dict[str, object]:
         return {
             "tier": self.tier,
             "type": self.source_type,
@@ -213,7 +213,7 @@ def get_source_metadata(source: str) -> SourceMetadata:
     return DEFAULT_SOURCE_METADATA
 
 
-def source_metadata_dict(source: str) -> Dict[str, Optional[str]]:
+def source_metadata_dict(source: str) -> Dict[str, object]:
     """Get metadata as a serializable dict with resolved display name."""
     metadata = get_source_metadata(source)
     data = metadata.to_dict()

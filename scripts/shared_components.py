@@ -3,6 +3,7 @@ Shared HTML components for consistent header/footer across all pages.
 """
 
 from datetime import datetime
+from typing import Optional
 
 
 def get_nav_links(active_page: str = "") -> str:
@@ -33,7 +34,7 @@ def get_nav_links(active_page: str = "") -> str:
     return "\n            ".join(items)
 
 
-def build_header(active_page: str = "", date_str: str = None) -> str:
+def build_header(active_page: str = "", date_str: Optional[str] = None) -> str:
     """
     Build consistent header/navigation HTML.
 
@@ -85,7 +86,7 @@ def build_header(active_page: str = "", date_str: str = None) -> str:
     </nav>"""
 
 
-def build_footer(date_str: str = None, style_info: str = "") -> str:
+def build_footer(date_str: Optional[str] = None, style_info: str = "") -> str:
     """
     Build consistent footer HTML.
 

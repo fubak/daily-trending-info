@@ -533,7 +533,7 @@ Respond with ONLY a valid JSON object:
                 story_lines.append(f"   Summary: {desc}")
 
         # Categorize stories
-        categories = {}
+        categories: Dict[str, int] = {}
         for s in stories:
             src = s.get("source", "other")
             if src in ["hackernews", "lobsters", "tech_rss", "github_trending"]:
@@ -608,7 +608,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                 science_count += 1
 
         # Detect recurring keywords
-        keyword_freq = {}
+        keyword_freq: Dict[str, int] = {}
         for kw in keywords[:30]:
             kw_lower = kw.lower()
             for story in stories:
@@ -2379,7 +2379,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
 
     def get_all_articles(self) -> List[Dict]:
         """Get metadata for all saved articles (for sitemap/index)."""
-        articles = []
+        articles: List[Dict] = []
 
         if not self.articles_dir.exists():
             return articles
