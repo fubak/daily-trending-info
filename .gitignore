@@ -35,6 +35,7 @@ Thumbs.db
 # data/ is regenerated each run but useful for debugging
 # Uncomment to ignore:
 # data/
+data/feed_runtime_cache.json
 
 # Logs
 *.log

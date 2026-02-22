@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import re
 from typing import Dict, Optional, Tuple
 
+from source_catalog import COLLECTOR_SOURCES
+
 
 @dataclass(frozen=True)
 class SourceMetadata:
@@ -32,90 +34,24 @@ class SourceMetadata:
         }
 
 
-# Exact source keys from `Trend.source` fields.
-EXACT_SOURCE_METADATA: Dict[str, SourceMetadata] = {
-    "google_trends": SourceMetadata(
-        tier=3,
-        source_type="search",
-        risk="medium",
-        language="en",
-        parser="rss",
-        fallback_url="https://trends.google.com/trending/rss?geo=US",
-        display_name="Google Trends",
-    ),
-    "hackernews": SourceMetadata(
-        tier=2,
-        source_type="community",
-        risk="low",
-        language="en",
-        parser="json_api",
-        fallback_url="https://hnrss.org/frontpage",
-        display_name="Hacker News",
-    ),
-    "lobsters": SourceMetadata(
-        tier=2,
-        source_type="community",
-        risk="low",
-        language="en",
-        parser="rss",
-        fallback_url="https://lobste.rs/rss",
-        display_name="Lobsters",
-    ),
-    "github_trending": SourceMetadata(
-        tier=3,
-        source_type="community",
-        risk="low",
-        language="en",
-        parser="html_scrape",
-        fallback_url="https://api.gitterapp.com/repositories?language=python&since=daily",
-        display_name="GitHub Trending",
-    ),
-    "product_hunt": SourceMetadata(
-        tier=3,
-        source_type="product",
-        risk="low",
-        language="en",
-        parser="rss",
-        fallback_url="https://www.producthunt.com/feed",
-        display_name="Product Hunt",
-    ),
-    "devto": SourceMetadata(
-        tier=3,
-        source_type="community",
-        risk="low",
-        language="en",
-        parser="json_api",
-        fallback_url="https://dev.to/api/articles?top=1&per_page=15",
-        display_name="Dev.to",
-    ),
-    "slashdot": SourceMetadata(
-        tier=3,
-        source_type="news",
-        risk="low",
-        language="en",
-        parser="rss",
-        fallback_url="https://rss.slashdot.org/Slashdot/slashdotMain",
-        display_name="Slashdot",
-    ),
-    "ars_features": SourceMetadata(
-        tier=2,
-        source_type="news",
-        risk="low",
-        language="en",
-        parser="rss",
-        fallback_url="https://feeds.arstechnica.com/arstechnica/features",
-        display_name="Ars Features",
-    ),
-    "wikipedia_current": SourceMetadata(
-        tier=3,
-        source_type="reference",
-        risk="low",
-        language="en",
-        parser="html_scrape",
-        fallback_url="https://en.wikipedia.org/w/api.php?action=parse&page=Portal:Current_events&format=json&prop=text&formatversion=2",
-        display_name="Wikipedia Current",
-    ),
-    "cmmc_linkedin": SourceMetadata(
+def _build_exact_source_metadata() -> Dict[str, SourceMetadata]:
+    """Build explicit source-key metadata from the canonical source catalog."""
+    metadata: Dict[str, SourceMetadata] = {}
+    for source in COLLECTOR_SOURCES:
+        if not source.source_key or source.source_key in metadata:
+            continue
+        metadata[source.source_key] = SourceMetadata(
+            tier=source.tier,
+            source_type=source.source_type,
+            risk=source.risk,
+            language=source.language,
+            parser=source.parser,
+            fallback_url=source.fallback_url,
+            display_name=source.name,
+        )
+
+    # Optional social source that is not part of the canonical HTTP feed catalog.
+    metadata["cmmc_linkedin"] = SourceMetadata(
         tier=3,
         source_type="social",
         risk="medium",
@@ -123,8 +59,12 @@ EXACT_SOURCE_METADATA: Dict[str, SourceMetadata] = {
         parser="apify",
         fallback_url=None,
         display_name="LinkedIn",
-    ),
-}
+    )
+    return metadata
+
+
+# Exact source keys from `Trend.source` fields.
+EXACT_SOURCE_METADATA: Dict[str, SourceMetadata] = _build_exact_source_metadata()
 
 # Prefix metadata catches the generated source keys like `news_bbc`, `reddit_science`.
 PREFIX_SOURCE_METADATA: Tuple[Tuple[str, SourceMetadata], ...] = (
