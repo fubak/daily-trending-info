@@ -9,6 +9,10 @@ Claude Code guidance for DailyTrending.info - AI-curated tech, science, and worl
 **Run:** `cd scripts && python main.py` | **No archive:** `--no-archive` | **Dry run:** `--dry-run`
 **Test:** `pytest tests/` | **Coverage:** `--cov=scripts` | **Single:** `pytest tests/test_design_system.py`
 
+## Tool Usage
+
+Use `sg -l python` for code searches, `rg` for text/config, `fdfind` for file finding. See `~/.claude/CLAUDE.md`.
+
 ## Environment Variables
 
 Required in `.env` or GitHub Secrets:
