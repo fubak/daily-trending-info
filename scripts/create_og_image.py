@@ -113,7 +113,8 @@ def create_og_image():
         try:
             bbox = draw.textbbox((0, 0), source, font=font_small)
             text_width = bbox[2] - bbox[0]
-        except:
+        except (AttributeError, OSError):
+            # Older Pillow versions lack textbbox; estimate width as a fallback.
             text_width = len(source) * 10
 
         badge_width = text_width + badge_padding * 2

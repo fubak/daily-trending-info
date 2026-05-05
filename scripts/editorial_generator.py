@@ -8,16 +8,40 @@ cohesive narratives. Articles are permanently retained (not archived).
 URL Structure: /articles/YYYY/MM/DD/slug/index.html
 """
 
+import html
 import json
 import logging
 import os
 import re
 import time
+from urllib.parse import urlparse
 import requests
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
+
+from json_utils import escape_control_chars_in_strings
+
+
+_SAFE_URL_SCHEMES = {"http", "https", "mailto"}
+
+
+def _safe_href(url: str) -> str:
+    """Return an HTML-attribute-safe URL, blocking dangerous schemes (javascript:, data:, etc.).
+
+    Falls back to '#' if the URL has a non-allowlisted scheme.
+    """
+    if not url:
+        return "#"
+    try:
+        parsed = urlparse(url.strip())
+    except (ValueError, AttributeError):
+        return "#"
+    # Relative URLs (no scheme) are safe; absolute ones must use an allowlisted scheme.
+    if parsed.scheme and parsed.scheme.lower() not in _SAFE_URL_SCHEMES:
+        return "#"
+    return html.escape(url, quote=True)
 
 try:
     from rate_limiter import (
@@ -737,10 +761,13 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                 rel_summary = (rel.get("summary", "") or "")[:100]
                 if len(rel.get("summary", "")) > 100:
                     rel_summary += "..."
+                rel_href = _safe_href(rel.get("url", ""))
+                rel_date_attr = html.escape(rel.get("date", ""), quote=True)
+                rel_summary = html.escape(rel_summary)
                 related_cards.append(
                     f"""
-                <a href="{rel.get('url', '')}" class="related-card">
-                    <time datetime="{rel['date']}">{rel_date}</time>
+                <a href="{rel_href}" class="related-card">
+                    <time datetime="{rel_date_attr}">{rel_date}</time>
                     <h4>{rel_title}</h4>
                     <p>{rel_summary}</p>
                 </a>"""
@@ -2259,28 +2286,10 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                 except json.JSONDecodeError:
                     pass
 
-                # Escape control characters only INSIDE quoted strings
-                # This preserves structural JSON formatting
-                def escape_string_contents(match):
-                    s = match.group(0)
-                    inner = s[1:-1]  # Remove quotes
-                    # Only escape raw control characters, not already-escaped sequences
-                    inner = inner.replace("\n", "\\n")
-                    inner = inner.replace("\r", "\\r")
-                    inner = inner.replace("\t", "\\t")
-                    # Escape other control characters (except those already handled)
-                    inner = re.sub(
-                        r"[\x00-\x08\x0b\x0c\x0e-\x1f]",
-                        lambda m: f"\\u{ord(m.group()):04x}",
-                        inner,
-                    )
-                    return f'"{inner}"'
-
-                # Match quoted strings (handles escaped quotes inside)
+                # Escape raw control characters that appear inside quoted
+                # strings (a common defect in LLM JSON output).
                 try:
-                    sanitized = re.sub(
-                        r'"(?:[^"\\]|\\.)*"', escape_string_contents, json_str
-                    )
+                    sanitized = escape_control_chars_in_strings(json_str)
                     return json.loads(sanitized)
                 except (json.JSONDecodeError, Exception):
                     pass
@@ -2288,9 +2297,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                 # Try repair + escape combination
                 try:
                     repaired = self._repair_json(json_str)
-                    sanitized = re.sub(
-                        r'"(?:[^"\\]|\\.)*"', escape_string_contents, repaired
-                    )
+                    sanitized = escape_control_chars_in_strings(repaired)
                     return json.loads(sanitized)
                 except (json.JSONDecodeError, Exception):
                     pass
