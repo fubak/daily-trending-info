@@ -3,6 +3,7 @@
 RSS Feed Generator - Generates an RSS feed from collected trends.
 """
 
+import html
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,20 +56,28 @@ def _build_content_html(
         source.replace("_", " ").title() if source else "Unknown"
     )
 
-    html_parts = [f"<h3>{title}</h3>"]
+    # Escape every dynamic value before embedding in HTML — these strings
+    # may carry titles or descriptions with <, >, &, or stray quotes.
+    title_safe = html.escape(title)
+    desc_safe = html.escape(description) if description else ""
+    why_safe = html.escape(why_matters) if why_matters else ""
+    source_safe = html.escape(source_formatted)
 
-    if description:
-        html_parts.append(f"<p>{description}</p>")
+    html_parts = [f"<h3>{title_safe}</h3>"]
 
-    if why_matters:
+    if desc_safe:
+        html_parts.append(f"<p>{desc_safe}</p>")
+
+    if why_safe:
         html_parts.append(
-            f"<blockquote><strong>Why This Matters:</strong> {why_matters}</blockquote>"
+            f"<blockquote><strong>Why This Matters:</strong> {why_safe}</blockquote>"
         )
 
-    html_parts.append(f"<p><small>Source: {source_formatted}</small></p>")
+    html_parts.append(f"<p><small>Source: {source_safe}</small></p>")
 
     if url and url.startswith("http"):
-        html_parts.append(f'<p><a href="{url}">Read full story →</a></p>')
+        url_attr = html.escape(url, quote=True)
+        html_parts.append(f'<p><a href="{url_attr}">Read full story →</a></p>')
 
     return "".join(html_parts)
 

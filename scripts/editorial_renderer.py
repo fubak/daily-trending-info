@@ -13,6 +13,7 @@ try:
         get_footer_styles,
         get_theme_script,
     )
+    from html_sanitizer import sanitize_article_html
 except ImportError:
     from scripts.shared_components import (
         build_header,
@@ -21,6 +22,7 @@ except ImportError:
         get_footer_styles,
         get_theme_script,
     )
+    from scripts.html_sanitizer import sanitize_article_html
 
 logger = __import__("logging").getLogger("pipeline")
 
@@ -51,9 +53,28 @@ def generate_article_html(
         "%B %d, %Y"
     )
 
-    # Escape for HTML attributes
-    title_escaped = article.title.replace('"', "&quot;")
-    summary_escaped = article.summary.replace('"', "&quot;")
+    # Escape for HTML attribute and text contexts. The article fields
+    # ultimately come from LLM output and must never be inlined raw.
+    title_attr = html.escape(article.title, quote=True)
+    title_text = html.escape(article.title)
+    summary_attr = html.escape(article.summary, quote=True)
+    summary_text = html.escape(article.summary)
+    mood_text = html.escape(article.mood)
+    keywords_attr = html.escape(", ".join(article.keywords), quote=True)
+    date_attr = html.escape(article.date, quote=True)
+    keyword_spans = "".join(
+        f'<span class="keyword">{html.escape(kw)}</span>' for kw in article.keywords
+    )
+    story_items = "".join(
+        f"<li>{html.escape(story)}</li>" for story in article.top_stories
+    )
+    # LLM-authored body: strip script/iframe/event handlers, keep safe tags.
+    content_safe = sanitize_article_html(article.content)
+    # JSON-LD lives inside a <script> block — use json.dumps for proper
+    # JSON escaping (handles quotes, backslashes, control chars correctly).
+    title_json = json.dumps(article.title)
+    summary_json = json.dumps(article.summary)
+    keywords_json = json.dumps(article.keywords)
 
     # Build related articles HTML
     related_html = ""
@@ -63,9 +84,7 @@ def generate_article_html(
             rel_date = datetime.strptime(rel["date"], "%Y-%m-%d").strftime(
                 "%B %d, %Y"
             )
-            rel_title = (
-                rel.get("title", "").replace("<", "&lt;").replace(">", "&gt;")
-            )
+            rel_title = html.escape(rel.get("title", ""))
             rel_summary = (rel.get("summary", "") or "")[:100]
             if len(rel.get("summary", "")) > 100:
                 rel_summary += "..."
@@ -93,22 +112,22 @@ def generate_article_html(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{article.title} | DailyTrending.info</title>
-<meta name="description" content="{summary_escaped}">
-<meta name="keywords" content="{', '.join(article.keywords)}">
+<title>{title_text} | DailyTrending.info</title>
+<meta name="description" content="{summary_attr}">
+<meta name="keywords" content="{keywords_attr}">
 <link rel="canonical" href="https://dailytrending.info{article.url}">
 <link rel="amphtml" href="https://dailytrending.info/amp{article.url}">
 
 <!-- Open Graph -->
-<meta property="og:title" content="{title_escaped}">
-<meta property="og:description" content="{summary_escaped}">
+<meta property="og:title" content="{title_attr}">
+<meta property="og:description" content="{summary_attr}">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://dailytrending.info{article.url}">
 <meta property="og:site_name" content="DailyTrending.info">
 <meta property="og:image" content="https://dailytrending.info/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="article:published_time" content="{article.date}T06:00:00Z">
+<meta property="article:published_time" content="{date_attr}T06:00:00Z">
 <meta property="article:author" content="https://twitter.com/bradshannon">
 <meta property="article:section" content="Analysis">
 
@@ -116,8 +135,8 @@ def generate_article_html(
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@bradshannon">
 <meta name="twitter:creator" content="@bradshannon">
-<meta name="twitter:title" content="{title_escaped}">
-<meta name="twitter:description" content="{summary_escaped}">
+<meta name="twitter:title" content="{title_attr}">
+<meta name="twitter:description" content="{summary_attr}">
 <meta name="twitter:image" content="https://dailytrending.info/og-image.png">
 
 <!-- Google AdSense -->
@@ -132,8 +151,8 @@ def generate_article_html(
         {{
             "@type": "NewsArticle",
             "@id": "https://dailytrending.info{article.url}#article",
-            "headline": "{title_escaped}",
-            "description": "{summary_escaped}",
+            "headline": {title_json},
+            "description": {summary_json},
             "datePublished": "{article.date}T06:00:00Z",
             "dateModified": "{article.date}T06:00:00Z",
             "author": {{
@@ -156,7 +175,7 @@ def generate_article_html(
                 "@id": "https://dailytrending.info{article.url}"
             }},
             "wordCount": {article.word_count},
-            "keywords": {json.dumps(article.keywords)},
+            "keywords": {keywords_json},
             "articleSection": "Analysis",
             "inLanguage": "en-US"
         }},
@@ -165,7 +184,7 @@ def generate_article_html(
             "itemListElement": [
                 {{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://dailytrending.info/"}},
                 {{"@type": "ListItem", "position": 2, "name": "Articles", "item": "https://dailytrending.info/articles/"}},
-                {{"@type": "ListItem", "position": 3, "name": "{title_escaped}"}}
+                {{"@type": "ListItem", "position": 3, "name": {title_json}}}
             ]
         }}
     ]
@@ -550,28 +569,28 @@ def generate_article_html(
 
     <header class="article-header">
         <div class="article-meta">
-            <time datetime="{article.date}">{date_formatted}</time>
-            <span class="mood-badge">{article.mood}</span>
+            <time datetime="{date_attr}">{date_formatted}</time>
+            <span class="mood-badge">{mood_text}</span>
             <span>{article.word_count} words</span>
         </div>
-        <h1>{article.title}</h1>
-        <p class="article-summary">{article.summary}</p>
+        <h1>{title_text}</h1>
+        <p class="article-summary">{summary_text}</p>
     </header>
 
     <div class="article-content">
-        {article.content}
+        {content_safe}
     </div>
 
     <footer class="article-footer">
         <div class="sources-section">
             <h3>Stories Referenced</h3>
             <ul>
-                {''.join(f'<li>{story}</li>' for story in article.top_stories)}
+                {story_items}
             </ul>
         </div>
 
         <div class="keywords">
-            {''.join(f'<span class="keyword">{kw}</span>' for kw in article.keywords)}
+            {keyword_spans}
         </div>
 
         {related_html}
@@ -604,9 +623,21 @@ def generate_amp_html(
         "%B %d, %Y"
     )
 
-    # Escape for HTML attributes
-    title_escaped = article.title.replace('"', "&quot;")
-    summary_escaped = article.summary.replace('"', "&quot;")
+    title_attr = html.escape(article.title, quote=True)
+    title_text = html.escape(article.title)
+    summary_attr = html.escape(article.summary, quote=True)
+    summary_text = html.escape(article.summary)
+    date_attr = html.escape(article.date, quote=True)
+    title_json = json.dumps(article.title)
+    summary_json = json.dumps(article.summary)
+    content_safe = sanitize_article_html(article.content)
+    story_items = "".join(
+        f"<li>{html.escape(story)}</li>" for story in article.top_stories[:5]
+    )
+    keyword_spans = "".join(
+        f'<span class="keyword">{html.escape(kw)}</span>'
+        for kw in article.keywords[:8]
+    )
 
     # AMP requires inline styles under 75KB and no external stylesheets except fonts
     amp_styles = f"""
@@ -732,10 +763,10 @@ def generate_amp_html(
 <head>
 <meta charset="utf-8">
 <script async src="https://cdn.ampproject.org/v0.js"></script>
-<title>{article.title} | DailyTrending.info</title>
+<title>{title_text} | DailyTrending.info</title>
 <link rel="canonical" href="https://dailytrending.info{article.url}">
 <meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
-<meta name="description" content="{summary_escaped}">
+<meta name="description" content="{summary_attr}">
 
 <!-- AMP Boilerplate -->
 <style amp-boilerplate>body{{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}}@-webkit-keyframes -amp-start{{from{{visibility:hidden}}to{{visibility:visible}}}}@-moz-keyframes -amp-start{{from{{visibility:hidden}}to{{visibility:visible}}}}@-ms-keyframes -amp-start{{from{{visibility:hidden}}to{{visibility:visible}}}}@-o-keyframes -amp-start{{from{{visibility:hidden}}to{{visibility:visible}}}}@keyframes -amp-start{{from{{visibility:hidden}}to{{visibility:visible}}}}</style><noscript><style amp-boilerplate>body{{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}}</style></noscript>
@@ -748,8 +779,8 @@ def generate_amp_html(
 {{
     "@context": "https://schema.org",
     "@type": "NewsArticle",
-    "headline": "{title_escaped}",
-    "description": "{summary_escaped}",
+    "headline": {title_json},
+    "description": {summary_json},
     "datePublished": "{article.date}T06:00:00Z",
     "dateModified": "{article.date}T06:00:00Z",
     "author": {{
@@ -792,26 +823,26 @@ def generate_amp_html(
 
 <article class="container">
     <div class="article-meta">
-        <time datetime="{article.date}">{date_formatted}</time>
+        <time datetime="{date_attr}">{date_formatted}</time>
         <span>{article.word_count} words</span>
     </div>
 
-    <h1>{article.title}</h1>
-    <p class="summary">{article.summary}</p>
+    <h1>{title_text}</h1>
+    <p class="summary">{summary_text}</p>
 
     <div class="content">
-        {article.content}
+        {content_safe}
     </div>
 
     <div class="sources">
         <h3>Stories Referenced</h3>
         <ul>
-            {''.join(f'<li>{story}</li>' for story in article.top_stories[:5])}
+            {story_items}
         </ul>
     </div>
 
     <div class="keywords">
-        {''.join(f'<span class="keyword">{kw}</span>' for kw in article.keywords[:8])}
+        {keyword_spans}
     </div>
 
     <footer>
