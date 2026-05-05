@@ -191,6 +191,10 @@ MAX_RETRY_WAIT_SECONDS = (
     10  # Cap retry waits to prevent long delays (e.g., 360s from Groq)
 )
 
+# LLM client throttling (used by editorial_generator and enrich_content)
+LLM_MIN_CALL_INTERVAL = 3.0  # Seconds between successive LLM calls (~30 req/min)
+LLM_MAX_RETRY_WAIT = MAX_RETRY_WAIT_SECONDS
+
 # Rate limiting delays (seconds)
 DELAYS = {
     "between_sources": 0.5,

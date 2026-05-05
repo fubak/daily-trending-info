@@ -16,6 +16,7 @@ import requests
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional
 
+from config import LLM_MIN_CALL_INTERVAL, LLM_MAX_RETRY_WAIT
 from json_utils import escape_control_chars_in_strings
 from llm_client import (
     call_openai_compatible,
@@ -166,9 +167,10 @@ class ContentEnricher:
     Grokipedia API for encyclopedia article fetching.
     """
 
-    # Rate limiting: minimum seconds between API calls to stay under 30 req/min
-    MIN_CALL_INTERVAL = 3.0
-    MAX_RETRY_WAIT = 10  # Cap retry waits to prevent long delays
+    # Rate limiting (sourced from config so editorial_generator and
+    # enrich_content stay in sync).
+    MIN_CALL_INTERVAL = LLM_MIN_CALL_INTERVAL
+    MAX_RETRY_WAIT = LLM_MAX_RETRY_WAIT
 
     def __init__(
         self,
