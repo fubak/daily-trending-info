@@ -311,8 +311,8 @@ class Pipeline:
             try:
                 with open(design_file) as f:
                     previous_design = json.load(f)
-            except Exception:
-                pass
+            except (OSError, json.JSONDecodeError) as e:
+                logger.warning(f"Could not load previous design.json: {e}")
 
         self.archive_manager.archive_current(design=previous_design)
 
@@ -320,23 +320,27 @@ class Pipeline:
         """Load yesterday's trends for comparison feature."""
         logger.info("[2/16] Loading yesterday's trends...")
 
-        # Try to load from most recent archive
+        # Try to load from most recent archive snapshot (each archive dir
+        # contains its own trends.json captured at archive time).
         archive_dir = self.public_dir / "archive"
         if archive_dir.exists():
-            # Find most recent archive with trends.json
-            archives = sorted(archive_dir.iterdir(), reverse=True)
+            archives = sorted(
+                (a for a in archive_dir.iterdir() if a.is_dir()), reverse=True
+            )
             for archive in archives[:3]:  # Check last 3 days
-                trends_file = self.data_dir / "trends.json"
+                trends_file = archive / "trends.json"
                 if trends_file.exists():
                     try:
                         with open(trends_file) as f:
                             self.yesterday_trends = json.load(f)
-                            logger.info(
-                                f"Loaded {len(self.yesterday_trends)} trends from previous build"
-                            )
-                            break
-                    except Exception:
-                        pass
+                        logger.info(
+                            f"Loaded {len(self.yesterday_trends)} trends from {archive.name}"
+                        )
+                        break
+                    except (OSError, json.JSONDecodeError) as e:
+                        logger.warning(
+                            f"Could not load trends from {archive.name}: {e}"
+                        )
 
         if not self.yesterday_trends:
             logger.info("No previous trends available for comparison")
@@ -857,8 +861,8 @@ class Pipeline:
             try:
                 with open(keyword_history_file) as f:
                     keyword_history = json.load(f)
-            except Exception:
-                pass
+            except (OSError, json.JSONDecodeError) as e:
+                logger.warning(f"Could not load keyword_history.json: {e}")
 
         # Build context with all new features
         context = BuildContext(
@@ -2835,8 +2839,8 @@ class Pipeline:
                     with open(metadata_file) as f:
                         article = json.load(f)
                         article_urls.append(article.get("url", ""))
-                except Exception:
-                    pass
+                except (OSError, json.JSONDecodeError) as e:
+                    logger.warning(f"Skipping malformed {metadata_file}: {e}")
 
         # Get topic page URLs (matching topic_configs in _step_generate_topic_pages)
         topic_urls = [

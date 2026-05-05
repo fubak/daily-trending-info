@@ -1,20 +1,22 @@
 # Pipeline Rules
 
-## Main Pipeline (14 steps)
+## Main Pipeline (16 steps)
 1. Archive previous day
-2. Collect trends (12 sources)
-3. Fetch images
-4. Enrich content
-5. Load yesterday's data
-6. AI design generation
-7. Editorial content
-8. Topic pages
-9. Build HTML
-10. Generate RSS
-11. PWA assets
-12. Sitemap
-13. Cleanup
-14. Save state
+2. Load yesterday's trends
+3. Collect trends (15+ sources)
+4. Fetch images
+5. Enrich content
+6. Apply fixed design
+7. Generate editorial content
+8. Build website
+9. Generate topic sub-pages (+ CMMC Watch sub-step)
+10. Fetch Media of the Day
+11. Generate Media of the Day page
+12. Generate RSS feed
+13. Generate PWA assets
+14. Generate sitemap
+15. Cleanup old archives
+16. Save pipeline data
 
 ## Quality Gates
 - MIN_TRENDS = 5 (abort if fewer)
@@ -22,7 +24,7 @@
 
 ## Data Flow
 ```
-12 Sources → trends.json → images.json → design.json → public/index.html
+15+ Sources → trends.json → images.json → design.json → public/index.html
 ```
 
 ## Output Structure

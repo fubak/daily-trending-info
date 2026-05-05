@@ -16,6 +16,8 @@ import requests
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional
 
+from json_utils import escape_control_chars_in_strings
+
 try:
     from rate_limiter import (
         get_rate_limiter,
@@ -981,25 +983,10 @@ class ContentEnricher:
                 except json.JSONDecodeError:
                     pass
 
-                # Escape control characters only INSIDE quoted strings
-                def escape_string_contents(match):
-                    s = match.group(0)
-                    inner = s[1:-1]  # Remove quotes
-                    # Only escape raw control characters
-                    inner = inner.replace("\n", "\\n")
-                    inner = inner.replace("\r", "\\r")
-                    inner = inner.replace("\t", "\\t")
-                    inner = re.sub(
-                        r"[\x00-\x08\x0b\x0c\x0e-\x1f]",
-                        lambda m: f"\\u{ord(m.group()):04x}",
-                        inner,
-                    )
-                    return f'"{inner}"'
-
+                # Escape raw control characters that appear inside quoted
+                # strings (a common defect in LLM JSON output).
                 try:
-                    sanitized = re.sub(
-                        r'"(?:[^"\\]|\\.)*"', escape_string_contents, json_str
-                    )
+                    sanitized = escape_control_chars_in_strings(json_str)
                     return json.loads(sanitized)
                 except (json.JSONDecodeError, Exception):
                     pass
@@ -1007,9 +994,7 @@ class ContentEnricher:
                 # Try repair + escape combination
                 try:
                     repaired = self._repair_json(json_str)
-                    sanitized = re.sub(
-                        r'"(?:[^"\\]|\\.)*"', escape_string_contents, repaired
-                    )
+                    sanitized = escape_control_chars_in_strings(repaired)
                     return json.loads(sanitized)
                 except (json.JSONDecodeError, Exception):
                     pass

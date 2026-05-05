@@ -300,7 +300,7 @@ ARCHIVE_SUBDIR = "archive"
 
 RSS_FEED_TITLE = "DailyTrending.info"
 RSS_FEED_DESCRIPTION = (
-    "AI-curated tech, science, and world news aggregated daily from 12+ sources"
+    "AI-curated tech, science, and world news aggregated daily from 15+ sources"
 )
 RSS_FEED_LINK = "https://dailytrending.info"
 RSS_FEED_MAX_ITEMS = 50
