@@ -14,6 +14,7 @@ Usage:
 import argparse
 import json
 import hashlib
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -21,6 +22,8 @@ from dataclasses import dataclass, asdict
 
 import requests
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger("competitor_monitor")
 
 # Monitoring sources
 MONITORING_SOURCES: Dict[str, Dict[str, Any]] = {
@@ -108,8 +111,8 @@ class CompetitorMonitor:
         if cache_path.exists():
             try:
                 return json.loads(cache_path.read_text())
-            except Exception:
-                pass
+            except (OSError, json.JSONDecodeError) as e:
+                logger.warning(f"Failed to load cache for {source_id}: {e}")
         return {"seen_urls": [], "last_check": None}
 
     def _save_cache(self, source_id: str, cache_data: Dict[str, Any]) -> None:

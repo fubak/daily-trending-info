@@ -2,7 +2,10 @@
 """Generate static OG image for DailyTrending.info"""
 
 from PIL import Image, ImageDraw, ImageFont
+import logging
 import os
+
+logger = logging.getLogger("create_og_image")
 
 
 def create_og_image():
@@ -78,10 +81,11 @@ def create_og_image():
                 break
 
         if not font_large:
-            raise Exception("No font found")
+            raise OSError("No font found in candidate list")
 
-    except Exception:
-        # Use default font
+    except (OSError, ValueError) as e:
+        # Fall back to PIL's bundled default font.
+        logger.debug(f"Custom font load failed, using default: {e}")
         font_large = ImageFont.load_default()
         font_medium = ImageFont.load_default()
         font_small = ImageFont.load_default()

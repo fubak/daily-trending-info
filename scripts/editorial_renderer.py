@@ -14,6 +14,7 @@ try:
         get_theme_script,
     )
     from html_sanitizer import sanitize_article_html
+    from date_utils import format_long_date
 except ImportError:
     from scripts.shared_components import (
         build_header,
@@ -23,6 +24,7 @@ except ImportError:
         get_theme_script,
     )
     from scripts.html_sanitizer import sanitize_article_html
+    from scripts.date_utils import format_long_date
 
 logger = __import__("logging").getLogger("pipeline")
 
@@ -49,9 +51,7 @@ def generate_article_html(
     related_articles: Optional[List[Dict]] = None,
 ) -> str:
     """Generate full HTML page for an editorial article."""
-    date_formatted = datetime.strptime(article.date, "%Y-%m-%d").strftime(
-        "%B %d, %Y"
-    )
+    date_formatted = format_long_date(article.date)
 
     # Escape for HTML attribute and text contexts. The article fields
     # ultimately come from LLM output and must never be inlined raw.
@@ -81,9 +81,7 @@ def generate_article_html(
     if related_articles:
         related_cards = []
         for rel in related_articles:
-            rel_date = datetime.strptime(rel["date"], "%Y-%m-%d").strftime(
-                "%B %d, %Y"
-            )
+            rel_date = format_long_date(rel["date"])
             rel_title = html.escape(rel.get("title", ""))
             rel_summary = (rel.get("summary", "") or "")[:100]
             if len(rel.get("summary", "")) > 100:
@@ -619,9 +617,7 @@ def generate_amp_html(
     tokens: Dict,
 ) -> str:
     """Generate AMP HTML page for an editorial article."""
-    date_formatted = datetime.strptime(article.date, "%Y-%m-%d").strftime(
-        "%B %d, %Y"
-    )
+    date_formatted = format_long_date(article.date)
 
     title_attr = html.escape(article.title, quote=True)
     title_text = html.escape(article.title)

@@ -874,8 +874,8 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                             # This is a quota exhaustion - mark provider as exhausted
                             mark_provider_exhausted("google", "daily quota exceeded")
                             return None
-                    except Exception:
-                        pass
+                    except (ValueError, KeyError) as parse_err:
+                        logger.debug(f"Could not parse 429 body for quota check: {parse_err}")
 
                     # Temporary rate limit - wait and retry
                     retry_after = response.headers.get("Retry-After", "10")
@@ -992,8 +992,8 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                             # This is a quota exhaustion - mark provider as exhausted
                             mark_provider_exhausted("google", "daily quota exceeded")
                             return None
-                    except Exception:
-                        pass
+                    except (ValueError, KeyError) as parse_err:
+                        logger.debug(f"Could not parse 429 body for quota check: {parse_err}")
 
                     # Temporary rate limit - wait and retry
                     retry_after = response.headers.get("Retry-After", "10")
