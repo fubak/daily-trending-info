@@ -29,9 +29,11 @@ _SAFE_URL_SCHEMES = {"http", "https", "mailto"}
 
 def _safe_href(url: str) -> str:
     """Return an HTML-attribute-safe URL, blocking dangerous schemes."""
+    if not url:
+        return "#"
     try:
         from urllib.parse import urlparse
-        parsed = urlparse(url)
+        parsed = urlparse(url.strip())
         if parsed.scheme and parsed.scheme.lower() not in _SAFE_URL_SCHEMES:
             return "#"
     except Exception:

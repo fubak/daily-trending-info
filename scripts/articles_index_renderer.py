@@ -1126,3 +1126,5 @@ def generate_articles_index_html(
 </body>
 </html>"""
 
+    return html
+
