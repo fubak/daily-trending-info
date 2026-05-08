@@ -15,6 +15,7 @@ try:
     )
     from html_sanitizer import sanitize_article_html
     from date_utils import format_long_date
+    from design_tokens import validate_design_tokens
 except ImportError:
     from scripts.shared_components import (
         build_header,
@@ -25,6 +26,7 @@ except ImportError:
     )
     from scripts.html_sanitizer import sanitize_article_html
     from scripts.date_utils import format_long_date
+    from scripts.design_tokens import validate_design_tokens
 
 logger = __import__("logging").getLogger("pipeline")
 
@@ -52,6 +54,7 @@ def generate_article_html(
 ) -> str:
     """Generate full HTML page for an editorial article."""
     date_formatted = format_long_date(article.date)
+    tokens = validate_design_tokens(tokens)
 
     # Escape for HTML attribute and text contexts. The article fields
     # ultimately come from LLM output and must never be inlined raw.
@@ -618,6 +621,7 @@ def generate_amp_html(
 ) -> str:
     """Generate AMP HTML page for an editorial article."""
     date_formatted = format_long_date(article.date)
+    tokens = validate_design_tokens(tokens)
 
     title_attr = html.escape(article.title, quote=True)
     title_text = html.escape(article.title)

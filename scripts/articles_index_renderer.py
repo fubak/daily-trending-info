@@ -1,5 +1,6 @@
 """HTML renderer for the /articles/ index page."""
 
+import html as html_mod
 import json
 from datetime import datetime
 from typing import Dict, List
@@ -12,6 +13,7 @@ try:
         get_footer_styles,
         get_theme_script,
     )
+    from design_tokens import validate_design_tokens
 except ImportError:
     from scripts.shared_components import (
         build_header,
@@ -20,6 +22,7 @@ except ImportError:
         get_footer_styles,
         get_theme_script,
     )
+    from scripts.design_tokens import validate_design_tokens
 
 logger = __import__("logging").getLogger("pipeline")
 
@@ -42,7 +45,7 @@ def generate_articles_index_html(
     - Keyboard navigation
     - URL state persistence
     """
-
+    tokens = validate_design_tokens(tokens)
 
     # Calculate stats
     total_articles = len(articles)
@@ -51,6 +54,11 @@ def generate_articles_index_html(
 
     # Get unique moods for filter
     moods = sorted(set(a.get("mood", "informative") for a in articles))
+    mood_options_html = "\n".join(
+        f'<option value="{html_mod.escape(m.lower(), quote=True)}">'
+        f"{html_mod.escape(m.title())}</option>"
+        for m in moods
+    )
 
     # Escape article data for JSON embedding
     # The data comes from our own metadata files (trusted), but we still escape for HTML safety
@@ -669,7 +677,7 @@ def generate_articles_index_html(
             <label class="filter-label" for="mood-filter">Mood:</label>
             <select id="mood-filter">
                 <option value="all">All Moods</option>
-                {chr(10).join(f'<option value="{m.lower()}">{m.title()}</option>' for m in moods)}
+                {mood_options_html}
             </select>
         </div>
 

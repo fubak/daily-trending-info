@@ -2,6 +2,7 @@
 Shared HTML components for consistent header/footer across all pages.
 """
 
+import html
 from datetime import datetime
 from typing import Optional
 
@@ -44,6 +45,7 @@ def build_header(active_page: str = "", date_str: Optional[str] = None) -> str:
     """
     if date_str is None:
         date_str = datetime.now().strftime("%B %d, %Y")
+    date_str = html.escape(date_str)
 
     nav_links = get_nav_links(active_page)
 
@@ -96,8 +98,13 @@ def build_footer(date_str: Optional[str] = None, style_info: str = "") -> str:
     """
     if date_str is None:
         date_str = datetime.now().strftime("%B %d, %Y")
+    date_str = html.escape(date_str)
 
-    style_line = f'<p class="footer-description">{style_info}</p>' if style_info else ""
+    style_line = (
+        f'<p class="footer-description">{html.escape(style_info)}</p>'
+        if style_info
+        else ""
+    )
 
     return f"""
     <footer class="footer" role="contentinfo">

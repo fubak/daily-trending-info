@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from image_utils import validate_image_url, get_image_quality_score
+from design_tokens import safe_color, safe_font, safe_mode
 from shared_components import (
     build_header,
     build_footer,
@@ -364,21 +365,25 @@ def build_topic_page(
     hero_image: Dict,
 ) -> str:
     """Build HTML for a topic sub-page with shared header/footer."""
+    # Validate CSS-bound design tokens before they are inlined into <style>.
     colors = {
-        "bg": design.get("color_bg", "#0a0a0a"),
-        "card_bg": design.get("color_card_bg", "#18181b"),
-        "text": design.get("color_text", "#ffffff"),
-        "muted": design.get("color_muted", "#a1a1aa"),
-        "border": design.get("color_border", "#27272a"),
-        "accent": design.get("color_accent", "#6366f1"),
-        "accent_secondary": design.get("color_accent_secondary", "#8b5cf6"),
+        "bg": safe_color(design.get("color_bg"), "#0a0a0a"),
+        "card_bg": safe_color(design.get("color_card_bg"), "#18181b"),
+        "text": safe_color(design.get("color_text"), "#ffffff"),
+        "muted": safe_color(design.get("color_muted"), "#a1a1aa"),
+        "border": safe_color(design.get("color_border"), "#27272a"),
+        "accent": safe_color(design.get("color_accent"), "#6366f1"),
+        "accent_secondary": safe_color(
+            design.get("color_accent_secondary"), "#8b5cf6"
+        ),
     }
-    font_primary = design.get("font_primary", "Space Grotesk")
-    font_secondary = design.get("font_secondary", "Inter")
+    font_primary = safe_font(design.get("font_primary"), "Space Grotesk")
+    font_secondary = safe_font(design.get("font_secondary"), "Inter")
     radius = design.get("card_radius", "1rem")
     card_padding = design.get("card_padding", "1.5rem")
     transition = design.get("transition_speed", "200ms")
     base_mode = "dark-mode" if design.get("is_dark_mode", True) else "light-mode"
+    base_mode = safe_mode(base_mode, "dark-mode")
 
     now = datetime.now()
     date_str = now.strftime("%B %d, %Y")

@@ -22,6 +22,7 @@ from typing import List, Dict, Optional, Set
 import logging
 
 from config import setup_logging, CMMC_KEYWORDS
+from design_tokens import safe_color, safe_font
 
 logger = setup_logging("cmmc_page_generator")
 
@@ -863,20 +864,22 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
         logger.warning("No CMMC trends found, generating empty page")
         cmmc_trends = []
 
-    # Setup colors and fonts
+    # Setup colors and fonts (validate tokens before they reach <style>)
     colors = {
-        "bg": design.get("color_bg", "#0a0a0a"),
-        "text": design.get("color_text", "#ffffff"),
-        "muted": design.get("color_muted", "#a1a1aa"),
-        "border": design.get("color_border", "#27272a"),
-        "card_bg": design.get("color_card_bg", "#18181b"),
-        "accent": design.get("color_accent", "#3b82f6"),  # Blue for CMMC
-        "accent_secondary": design.get("color_accent_secondary", "#60a5fa"),
+        "bg": safe_color(design.get("color_bg"), "#0a0a0a"),
+        "text": safe_color(design.get("color_text"), "#ffffff"),
+        "muted": safe_color(design.get("color_muted"), "#a1a1aa"),
+        "border": safe_color(design.get("color_border"), "#27272a"),
+        "card_bg": safe_color(design.get("color_card_bg"), "#18181b"),
+        "accent": safe_color(design.get("color_accent"), "#3b82f6"),  # Blue for CMMC
+        "accent_secondary": safe_color(
+            design.get("color_accent_secondary"), "#60a5fa"
+        ),
     }
 
     fonts = {
-        "primary": design.get("font_primary", "Space Grotesk"),
-        "secondary": design.get("font_secondary", "Inter"),
+        "primary": safe_font(design.get("font_primary"), "Space Grotesk"),
+        "secondary": safe_font(design.get("font_secondary"), "Inter"),
     }
 
     # Date info
