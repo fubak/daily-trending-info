@@ -14,6 +14,7 @@ try:
         get_theme_script,
     )
     from design_tokens import validate_design_tokens
+    from pipeline_types import DesignTokens
 except ImportError:
     from scripts.shared_components import (
         build_header,
@@ -23,13 +24,14 @@ except ImportError:
         get_theme_script,
     )
     from scripts.design_tokens import validate_design_tokens
+    from scripts.pipeline_types import DesignTokens
 
 logger = __import__("logging").getLogger("pipeline")
 
 
 def generate_articles_index_html(
     articles: List[Dict],
-    tokens: Dict,
+    tokens: DesignTokens,
 ) -> str:
     """
     Generate an enhanced index page with search, filter, sort, and pagination.

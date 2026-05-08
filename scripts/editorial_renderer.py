@@ -2,7 +2,6 @@
 
 import html
 import json
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 try:
@@ -16,6 +15,7 @@ try:
     from html_sanitizer import sanitize_article_html
     from date_utils import format_long_date
     from design_tokens import validate_design_tokens
+    from pipeline_types import DesignTokens
 except ImportError:
     from scripts.shared_components import (
         build_header,
@@ -27,6 +27,7 @@ except ImportError:
     from scripts.html_sanitizer import sanitize_article_html
     from scripts.date_utils import format_long_date
     from scripts.design_tokens import validate_design_tokens
+    from scripts.pipeline_types import DesignTokens
 
 logger = __import__("logging").getLogger("pipeline")
 
@@ -39,7 +40,7 @@ except ImportError:
 
 def generate_article_html(
     article: Any,
-    tokens: Dict,
+    tokens: DesignTokens,
     related_articles: Optional[List[Dict]] = None,
 ) -> str:
     """Generate full HTML page for an editorial article."""
@@ -607,7 +608,7 @@ def generate_article_html(
 
 def generate_amp_html(
     article: Any,
-    tokens: Dict,
+    tokens: DesignTokens,
 ) -> str:
     """Generate AMP HTML page for an editorial article."""
     date_formatted = format_long_date(article.date)

@@ -15,13 +15,11 @@ Features:
 """
 
 import html as html_module
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Set
-import logging
 
-from config import setup_logging, CMMC_KEYWORDS, STRING_LIMITS
+from config import setup_logging, STRING_LIMITS
 from design_tokens import safe_color, safe_font
 from url_safety import safe_href, safe_image_src
 from pipeline_types import DesignTokens, ImageDict, TrendDict

@@ -10,7 +10,7 @@ import html as html_module
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Dict, List, Set
 
 from config import STRING_LIMITS
 from image_utils import validate_image_url, get_image_quality_score
@@ -395,12 +395,14 @@ def build_topic_page(
     hero_image_url = ""
     hero_image_alt = ""
     if hero_image:
-        hero_image_url = str(
+        # safe_image_src enforces http(s)/relative and HTML-escapes the
+        # result so the URL can't break out of the CSS background-image()
+        # context or carry a javascript:/data: scheme.
+        hero_image_url = safe_image_src(
             hero_image.get(
                 "url_large",
                 hero_image.get("url_medium", hero_image.get("url", "")),
             )
-            or ""
         )
         hero_image_alt = str(
             hero_image.get(
