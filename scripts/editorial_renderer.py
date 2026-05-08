@@ -40,9 +40,9 @@ def _safe_href(url: str) -> str:
     try:
         from urllib.parse import urlparse
         parsed = urlparse(url.strip())
-        if parsed.scheme and parsed.scheme.lower() not in _SAFE_URL_SCHEMES:
-            return "#"
-    except Exception:
+    except (ValueError, AttributeError):
+        return "#"
+    if parsed.scheme and parsed.scheme.lower() not in _SAFE_URL_SCHEMES:
         return "#"
     return html.escape(url, quote=True)
 

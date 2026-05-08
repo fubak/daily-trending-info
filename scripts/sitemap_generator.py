@@ -10,9 +10,12 @@ Includes:
 """
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
+
+logger = logging.getLogger("sitemap_generator")
 import xml.etree.ElementTree as ET
 
 
@@ -138,7 +141,8 @@ def generate_sitemap(
                                 ET.SubElement(amp_page, "lastmod").text = article_date
                                 ET.SubElement(amp_page, "changefreq").text = "never"
                                 ET.SubElement(amp_page, "priority").text = "0.6"
-                except Exception:
+                except (OSError, json.JSONDecodeError, KeyError) as e:
+                    logger.debug(f"Skipped article metadata {metadata_file}: {e}")
                     continue
 
     # Add extra URLs (topic pages, etc.) - skip articles already added above
@@ -409,7 +413,8 @@ def generate_news_sitemap(
                         ET.SubElement(article_news, "news:title").text = article_title[
                             :200
                         ]
-                except Exception:
+                except (OSError, json.JSONDecodeError, KeyError) as e:
+                    logger.debug(f"Skipped news sitemap entry {metadata_file}: {e}")
                     continue
 
     # Add proper indentation
@@ -492,5 +497,6 @@ def count_urls_in_sitemap(sitemap_path: Path) -> int:
             # Try without namespace
             urls = root.findall(".//url")
         return len(urls)
-    except Exception:
+    except (OSError, ET.ParseError) as e:
+        logger.debug(f"Could not count sitemap URLs in {sitemap_path}: {e}")
         return 0

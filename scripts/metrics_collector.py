@@ -12,7 +12,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 try:
     import psutil
@@ -162,7 +162,7 @@ class MetricsCollector:
 
         return output_path
 
-    def _normalize_value(self, value: Any) -> Any:
+    def _normalize_value(self, value: Any) -> Union[dict, list, str, float, int, bool, None]:
         """Convert non-JSON-native values recursively into serializable values."""
         if isinstance(value, datetime):
             return value.isoformat()

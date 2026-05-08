@@ -335,7 +335,7 @@ class TrendCollector:
                 payload = json.load(f)
             if isinstance(payload, dict):
                 self.persistent_feed_cache = payload
-        except Exception as exc:
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
             logger.debug(f"Failed to load persistent feed cache: {exc}")
             self.persistent_feed_cache = {}
 
@@ -1673,16 +1673,15 @@ class TrendCollector:
 
         return trends
 
-    def _collect_cmmc(self) -> List[Trend]:
-        """Collect CMMC and federal compliance news from specialized RSS feeds.
+    @staticmethod
+    def _content_matches_cmmc_keywords(title: str, description: str) -> bool:
+        """Return True if title+description contains any CMMC keyword."""
+        haystack = (title + " " + description).lower()
+        return any(kw.lower() in haystack for kw in CMMC_KEYWORDS)
 
-        Filters content by CMMC-relevant keywords to ensure relevance.
-        Used for the standalone CMMC Watch page.
-        """
+    def _collect_cmmc_rss(self, rss_limit: int, keyword_scan_limit: int) -> List[Trend]:
+        """Collect from CMMC-focused RSS feeds, filtered by CMMC_KEYWORDS."""
         trends: List[Trend] = []
-        rss_limit = self._get_limit("cmmc_rss", 8)
-        keyword_scan_limit = max(20, rss_limit * 3)
-        reddit_limit = max(6, min(15, rss_limit * 2))
         feeds = self._collector_sources("cmmc_rss")
         for source in feeds:
             try:
@@ -1696,47 +1695,44 @@ class TrendCollector:
                 feed = feedparser.parse(response.content)
 
                 for entry in feed.entries[:keyword_scan_limit]:
-                    title = entry.get("title", "").strip()
+                    title = re.sub(r"\s+", " ", entry.get("title", "").strip())
                     description = entry.get("summary", "")
 
-                    # Clean up title
-                    title = re.sub(r"\s+", " ", title)
-
-                    # Only include English content
                     if not title or len(title) < 10 or not is_english_text(title):
                         continue
+                    if not self._content_matches_cmmc_keywords(title, description):
+                        continue
 
-                    # Check if content matches CMMC keywords
-                    content_lower = (title + " " + description).lower()
-                    is_cmmc_relevant = any(
-                        keyword.lower() in content_lower for keyword in CMMC_KEYWORDS
-                    )
+                    trends.append(Trend(
+                        title=title,
+                        source=source.source_key or source.key,
+                        url=entry.get("link"),
+                        description=self._clean_html(description),
+                        category="cmmc",
+                        score=1.6,  # Good quality federal news
+                        timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                        image_url=self._extract_image_from_entry(entry),
+                    ))
+                    if len(trends) >= rss_limit * max(1, len(feeds)):
+                        break
 
-                    if is_cmmc_relevant:
-                        trend = Trend(
-                            title=title,
-                            source=source.source_key or source.key,
-                            url=entry.get("link"),
-                            description=self._clean_html(description),
-                            category="cmmc",  # Explicit categorization
-                            score=1.6,  # Good quality federal news
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
-                            image_url=self._extract_image_from_entry(entry),
-                        )
-                        trends.append(trend)
-                        if len(trends) >= rss_limit * max(1, len(feeds)):
-                            break
-
-            except Exception as e:
+            except (requests.RequestException, ValueError, KeyError) as e:
                 logger.warning(f"CMMC {source.name} RSS error: {e}")
                 continue
 
             time.sleep(self.request_delay)
 
         logger.info(f"CMMC collector found {len(trends)} stories from RSS feeds")
+        return trends
 
+    def _collect_cmmc_reddit(self, reddit_limit: int) -> List[Trend]:
+        """Collect from CMMC-related subreddits.
+
+        Posts in r/CMMC and r/NISTControls are kept unconditionally;
+        posts elsewhere must match CMMC_KEYWORDS.
+        """
+        trends: List[Trend] = []
         cmmc_subreddits = self._collector_sources("cmmc_reddit")
-        reddit_count = 0
         for source in cmmc_subreddits:
             try:
                 response = self._fetch_source_feed(
@@ -1749,62 +1745,65 @@ class TrendCollector:
                 feed = feedparser.parse(response.content)
 
                 for entry in feed.entries[:reddit_limit]:
-                    title = entry.get("title", "").strip()
+                    title = re.sub(r"\s+", " ", entry.get("title", "").strip())
                     description = entry.get("summary", "")
-
-                    # Clean up title
-                    title = re.sub(r"\s+", " ", title)
 
                     if not title or len(title) < 10:
                         continue
 
-                    # For CMMC and NISTControls subreddits, include all posts
-                    # For others, apply keyword filter
-                    include_post = False
-                    if source.key in ["cmmc_reddit_cmmc", "cmmc_reddit_nistcontrols"]:
-                        include_post = True  # These are highly relevant by default
+                    relevant_subreddits = {"cmmc_reddit_cmmc", "cmmc_reddit_nistcontrols"}
+                    if source.key in relevant_subreddits:
+                        include_post = True
                     else:
-                        # Check if content matches CMMC keywords
-                        content_lower = (title + " " + description).lower()
-                        include_post = any(
-                            keyword.lower() in content_lower
-                            for keyword in CMMC_KEYWORDS
+                        include_post = self._content_matches_cmmc_keywords(
+                            title, description
                         )
 
-                    if include_post:
-                        trend = Trend(
-                            title=title,
-                            source=source.source_key or source.key,
-                            url=entry.get("link"),
-                            description=self._clean_html(description),
-                            category="cmmc",
-                            score=1.4,  # Reddit community content
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
-                            image_url=self._extract_image_from_entry(entry),
-                        )
-                        trends.append(trend)
-                        reddit_count += 1
+                    if not include_post:
+                        continue
 
-            except Exception as e:
+                    trends.append(Trend(
+                        title=title,
+                        source=source.source_key or source.key,
+                        url=entry.get("link"),
+                        description=self._clean_html(description),
+                        category="cmmc",
+                        score=1.4,  # Reddit community content
+                        timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                        image_url=self._extract_image_from_entry(entry),
+                    ))
+
+            except (requests.RequestException, ValueError, KeyError) as e:
                 logger.warning(f"CMMC Reddit {source.name} error: {e}")
                 continue
 
             time.sleep(self.request_delay)
 
-        logger.info(f"CMMC collector: {len(trends)} total ({reddit_count} from Reddit)")
+        return trends
 
-        # Collect from LinkedIn influencers (if configured)
-        linkedin_count = 0
+    def _collect_cmmc(self) -> List[Trend]:
+        """Coordinate CMMC collection across RSS, Reddit, and LinkedIn sources."""
+        rss_limit = self._get_limit("cmmc_rss", 8)
+        keyword_scan_limit = max(20, rss_limit * 3)
+        reddit_limit = max(6, min(15, rss_limit * 2))
+
+        rss_trends = self._collect_cmmc_rss(rss_limit, keyword_scan_limit)
+        reddit_trends = self._collect_cmmc_reddit(reddit_limit)
+        logger.info(
+            f"CMMC collector: {len(rss_trends) + len(reddit_trends)} total "
+            f"({len(reddit_trends)} from Reddit)"
+        )
+
+        linkedin_trends: List[Trend] = []
         if CMMC_LINKEDIN_PROFILES:
             linkedin_trends = self._collect_cmmc_linkedin()
-            trends.extend(linkedin_trends)
-            linkedin_count = len(linkedin_trends)
-            logger.info(f"CMMC LinkedIn: {linkedin_count} posts from influencers")
+            logger.info(f"CMMC LinkedIn: {len(linkedin_trends)} posts from influencers")
 
+        trends = rss_trends + reddit_trends + linkedin_trends
         logger.info(
             f"CMMC total: {len(trends)} "
-            f"(RSS: {len(trends) - reddit_count - linkedin_count}, "
-            f"Reddit: {reddit_count}, LinkedIn: {linkedin_count})"
+            f"(RSS: {len(rss_trends)}, "
+            f"Reddit: {len(reddit_trends)}, LinkedIn: {len(linkedin_trends)})"
         )
         return trends
 

@@ -697,7 +697,7 @@ class ContentEnricher:
                 try:
                     sanitized = escape_control_chars_in_strings(json_str)
                     return json.loads(sanitized)
-                except (json.JSONDecodeError, Exception):
+                except json.JSONDecodeError:
                     pass
 
                 # Try repair + escape combination
@@ -705,7 +705,7 @@ class ContentEnricher:
                     repaired = self._repair_json(json_str)
                     sanitized = escape_control_chars_in_strings(repaired)
                     return json.loads(sanitized)
-                except (json.JSONDecodeError, Exception):
+                except json.JSONDecodeError:
                     pass
 
                 # Last resort: strip all control chars except structural whitespace
@@ -713,10 +713,10 @@ class ContentEnricher:
                     stripped = re.sub(r"[\x00-\x09\x0b\x0c\x0e-\x1f]", " ", json_str)
                     repaired = self._repair_json(stripped)
                     return json.loads(repaired)
-                except (json.JSONDecodeError, Exception):
+                except json.JSONDecodeError:
                     pass
 
-        except (json.JSONDecodeError, Exception) as e:
+        except (json.JSONDecodeError, ValueError) as e:
             logger.warning(f"JSON parse error: {e}")
 
         return None

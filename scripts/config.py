@@ -249,6 +249,9 @@ PIXABAY_KEYS = get_api_keys("PIXABAY_API_KEY")
 GROQ_KEYS = get_api_keys("GROQ_API_KEY")
 OPENROUTER_KEYS = get_api_keys("OPENROUTER_API_KEY")
 
+# OpenRouter rate-limit / credits introspection endpoint.
+OPENROUTER_KEY_INFO_URL = "https://openrouter.ai/api/v1/key"
+
 # ============================================================================
 # DEDUPLICATION
 # ============================================================================
