@@ -107,7 +107,7 @@ class MetricsCollector:
             proc = psutil.Process()
             rss_mb = proc.memory_info().rss / (1024 * 1024)
             self.resources[f"{label}_rss_mb"] = round(rss_mb, 2)
-        except Exception:
+        except Exception:  # noqa: BLE001 — psutil snapshots are best-effort; never propagate
             # Resource snapshots are best-effort and should never fail pipeline.
             return
 
@@ -153,7 +153,7 @@ class MetricsCollector:
                     payload = json.load(f)
                 if isinstance(payload, list):
                     existing = payload
-            except Exception:
+            except (OSError, json.JSONDecodeError, ValueError):
                 existing = []
 
         existing.append(self._normalize_value(run_record))

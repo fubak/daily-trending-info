@@ -258,7 +258,7 @@ def generate_rss_feed(
         # Remove extra blank lines and fix declaration
         lines = [line for line in pretty_xml.split("\n") if line.strip()]
         pretty_xml = "\n".join(lines)
-    except Exception:
+    except (ValueError, AttributeError, TypeError):
         pretty_xml = f'<?xml version="1.0" encoding="UTF-8"?>\n{xml_string}'
 
     logger.info(f"Generated RSS feed with {items_added} items")

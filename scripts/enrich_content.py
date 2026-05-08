@@ -372,7 +372,7 @@ class ContentEnricher:
                     continue
                 logger.warning(f"Google AI failed: {e}")
                 return None
-            except Exception as e:
+            except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
                 logger.warning(f"Google AI failed: {e}")
                 return None
 
@@ -492,7 +492,7 @@ class ContentEnricher:
                     continue
                 logger.warning(f"Google AI structured output failed: {e}")
                 return None
-            except Exception as e:
+            except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
                 logger.warning(f"Google AI structured output failed: {e}")
                 return None
 
@@ -625,7 +625,7 @@ class ContentEnricher:
                         continue
                     logger.warning(f"Hugging Face API error with {model}: {e}")
                     break  # Try next model
-                except Exception as e:
+                except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
                     logger.warning(f"Hugging Face API error with {model}: {e}")
                     break  # Try next model
 

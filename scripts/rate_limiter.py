@@ -219,7 +219,7 @@ class RateLimiter:
                 # Assume available but unknown status
                 return RateLimitStatus(is_available=True)
 
-        except Exception as e:
+        except (requests.RequestException, ValueError, KeyError, AttributeError) as e:
             logger.warning(f"Failed to check OpenRouter rate limits: {e}")
             # Assume available on error
             return RateLimitStatus(is_available=True)
@@ -432,7 +432,7 @@ class RateLimiter:
             else:
                 return OpenRouterCredits(error=f"API returned {response.status_code}")
 
-        except Exception as e:
+        except (requests.RequestException, ValueError, KeyError, AttributeError) as e:
             return OpenRouterCredits(error=str(e))
 
     def mark_provider_exhausted(

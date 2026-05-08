@@ -22,6 +22,8 @@ import json
 import argparse
 import re
 import time
+
+import requests
 from datetime import datetime
 from pathlib import Path
 from dataclasses import asdict
@@ -112,7 +114,7 @@ class Pipeline:
         start = time.perf_counter()
         try:
             step_fn()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — pipeline runner must record any step failure then re-raise
             duration_ms = (time.perf_counter() - start) * 1000
             self.metrics.record_step(
                 step_name, duration_ms, success=False, error=str(exc)
@@ -277,7 +279,7 @@ class Pipeline:
 
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — pipeline top-level catch-all so failures are logged + traceback printed
             logger.error("=" * 60)
             logger.error(f"PIPELINE FAILED: {e}")
             logger.error("=" * 60)
@@ -975,7 +977,7 @@ class Pipeline:
                 1 if self.media_data.get("video_of_day") else 0,
             )
 
-        except Exception as e:
+        except (requests.RequestException, OSError, KeyError, ValueError) as e:
             logger.warning(f"Media of the Day fetch failed: {e}")
             self.media_data = None
             self.metrics.set_counter("has_media_image", 0)

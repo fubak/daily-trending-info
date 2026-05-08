@@ -183,7 +183,7 @@ def call_openai_compatible(
                     continue
                 logger.warning(f"{spec.name}/{model} failed: {e}")
                 break  # Try next model
-            except Exception as e:
+            except (requests.RequestException, ValueError, KeyError, IndexError, AttributeError) as e:
                 logger.warning(f"{spec.name}/{model} failed: {e}")
                 break  # Try next model
 

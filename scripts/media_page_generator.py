@@ -16,9 +16,11 @@ from typing import Any, Dict
 try:
     from design_tokens import safe_color, safe_font, safe_mode
     from url_safety import safe_href, safe_image_src
+    from pipeline_types import DesignTokens, MediaData
 except ImportError:
     from scripts.design_tokens import safe_color, safe_font, safe_mode
     from scripts.url_safety import safe_href, safe_image_src
+    from scripts.pipeline_types import DesignTokens, MediaData
 
 from shared_components import (
     build_header,
@@ -46,7 +48,7 @@ def _safe_str(val: Any, default: str = "") -> str:
     return str(val)
 
 
-def build_media_page(media_data: Dict, design: Dict) -> str:
+def build_media_page(media_data: MediaData, design: DesignTokens) -> str:
     """Build and return the HTML string for the Media of the Day page."""
     now = datetime.now()
     date_str = now.strftime("%B %d, %Y")
@@ -456,8 +458,8 @@ def build_media_page(media_data: Dict, design: Dict) -> str:
 
 def generate_media_page(
     public_dir: Path,
-    media_data: Dict,
-    design_data: Dict,
+    media_data: MediaData,
+    design_data: DesignTokens,
 ) -> bool:
     """Build and write the /media/index.html page.
 
@@ -470,6 +472,6 @@ def generate_media_page(
         (media_dir / "index.html").write_text(page_html, encoding="utf-8")
         logger.info(f"Media page saved to {media_dir / 'index.html'}")
         return True
-    except Exception as e:
+    except (OSError, KeyError, ValueError, TypeError) as e:
         logger.warning(f"Failed to generate media page: {e}")
         return False

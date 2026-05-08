@@ -151,7 +151,7 @@ def log_operation(
             extra={**metadata, "duration_ms": round(duration_ms, 2), "success": True},
         )
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — operation_logger wraps arbitrary user code; re-raises after logging
         duration_ms = (time.time() - start_time) * 1000
 
         logger.error(
@@ -225,7 +225,7 @@ def log_api_call(
 
                 return result
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 — log_function decorator wraps arbitrary user code; re-raises after logging
                 duration_ms = (time.time() - start_time) * 1000
 
                 logger.error(
@@ -338,7 +338,7 @@ class ErrorCollector:
         """
         try:
             yield
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — error-collecting context manager wraps arbitrary user code
             self.errors.append(
                 {
                     "operation": operation,

@@ -135,7 +135,7 @@ def fetch_linkedin_posts(
             # Small delay between profiles to be respectful
             time.sleep(1)
 
-        except Exception as e:
+        except (requests.RequestException, ValueError, KeyError, AttributeError) as e:
             logger.warning(f"Failed to fetch posts from {profile_url}: {e}")
             continue
 
@@ -223,7 +223,7 @@ def _parse_linkedin_item(item: Dict) -> Optional[LinkedInPost]:
             shares=shares,
         )
 
-    except Exception as e:
+    except (KeyError, ValueError, AttributeError, TypeError) as e:
         logger.debug(f"Failed to parse LinkedIn item: {e}")
         return None
 
@@ -337,7 +337,7 @@ def test_connection() -> bool:
             f"Apify connection OK - User: {user_info.get('username', 'unknown')}"
         )
         return True
-    except Exception as e:
+    except (requests.RequestException, ValueError, KeyError, AttributeError) as e:
         logger.error(f"Apify connection failed: {e}")
         return False
 

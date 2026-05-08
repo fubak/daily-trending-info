@@ -16,6 +16,7 @@ from config import STRING_LIMITS
 from image_utils import validate_image_url, get_image_quality_score
 from design_tokens import safe_color, safe_font, safe_mode
 from url_safety import safe_href, safe_image_src
+from pipeline_types import DesignTokens, ImageDict, TrendDict
 from shared_components import (
     build_header,
     build_footer,
@@ -362,9 +363,9 @@ def should_generate_topic_page(topic_trends: List[Dict], min_stories: int = 3) -
 
 def build_topic_page(
     config: Dict,
-    trends: List[Dict],
-    design: Dict,
-    hero_image: Dict,
+    trends: List[TrendDict],
+    design: DesignTokens,
+    hero_image: ImageDict,
 ) -> str:
     """Build HTML for a topic sub-page with shared header/footer."""
     # Validate CSS-bound design tokens before they are inlined into <style>.
@@ -1071,9 +1072,9 @@ def build_topic_page(
 
 def generate_all_topic_pages(
     public_dir: Path,
-    trends_data: List[Dict],
-    images_data: List[Dict],
-    design_data: Dict,
+    trends_data: List[TrendDict],
+    images_data: List[ImageDict],
+    design_data: DesignTokens,
 ) -> int:
     """Build and write all topic sub-pages.
 

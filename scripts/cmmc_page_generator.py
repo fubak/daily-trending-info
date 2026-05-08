@@ -24,11 +24,12 @@ import logging
 from config import setup_logging, CMMC_KEYWORDS, STRING_LIMITS
 from design_tokens import safe_color, safe_font
 from url_safety import safe_href, safe_image_src
+from pipeline_types import DesignTokens, ImageDict, TrendDict
 
 logger = setup_logging("cmmc_page_generator")
 
 
-def filter_cmmc_trends(trends: List[Dict]) -> List[Dict]:
+def filter_cmmc_trends(trends: List[TrendDict]) -> List[TrendDict]:
     """
     Filter trends that are CMMC-related.
 
@@ -95,7 +96,7 @@ DIB_KEYWORDS = [
 ]
 
 
-def categorize_trend(trend: Dict) -> str:
+def categorize_trend(trend: TrendDict) -> str:
     """
     Categorize a trend into CMMC-specific, NIST/Compliance, DIB, or General.
 
@@ -123,7 +124,7 @@ def categorize_trend(trend: Dict) -> str:
     return "general"
 
 
-def sort_trends_by_priority(trends: List[Dict]) -> List[Dict]:
+def sort_trends_by_priority(trends: List[TrendDict]) -> List[TrendDict]:
     """
     Sort trends with CMMC-specific content first, then NIST, then DIB, then general.
     """
@@ -845,7 +846,9 @@ def get_cmmc_script() -> str:
     </script>"""
 
 
-def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str:
+def build_cmmc_page(
+    trends: List[TrendDict], images: List[ImageDict], design: DesignTokens
+) -> str:
     """
     Build the complete CMMC Watch HTML page.
 
@@ -1159,7 +1162,7 @@ def generate_cmmc_page(
 
         return str(output_path)
 
-    except Exception as e:
+    except (OSError, KeyError, ValueError, TypeError, AttributeError) as e:
         logger.error(f"Failed to generate CMMC page: {e}")
         return None
 

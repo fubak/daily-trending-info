@@ -551,7 +551,7 @@ class ImageFetcher:
                     import json
 
                     return json.loads(match.group(0))
-        except Exception as e:
+        except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
             logger.warning(f"Visual query optimization failed: {e}")
 
         return []
@@ -674,7 +674,7 @@ class ImageFetcher:
                 )
                 images.append(image)
 
-        except Exception as e:
+        except (KeyError, ValueError, AttributeError, TypeError) as e:
             logger.error(f"Pexels parse error: {e}")
 
         return images
@@ -752,7 +752,7 @@ class ImageFetcher:
                 )
                 images.append(image)
 
-        except Exception as e:
+        except (KeyError, ValueError, AttributeError, TypeError) as e:
             logger.error(f"Unsplash parse error: {e}")
 
         return images
@@ -836,7 +836,7 @@ class ImageFetcher:
                 )
                 images.append(image)
 
-        except Exception as e:
+        except (KeyError, ValueError, AttributeError, TypeError) as e:
             logger.error(f"Pixabay parse error: {e}")
 
         return images
@@ -872,7 +872,7 @@ class ImageFetcher:
                     height=800,
                 )
                 images.append(image)
-            except Exception as e:
+            except (ValueError, TypeError) as e:
                 logger.debug(f"Lorem Picsum fallback error: {e}")
                 continue
 

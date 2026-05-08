@@ -271,7 +271,7 @@ class EditorialGenerator:
                         mood=metadata.get("mood", "informative"),
                         url=metadata.get("url", ""),
                     )
-                except Exception as e:
+                except (OSError, json.JSONDecodeError, KeyError) as e:
                     logger.warning(f"Failed to load existing article: {e}")
                     return None
 
@@ -439,7 +439,7 @@ Respond with ONLY a valid JSON object:
             )
             return article
 
-        except Exception as e:
+        except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, TypeError, OSError, AttributeError) as e:
             logger.error(f"Editorial generation failed: {e}")
             return None
 
@@ -531,7 +531,7 @@ Respond with ONLY a valid JSON object:
                             )
                         )
             return results
-        except Exception as e:
+        except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, TypeError, AttributeError) as e:
             logger.warning(f"Why This Matters batch generation failed: {e}")
             return []
 
@@ -892,7 +892,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                     continue
                 logger.error(f"Google AI failed: {e}")
                 return None
-            except Exception as e:
+            except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
                 logger.error(f"Google AI failed: {e}")
                 return None
 
@@ -1010,7 +1010,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                     continue
                 logger.error(f"Google AI structured output failed: {e}")
                 return None
-            except Exception as e:
+            except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
                 logger.error(f"Google AI structured output failed: {e}")
                 return None
 
@@ -1145,7 +1145,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                         continue
                     logger.warning(f"Hugging Face API error with {model}: {e}")
                     break  # Try next model
-                except Exception as e:
+                except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
                     logger.warning(f"Hugging Face API error with {model}: {e}")
                     break  # Try next model
 
@@ -1320,7 +1320,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
             try:
                 with open(metadata_file) as f:
                     articles.append(json.load(f))
-            except Exception as e:
+            except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
                 logger.warning(f"Failed to load {metadata_file}: {e}")
 
         # Sort by date descending
@@ -1381,7 +1381,7 @@ DATE: {datetime.now().strftime('%B %d, %Y')}"""
                 logger.info(f"Regenerated: {article.title}")
                 count += 1
 
-            except Exception as e:
+            except (OSError, json.JSONDecodeError, KeyError, ValueError, AttributeError, TypeError) as e:
                 logger.warning(f"Failed to regenerate {metadata_file}: {e}")
 
         logger.info(f"Regenerated {count} article pages")

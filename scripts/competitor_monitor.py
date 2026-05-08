@@ -144,7 +144,7 @@ class CompetitorMonitor:
                 )
 
             return items
-        except Exception as e:
+        except (requests.RequestException, ValueError, KeyError, AttributeError) as e:
             print(f"  Error fetching RSS {url}: {e}")
             return []
 
@@ -229,7 +229,7 @@ class CompetitorMonitor:
                 print(
                     f"    Status: {response.status_code}, Response: {results[comp_id]['response_time_ms']}ms"
                 )
-            except Exception as e:
+            except (requests.RequestException, ValueError, AttributeError) as e:
                 results[comp_id] = {
                     "name": comp_config["name"],
                     "url": comp_config["url"],
