@@ -32,10 +32,9 @@ ehthumbs.db
 Thumbs.db
 
 # Build artifacts (keep public/ for GitHub Pages)
-# data/ is regenerated each run but useful for debugging
-# Uncomment to ignore:
-# data/
-data/feed_runtime_cache.json
+# data/ contains runtime state regenerated on each pipeline run
+data/
+!data/.gitkeep
 
 # Logs
 *.log

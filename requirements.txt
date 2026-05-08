@@ -1,7 +1,7 @@
-jinja2>=3.1.0
-requests>=2.32.3
-feedparser>=6.0.11
-beautifulsoup4>=4.12.3
-lxml>=5.3.0
-python-dotenv>=1.0.1
-apify-client>=1.7.0  # LinkedIn scraping via Apify (optional)
+jinja2==3.1.6
+requests==2.33.1
+feedparser==6.0.12
+beautifulsoup4==4.14.3
+lxml==6.1.0
+python-dotenv==1.2.2
+apify-client==2.5.0  # LinkedIn scraping via Apify (optional)

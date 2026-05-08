@@ -357,7 +357,9 @@ class ContentEnricher:
                             mark_provider_exhausted("google", "daily quota exceeded")
                             return None
                     except (ValueError, KeyError) as parse_err:
-                        logger.debug(f"Could not parse 429 body for quota check: {parse_err}")
+                        logger.debug(
+                            f"Could not parse 429 body for quota check: {parse_err}"
+                        )
 
                     # Temporary rate limit - wait and retry
                     retry_after = response.headers.get("Retry-After", "10")
@@ -372,7 +374,13 @@ class ContentEnricher:
                     continue
                 logger.warning(f"Google AI failed: {e}")
                 return None
-            except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
+            except (
+                requests.RequestException,
+                json.JSONDecodeError,
+                KeyError,
+                ValueError,
+                AttributeError,
+            ) as e:
                 logger.warning(f"Google AI failed: {e}")
                 return None
 
@@ -477,7 +485,9 @@ class ContentEnricher:
                             mark_provider_exhausted("google", "daily quota exceeded")
                             return None
                     except (ValueError, KeyError) as parse_err:
-                        logger.debug(f"Could not parse 429 body for quota check: {parse_err}")
+                        logger.debug(
+                            f"Could not parse 429 body for quota check: {parse_err}"
+                        )
 
                     # Temporary rate limit - wait and retry
                     retry_after = response.headers.get("Retry-After", "10")
@@ -492,7 +502,13 @@ class ContentEnricher:
                     continue
                 logger.warning(f"Google AI structured output failed: {e}")
                 return None
-            except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
+            except (
+                requests.RequestException,
+                json.JSONDecodeError,
+                KeyError,
+                ValueError,
+                AttributeError,
+            ) as e:
                 logger.warning(f"Google AI structured output failed: {e}")
                 return None
 
@@ -503,8 +519,13 @@ class ContentEnricher:
         self, prompt: str, max_tokens: int = 500, max_retries: int = 1
     ) -> Optional[str]:
         return call_openai_compatible(
-            OPENROUTER_SPEC, self.openrouter_key, prompt, max_tokens,
-            max_retries, self.session, self.MAX_RETRY_WAIT,
+            OPENROUTER_SPEC,
+            self.openrouter_key,
+            prompt,
+            max_tokens,
+            max_retries,
+            self.session,
+            self.MAX_RETRY_WAIT,
         )
 
     def _call_groq_direct(
@@ -512,9 +533,15 @@ class ContentEnricher:
     ) -> Optional[str]:
         timing = [self._last_call_time]
         result = call_openai_compatible(
-            GROQ_SPEC, self.groq_key, prompt, max_tokens, max_retries,
-            self.session, self.MAX_RETRY_WAIT,
-            self.MIN_CALL_INTERVAL, timing,
+            GROQ_SPEC,
+            self.groq_key,
+            prompt,
+            max_tokens,
+            max_retries,
+            self.session,
+            self.MAX_RETRY_WAIT,
+            self.MIN_CALL_INTERVAL,
+            timing,
         )
         self._last_call_time = timing[0]
         return result
@@ -525,9 +552,15 @@ class ContentEnricher:
         opencode_key = os.getenv("OPENCODE_API_KEY")
         timing = [self._last_call_time]
         result = call_openai_compatible(
-            OPENCODE_SPEC, opencode_key, prompt, max_tokens, max_retries,
-            self.session, self.MAX_RETRY_WAIT,
-            self.MIN_CALL_INTERVAL, timing,
+            OPENCODE_SPEC,
+            opencode_key,
+            prompt,
+            max_tokens,
+            max_retries,
+            self.session,
+            self.MAX_RETRY_WAIT,
+            self.MIN_CALL_INTERVAL,
+            timing,
         )
         self._last_call_time = timing[0]
         return result
@@ -625,7 +658,13 @@ class ContentEnricher:
                         continue
                     logger.warning(f"Hugging Face API error with {model}: {e}")
                     break  # Try next model
-                except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
+                except (
+                    requests.RequestException,
+                    json.JSONDecodeError,
+                    KeyError,
+                    ValueError,
+                    AttributeError,
+                ) as e:
                     logger.warning(f"Hugging Face API error with {model}: {e}")
                     break  # Try next model
 
@@ -638,9 +677,15 @@ class ContentEnricher:
         mistral_key = os.getenv("MISTRAL_API_KEY")
         timing = [self._last_call_time]
         result = call_openai_compatible(
-            MISTRAL_SPEC, mistral_key, prompt, max_tokens, max_retries,
-            self.session, self.MAX_RETRY_WAIT,
-            self.MIN_CALL_INTERVAL, timing,
+            MISTRAL_SPEC,
+            mistral_key,
+            prompt,
+            max_tokens,
+            max_retries,
+            self.session,
+            self.MAX_RETRY_WAIT,
+            self.MIN_CALL_INTERVAL,
+            timing,
         )
         self._last_call_time = timing[0]
         return result
@@ -682,39 +727,39 @@ class ContentEnricher:
                 # Try parsing as-is first
                 try:
                     return json.loads(json_str)
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e:
+                    logger.debug("JSON parse as-is failed: %s", e)
 
                 # Try repairing common JSON issues (missing commas, etc.)
                 try:
                     repaired = self._repair_json(json_str)
                     return json.loads(repaired)
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e:
+                    logger.debug("JSON parse after repair failed: %s", e)
 
                 # Escape raw control characters that appear inside quoted
                 # strings (a common defect in LLM JSON output).
                 try:
                     sanitized = escape_control_chars_in_strings(json_str)
                     return json.loads(sanitized)
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e:
+                    logger.debug("JSON parse after control-char escape failed: %s", e)
 
                 # Try repair + escape combination
                 try:
                     repaired = self._repair_json(json_str)
                     sanitized = escape_control_chars_in_strings(repaired)
                     return json.loads(sanitized)
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e:
+                    logger.debug("JSON parse after repair+escape failed: %s", e)
 
                 # Last resort: strip all control chars except structural whitespace
                 try:
                     stripped = re.sub(r"[\x00-\x09\x0b\x0c\x0e-\x1f]", " ", json_str)
                     repaired = self._repair_json(stripped)
                     return json.loads(repaired)
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e:
+                    logger.debug("JSON parse last-resort failed: %s", e)
 
         except (json.JSONDecodeError, ValueError) as e:
             logger.warning(f"JSON parse error: {e}")

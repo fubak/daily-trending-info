@@ -123,7 +123,9 @@ def parse_timestamp(value: Any) -> Optional[datetime]:
         if ts_value > 10_000_000_000:
             ts_value = ts_value / 1000.0
         try:
-            return datetime.fromtimestamp(ts_value, tz=timezone.utc).replace(tzinfo=None)
+            return datetime.fromtimestamp(ts_value, tz=timezone.utc).replace(
+                tzinfo=None
+            )
         except (OverflowError, OSError, ValueError):
             return None
 
@@ -254,11 +256,8 @@ class Trend:
 
         self.source_diversity = max(1, len(set(self.corroborating_sources)))
 
-
     def _extract_keywords(self) -> List[str]:
         return extract_keywords(self.title)
-
-        return keywords[:5]  # Top 5 keywords
 
 
 from urllib3.util.retry import Retry
@@ -270,11 +269,7 @@ class TrendCollector:
 
     def __init__(self) -> None:
         self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "User-Agent": DEFAULT_BROWSER_UA
-            }
-        )
+        self.session.headers.update({"User-Agent": DEFAULT_BROWSER_UA})
         retries = Retry(
             total=3,
             backoff_factor=0.3,
@@ -399,7 +394,9 @@ class TrendCollector:
     def _record_feed_success(self, scope: str) -> None:
         self.feed_failures.pop(scope, None)
 
-    def _cache_feed_response(self, scope: str, response: requests.Response, url: str) -> None:
+    def _cache_feed_response(
+        self, scope: str, response: requests.Response, url: str
+    ) -> None:
         now = time.time()
         headers = {k.lower(): v for k, v in response.headers.items()}
         content_bytes = response.content or b""
@@ -433,7 +430,7 @@ class TrendCollector:
                 return None
             try:
                 content = base64.b64decode(content_b64.encode("ascii"))
-            except (ValueError, base64.binascii.Error):
+            except ValueError:
                 return None
 
         if not isinstance(content, (bytes, bytearray)):
@@ -457,7 +454,10 @@ class TrendCollector:
 
         cached = self.feed_cache.get(scope)
         if cached:
-            if now_ts - float(cached.get("timestamp", 0)) <= self.feed_cache_ttl_seconds:
+            if (
+                now_ts - float(cached.get("timestamp", 0))
+                <= self.feed_cache_ttl_seconds
+            ):
                 response = self._response_from_cached(cached)
                 if response is not None:
                     return response
@@ -467,7 +467,10 @@ class TrendCollector:
         persistent = self.persistent_feed_cache.get(scope)
         if not persistent:
             return None
-        if now_ts - float(persistent.get("timestamp", 0)) > self.feed_persistent_ttl_seconds:
+        if (
+            now_ts - float(persistent.get("timestamp", 0))
+            > self.feed_persistent_ttl_seconds
+        ):
             self.persistent_feed_cache.pop(scope, None)
             self._persistent_cache_dirty = True
             return None
@@ -504,15 +507,21 @@ class TrendCollector:
         fallback_url = fallback_url or metadata_fallback
 
         domain_profile = self._resolve_domain_profile(url)
-        effective_timeout = float(timeout or domain_profile.get("timeout") or self.feed_timeout)
+        effective_timeout = float(
+            timeout or domain_profile.get("timeout") or self.feed_timeout
+        )
         attempts = max(1, int(domain_profile.get("attempts") or 1))
         retry_delay = float(domain_profile.get("retry_delay") or 0.4)
-        request_headers = self._resolve_headers(headers, headers_profile, domain_profile)
+        request_headers = self._resolve_headers(
+            headers, headers_profile, domain_profile
+        )
 
         errors: List[str] = []
         for attempt in range(1, attempts + 1):
             try:
-                response = self.session.get(url, timeout=effective_timeout, headers=request_headers or None)
+                response = self.session.get(
+                    url, timeout=effective_timeout, headers=request_headers or None
+                )
                 if response.status_code not in allowed_status:
                     errors.append(f"HTTP {response.status_code}")
                 elif not self._is_feed_response(response):
@@ -615,11 +624,17 @@ class TrendCollector:
                             url=entry.link,
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.4,
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                            timestamp=parse_feed_entry_timestamp(entry)
+                            or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
-            except (requests.RequestException, AttributeError, KeyError, ValueError) as exc:
+            except (
+                requests.RequestException,
+                AttributeError,
+                KeyError,
+                ValueError,
+            ) as exc:
                 logger.warning(f"{source.name} sports RSS error: {exc}")
                 continue
 
@@ -649,11 +664,17 @@ class TrendCollector:
                             url=entry.link,
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.4,
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                            timestamp=parse_feed_entry_timestamp(entry)
+                            or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
-            except (requests.RequestException, AttributeError, KeyError, ValueError) as exc:
+            except (
+                requests.RequestException,
+                AttributeError,
+                KeyError,
+                ValueError,
+            ) as exc:
                 logger.warning(f"{source.name} entertainment RSS error: {exc}")
                 continue
 
@@ -691,7 +712,12 @@ class TrendCollector:
                 trends = collector()
                 self.trends.extend(trends)
                 logger.info(f"  Found {len(trends)} trends")
-            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
+            except (
+                requests.RequestException,
+                AttributeError,
+                KeyError,
+                ValueError,
+            ) as e:
                 logger.warning(f"  Error from {name}: {e}")
                 continue
 
@@ -883,12 +909,18 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.8,  # News sources get good score
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                            timestamp=parse_feed_entry_timestamp(entry)
+                            or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
-            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
+            except (
+                requests.RequestException,
+                AttributeError,
+                KeyError,
+                ValueError,
+            ) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -928,12 +960,18 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                            timestamp=parse_feed_entry_timestamp(entry)
+                            or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
-            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
+            except (
+                requests.RequestException,
+                AttributeError,
+                KeyError,
+                ValueError,
+            ) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -968,12 +1006,18 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                            timestamp=parse_feed_entry_timestamp(entry)
+                            or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
-            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
+            except (
+                requests.RequestException,
+                AttributeError,
+                KeyError,
+                ValueError,
+            ) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1016,12 +1060,18 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.6,
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                            timestamp=parse_feed_entry_timestamp(entry)
+                            or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
-            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
+            except (
+                requests.RequestException,
+                AttributeError,
+                KeyError,
+                ValueError,
+            ) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1060,12 +1110,18 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                            timestamp=parse_feed_entry_timestamp(entry)
+                            or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
-            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
+            except (
+                requests.RequestException,
+                AttributeError,
+                KeyError,
+                ValueError,
+            ) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1104,7 +1160,13 @@ class TrendCollector:
                     )
                     story_response.raise_for_status()
                     story = story_response.json()
-                except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError):
+                except (
+                    requests.RequestException,
+                    AttributeError,
+                    KeyError,
+                    ValueError,
+                    TypeError,
+                ):
                     return None
 
                 title = (story or {}).get("title", "")
@@ -1113,7 +1175,10 @@ class TrendCollector:
 
                 score = story.get("score", 0)
                 normalized_score = min(score / 100, 3.0)
-                story_url = story.get("url") or f"https://news.ycombinator.com/item?id={story_id}"
+                story_url = (
+                    story.get("url")
+                    or f"https://news.ycombinator.com/item?id={story_id}"
+                )
 
                 trend = Trend(
                     title=title,
@@ -1173,12 +1238,18 @@ class TrendCollector:
                             url=entry.get("link"),
                             description=self._clean_html(entry.get("summary", "")),
                             score=1.5,
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                            timestamp=parse_feed_entry_timestamp(entry)
+                            or datetime.now(),
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
 
-            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
+            except (
+                requests.RequestException,
+                AttributeError,
+                KeyError,
+                ValueError,
+            ) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1193,7 +1264,9 @@ class TrendCollector:
         sources = self._collector_sources("github_trending")
         source = sources[0] if sources else None
         source_key = (source.source_key if source else None) or "github_trending"
-        url = (source.url if source else None) or "https://github.com/trending?since=daily&spoken_language_code=en"
+        url = (
+            source.url if source else None
+        ) or "https://github.com/trending?since=daily&spoken_language_code=en"
 
         try:
             response = self.session.get(url, timeout=self.default_timeout)
@@ -1336,7 +1409,9 @@ class TrendCollector:
         sources = self._collector_sources("wikipedia_current")
         source = sources[0] if sources else None
         source_key = (source.source_key if source else None) or "wikipedia_current"
-        page_url = (source.url if source else None) or "https://en.wikipedia.org/wiki/Portal:Current_events"
+        page_url = (
+            source.url if source else None
+        ) or "https://en.wikipedia.org/wiki/Portal:Current_events"
 
         try:
             response = self.session.get(page_url, timeout=self.default_timeout)
@@ -1378,7 +1453,9 @@ class TrendCollector:
                 if not trends:
                     trends = api_trends
                 else:
-                    seen_titles = {re.sub(r"[^\w\s]", "", t.title.lower()) for t in trends}
+                    seen_titles = {
+                        re.sub(r"[^\w\s]", "", t.title.lower()) for t in trends
+                    }
                     for trend in api_trends:
                         normalized = re.sub(r"[^\w\s]", "", trend.title.lower())
                         if normalized in seen_titles:
@@ -1387,7 +1464,13 @@ class TrendCollector:
                         seen_titles.add(normalized)
                         if len(trends) >= limit:
                             break
-        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
+        except (
+            requests.RequestException,
+            AttributeError,
+            KeyError,
+            ValueError,
+            TypeError,
+        ) as e:
             logger.warning(f"Wikipedia Current Events API fallback error: {e}")
 
         return trends
@@ -1397,7 +1480,7 @@ class TrendCollector:
     ) -> List[Trend]:
         """Parse Wikipedia Current Events HTML into trends."""
         soup = BeautifulSoup(html_content, "html.parser")
-        candidate_items = []
+        candidate_items: List[Any] = []
 
         selectors = [
             ".current-events-content li",
@@ -1494,7 +1577,13 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
+        except (
+            requests.RequestException,
+            AttributeError,
+            KeyError,
+            ValueError,
+            TypeError,
+        ) as e:
             logger.warning(f"Lobsters error: {e}")
 
         return trends
@@ -1533,7 +1622,13 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
+        except (
+            requests.RequestException,
+            AttributeError,
+            KeyError,
+            ValueError,
+            TypeError,
+        ) as e:
             logger.warning(f"Product Hunt error: {e}")
 
         return trends
@@ -1589,7 +1684,13 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
+        except (
+            requests.RequestException,
+            AttributeError,
+            KeyError,
+            ValueError,
+            TypeError,
+        ) as e:
             logger.warning(f"Dev.to error: {e}")
 
         return trends
@@ -1628,7 +1729,13 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
+        except (
+            requests.RequestException,
+            AttributeError,
+            KeyError,
+            ValueError,
+            TypeError,
+        ) as e:
             logger.warning(f"Slashdot error: {e}")
 
         return trends
@@ -1668,7 +1775,13 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
+        except (
+            requests.RequestException,
+            AttributeError,
+            KeyError,
+            ValueError,
+            TypeError,
+        ) as e:
             logger.warning(f"Ars Features error: {e}")
 
         return trends
@@ -1703,16 +1816,19 @@ class TrendCollector:
                     if not self._content_matches_cmmc_keywords(title, description):
                         continue
 
-                    trends.append(Trend(
-                        title=title,
-                        source=source.source_key or source.key,
-                        url=entry.get("link"),
-                        description=self._clean_html(description),
-                        category="cmmc",
-                        score=1.6,  # Good quality federal news
-                        timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
-                        image_url=self._extract_image_from_entry(entry),
-                    ))
+                    trends.append(
+                        Trend(
+                            title=title,
+                            source=source.source_key or source.key,
+                            url=entry.get("link"),
+                            description=self._clean_html(description),
+                            category="cmmc",
+                            score=1.6,  # Good quality federal news
+                            timestamp=parse_feed_entry_timestamp(entry)
+                            or datetime.now(),
+                            image_url=self._extract_image_from_entry(entry),
+                        )
+                    )
                     if len(trends) >= rss_limit * max(1, len(feeds)):
                         break
 
@@ -1751,7 +1867,10 @@ class TrendCollector:
                     if not title or len(title) < 10:
                         continue
 
-                    relevant_subreddits = {"cmmc_reddit_cmmc", "cmmc_reddit_nistcontrols"}
+                    relevant_subreddits = {
+                        "cmmc_reddit_cmmc",
+                        "cmmc_reddit_nistcontrols",
+                    }
                     if source.key in relevant_subreddits:
                         include_post = True
                     else:
@@ -1762,16 +1881,19 @@ class TrendCollector:
                     if not include_post:
                         continue
 
-                    trends.append(Trend(
-                        title=title,
-                        source=source.source_key or source.key,
-                        url=entry.get("link"),
-                        description=self._clean_html(description),
-                        category="cmmc",
-                        score=1.4,  # Reddit community content
-                        timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
-                        image_url=self._extract_image_from_entry(entry),
-                    ))
+                    trends.append(
+                        Trend(
+                            title=title,
+                            source=source.source_key or source.key,
+                            url=entry.get("link"),
+                            description=self._clean_html(description),
+                            category="cmmc",
+                            score=1.4,  # Reddit community content
+                            timestamp=parse_feed_entry_timestamp(entry)
+                            or datetime.now(),
+                            image_url=self._extract_image_from_entry(entry),
+                        )
+                    )
 
             except (requests.RequestException, ValueError, KeyError) as e:
                 logger.warning(f"CMMC Reddit {source.name} error: {e}")
@@ -1843,7 +1965,13 @@ class TrendCollector:
 
         except ImportError:
             logger.debug("LinkedIn scraping not available (apify-client not installed)")
-        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
+        except (
+            requests.RequestException,
+            AttributeError,
+            KeyError,
+            ValueError,
+            TypeError,
+        ) as e:
             logger.warning(f"CMMC LinkedIn collection error: {e}")
 
         return trends
@@ -1862,32 +1990,30 @@ class TrendCollector:
             # Use 'html.parser' with markup_type to suppress warning
             soup = BeautifulSoup(text, "html.parser")
             clean = soup.get_text(separator=" ").strip()
-        
+
         # Normalize whitespace
         clean = re.sub(r"\s+", " ", clean)
-        
+
         # Smart truncation at sentence boundaries (up to 1500 chars)
         max_length = 1500
         if len(clean) > max_length:
             truncated = clean[:max_length]
             # Find last sentence boundary
             last_period = max(
-                truncated.rfind('. '),
-                truncated.rfind('! '),
-                truncated.rfind('? ')
+                truncated.rfind(". "), truncated.rfind("! "), truncated.rfind("? ")
             )
-            
+
             # If found a good sentence boundary with reasonable content
             if last_period > 300:
-                return clean[:last_period + 1]
+                return clean[: last_period + 1]
             else:
                 # Fall back to word boundary
-                last_space = truncated.rfind(' ')
+                last_space = truncated.rfind(" ")
                 if last_space > 200:
                     return clean[:last_space] + "..."
                 else:
                     return clean[:max_length] + "..."
-        
+
         return clean
 
     def _deduplicate(self) -> None:
