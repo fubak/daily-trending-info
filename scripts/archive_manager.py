@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import List, Dict, Optional
 import html
 
+from url_safety import safe_href
+
 # Import shared components for consistent header/footer
 from shared_components import (
     build_header,
@@ -175,7 +177,7 @@ class ArchiveManager:
                 day_of_week = ""
 
             card = f"""
-            <a href="{html.escape(url)}" class="archive-card" style="--card-accent: {accent}">
+            <a href="{safe_href(url)}" class="archive-card" style="--card-accent: {accent}">
                 <div class="archive-card-header">
                     <span class="archive-day">{day_of_week}</span>
                     <span class="archive-date">{display_date}</span>

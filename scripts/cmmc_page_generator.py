@@ -15,18 +15,19 @@ Features:
 """
 
 import html as html_module
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Set
-import logging
 
-from config import setup_logging, CMMC_KEYWORDS
+from config import setup_logging, STRING_LIMITS
+from design_tokens import safe_color, safe_font
+from url_safety import safe_href, safe_image_src
+from pipeline_types import DesignTokens, ImageDict, TrendDict
 
 logger = setup_logging("cmmc_page_generator")
 
 
-def filter_cmmc_trends(trends: List[Dict]) -> List[Dict]:
+def filter_cmmc_trends(trends: List[TrendDict]) -> List[TrendDict]:
     """
     Filter trends that are CMMC-related.
 
@@ -93,7 +94,7 @@ DIB_KEYWORDS = [
 ]
 
 
-def categorize_trend(trend: Dict) -> str:
+def categorize_trend(trend: TrendDict) -> str:
     """
     Categorize a trend into CMMC-specific, NIST/Compliance, DIB, or General.
 
@@ -121,7 +122,7 @@ def categorize_trend(trend: Dict) -> str:
     return "general"
 
 
-def sort_trends_by_priority(trends: List[Dict]) -> List[Dict]:
+def sort_trends_by_priority(trends: List[TrendDict]) -> List[TrendDict]:
     """
     Sort trends with CMMC-specific content first, then NIST, then DIB, then general.
     """
@@ -843,7 +844,9 @@ def get_cmmc_script() -> str:
     </script>"""
 
 
-def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str:
+def build_cmmc_page(
+    trends: List[TrendDict], images: List[ImageDict], design: DesignTokens
+) -> str:
     """
     Build the complete CMMC Watch HTML page.
 
@@ -863,20 +866,22 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
         logger.warning("No CMMC trends found, generating empty page")
         cmmc_trends = []
 
-    # Setup colors and fonts
+    # Setup colors and fonts (validate tokens before they reach <style>)
     colors = {
-        "bg": design.get("color_bg", "#0a0a0a"),
-        "text": design.get("color_text", "#ffffff"),
-        "muted": design.get("color_muted", "#a1a1aa"),
-        "border": design.get("color_border", "#27272a"),
-        "card_bg": design.get("color_card_bg", "#18181b"),
-        "accent": design.get("color_accent", "#3b82f6"),  # Blue for CMMC
-        "accent_secondary": design.get("color_accent_secondary", "#60a5fa"),
+        "bg": safe_color(design.get("color_bg"), "#0a0a0a"),
+        "text": safe_color(design.get("color_text"), "#ffffff"),
+        "muted": safe_color(design.get("color_muted"), "#a1a1aa"),
+        "border": safe_color(design.get("color_border"), "#27272a"),
+        "card_bg": safe_color(design.get("color_card_bg"), "#18181b"),
+        "accent": safe_color(design.get("color_accent"), "#3b82f6"),  # Blue for CMMC
+        "accent_secondary": safe_color(
+            design.get("color_accent_secondary"), "#60a5fa"
+        ),
     }
 
     fonts = {
-        "primary": design.get("font_primary", "Space Grotesk"),
-        "secondary": design.get("font_secondary", "Inter"),
+        "primary": safe_font(design.get("font_primary"), "Space Grotesk"),
+        "secondary": safe_font(design.get("font_secondary"), "Inter"),
     }
 
     # Date info
@@ -894,9 +899,9 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
 
     # Featured story details
     featured_title = html_module.escape(
-        featured_story.get("title", "CMMC Compliance News")[:100]
+        featured_story.get("title", "CMMC Compliance News")[: STRING_LIMITS["title_max"]]
     )
-    featured_url = html_module.escape(featured_story.get("url", "#"))
+    featured_url = safe_href(featured_story.get("url", ""))
     featured_source_raw = featured_story.get("source_label")
     if not featured_source_raw:
         featured_source_raw = (
@@ -907,13 +912,15 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
         )
     featured_source = html_module.escape(featured_source_raw)
     featured_desc = html_module.escape(
-        (featured_story.get("summary") or featured_story.get("description") or "")[:200]
+        (featured_story.get("summary") or featured_story.get("description") or "")[
+            : STRING_LIMITS["summary_max"]
+        ]
     )
 
     # Helper function to build a story card
     def build_story_card(trend, images, used_image_ids):
-        title = html_module.escape(trend.get("title", "")[:100])
-        url = html_module.escape(trend.get("url", "#"))
+        title = html_module.escape(trend.get("title", "")[: STRING_LIMITS["title_max"]])
+        url = safe_href(trend.get("url", ""))
         source_raw = trend.get("source_label")
         if not source_raw:
             source_raw = (
@@ -955,7 +962,7 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
         return f"""
         <article class="story-card">
             <div class="story-media">
-                {"<img class='story-image' src='" + html_module.escape(story_image) + "' alt='' loading='lazy'>" if story_image else "<div class='story-image' style='background: linear-gradient(135deg, #1e3a5f, #0d1b2a);'></div>"}
+                {"<img class='story-image' src='" + safe_image_src(story_image) + "' alt='' loading='lazy'>" if story_image else "<div class='story-image' style='background: linear-gradient(135deg, #1e3a5f, #0d1b2a);'></div>"}
                 <span class="source-badge">{source}</span>
                 {date_html}
             </div>
@@ -1050,7 +1057,7 @@ def build_cmmc_page(trends: List[Dict], images: List[Dict], design: Dict) -> str
     {build_cmmc_header(date_str)}
 
     <section class="cmmc-hero">
-        {"<div class='cmmc-hero-image' style='background-image: url(" + html_module.escape(hero_image_url) + ");'></div>" if hero_image_url else ""}
+        {"<div class='cmmc-hero-image' style='background-image: url(" + safe_image_src(hero_image_url) + ");'></div>" if hero_image_url else ""}
         <div class="cmmc-hero-overlay"></div>
         <div class="cmmc-hero-content">
             <span class="cmmc-hero-badge">{featured_source or 'CMMC News'}</span>
@@ -1153,7 +1160,7 @@ def generate_cmmc_page(
 
         return str(output_path)
 
-    except Exception as e:
+    except (OSError, KeyError, ValueError, TypeError, AttributeError) as e:
         logger.error(f"Failed to generate CMMC page: {e}")
         return None
 

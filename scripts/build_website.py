@@ -509,7 +509,8 @@ class WebsiteBuilder:
                 if tag and tag.get("content"):
                     description = tag.get("content", "").strip()
                     break
-        except Exception:
+        except (requests.RequestException, ValueError) as e:
+            logger.debug(f"Failed to fetch description for {url}: {e}")
             description = ""
 
         description = html.unescape(description)

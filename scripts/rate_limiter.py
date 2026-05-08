@@ -13,6 +13,11 @@ from datetime import datetime
 from typing import Optional, Dict, Tuple
 import requests
 
+try:
+    from config import OPENROUTER_KEY_INFO_URL
+except ImportError:  # pragma: no cover — supports `from scripts...` import path
+    from scripts.config import OPENROUTER_KEY_INFO_URL
+
 logger = logging.getLogger(__name__)
 
 
@@ -148,7 +153,7 @@ class RateLimiter:
             # Check OpenRouter API key limits endpoint
             # Docs: https://openrouter.ai/docs/api/reference/limits
             response = self.session.get(
-                "https://openrouter.ai/api/v1/key",
+                OPENROUTER_KEY_INFO_URL,
                 headers={
                     "Authorization": f"Bearer {self.openrouter_key}",
                     "Content-Type": "application/json",
@@ -214,7 +219,7 @@ class RateLimiter:
                 # Assume available but unknown status
                 return RateLimitStatus(is_available=True)
 
-        except Exception as e:
+        except (requests.RequestException, ValueError, KeyError, AttributeError) as e:
             logger.warning(f"Failed to check OpenRouter rate limits: {e}")
             # Assume available on error
             return RateLimitStatus(is_available=True)
@@ -394,7 +399,7 @@ class RateLimiter:
 
         try:
             response = self.session.get(
-                "https://openrouter.ai/api/v1/key",
+                OPENROUTER_KEY_INFO_URL,
                 headers={
                     "Authorization": f"Bearer {self.openrouter_key}",
                     "Content-Type": "application/json",
@@ -427,7 +432,7 @@ class RateLimiter:
             else:
                 return OpenRouterCredits(error=f"API returned {response.status_code}")
 
-        except Exception as e:
+        except (requests.RequestException, ValueError, KeyError, AttributeError) as e:
             return OpenRouterCredits(error=str(e))
 
     def mark_provider_exhausted(

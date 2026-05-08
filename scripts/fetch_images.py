@@ -143,6 +143,10 @@ CACHE_DIR = IMAGE_CACHE_DIR
 CACHE_INDEX_FILE = CACHE_DIR / "cache_index.json"
 CACHE_MAX_AGE_DAYS = IMAGE_CACHE_MAX_AGE_DAYS
 CACHE_MAX_ENTRIES = IMAGE_CACHE_MAX_ENTRIES
+# When the cache exceeds CACHE_MAX_ENTRIES, retain queries for the
+# top 1/CACHE_TRIM_KEEP_RATIO of distinct query buckets so the index
+# stays bounded but useful queries survive the prune.
+CACHE_TRIM_KEEP_RATIO = 5
 
 
 # Keywords that indicate an image likely contains text (screenshots, infographics, etc.)
@@ -280,8 +284,8 @@ class ImageCache:
                     json.dump(self.index, f, indent=2)
                 # Atomic rename (works on POSIX systems)
                 os.replace(tmp_path, self.index_file)
-            except Exception:
-                # Clean up temp file on failure
+            except (OSError, TypeError, ValueError):
+                # Clean up temp file on failure (then re-raise)
                 if os.path.exists(tmp_path):
                     os.unlink(tmp_path)
                 raise
@@ -362,7 +366,7 @@ class ImageCache:
         )
 
         # Keep only the newest entries
-        keep_queries = dict(sorted_queries[: CACHE_MAX_ENTRIES // 5])
+        keep_queries = dict(sorted_queries[: CACHE_MAX_ENTRIES // CACHE_TRIM_KEEP_RATIO])
         keep_image_ids = set()
         for q in keep_queries.values():
             keep_image_ids.update(q.get("image_ids", []))
@@ -547,7 +551,7 @@ class ImageFetcher:
                     import json
 
                     return json.loads(match.group(0))
-        except Exception as e:
+        except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
             logger.warning(f"Visual query optimization failed: {e}")
 
         return []
@@ -670,7 +674,7 @@ class ImageFetcher:
                 )
                 images.append(image)
 
-        except Exception as e:
+        except (KeyError, ValueError, AttributeError, TypeError) as e:
             logger.error(f"Pexels parse error: {e}")
 
         return images
@@ -748,7 +752,7 @@ class ImageFetcher:
                 )
                 images.append(image)
 
-        except Exception as e:
+        except (KeyError, ValueError, AttributeError, TypeError) as e:
             logger.error(f"Unsplash parse error: {e}")
 
         return images
@@ -832,7 +836,7 @@ class ImageFetcher:
                 )
                 images.append(image)
 
-        except Exception as e:
+        except (KeyError, ValueError, AttributeError, TypeError) as e:
             logger.error(f"Pixabay parse error: {e}")
 
         return images
@@ -868,7 +872,7 @@ class ImageFetcher:
                     height=800,
                 )
                 images.append(image)
-            except Exception as e:
+            except (ValueError, TypeError) as e:
                 logger.debug(f"Lorem Picsum fallback error: {e}")
                 continue
 

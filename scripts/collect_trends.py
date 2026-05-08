@@ -61,6 +61,8 @@ from source_catalog import (
     SourceSpec,
     get_collector_sources,
 )
+from keyword_extraction import extract_keywords
+from trend_deduplicator import deduplicate_trends
 
 # Setup logging
 logger = setup_logging("collect_trends")
@@ -161,7 +163,7 @@ def parse_feed_entry_timestamp(entry: Any) -> Optional[datetime]:
         if parsed_value:
             try:
                 return datetime(*parsed_value[:6])
-            except Exception:
+            except (ValueError, TypeError):
                 continue
 
     # Fallback to string fields
@@ -252,217 +254,9 @@ class Trend:
 
         self.source_diversity = max(1, len(set(self.corroborating_sources)))
 
+
     def _extract_keywords(self) -> List[str]:
-        """Extract meaningful keywords from title."""
-        # Remove common words and extract meaningful terms
-        stop_words = {
-            "the",
-            "a",
-            "an",
-            "and",
-            "or",
-            "but",
-            "in",
-            "on",
-            "at",
-            "to",
-            "for",
-            "of",
-            "with",
-            "by",
-            "from",
-            "as",
-            "is",
-            "was",
-            "are",
-            "were",
-            "been",
-            "be",
-            "have",
-            "has",
-            "had",
-            "do",
-            "does",
-            "did",
-            "will",
-            "would",
-            "could",
-            "should",
-            "may",
-            "might",
-            "must",
-            "shall",
-            "can",
-            "need",
-            "this",
-            "that",
-            "these",
-            "those",
-            "it",
-            "its",
-            "they",
-            "them",
-            "what",
-            "which",
-            "who",
-            "whom",
-            "whose",
-            "where",
-            "when",
-            "why",
-            "how",
-            "all",
-            "each",
-            "every",
-            "both",
-            "few",
-            "more",
-            "most",
-            "other",
-            "some",
-            "such",
-            "no",
-            "not",
-            "only",
-            "own",
-            "same",
-            "so",
-            "than",
-            "too",
-            "very",
-            "just",
-            "about",
-            "after",
-            "before",
-            "between",
-            "into",
-            "through",
-            "during",
-            "above",
-            "below",
-            "up",
-            "down",
-            "out",
-            "off",
-            "over",
-            "under",
-            "again",
-            "further",
-            "then",
-            "once",
-            "here",
-            "there",
-            "new",
-            "says",
-            "said",
-            "get",
-            "got",
-            "getting",
-            "make",
-            "made",
-            "making",
-            "know",
-            "think",
-            "take",
-            "see",
-            "come",
-            "want",
-            "look",
-            "use",
-            "find",
-            "give",
-            "tell",
-            "ask",
-            "work",
-            "seem",
-            "feel",
-            "try",
-            "leave",
-            "call",
-            "keep",
-            "let",
-            "begin",
-            "show",
-            "hear",
-            "play",
-            "run",
-            "move",
-            "like",
-            "live",
-            "believe",
-            "hold",
-            "bring",
-            "happen",
-            "write",
-            "provide",
-            "sit",
-            "stand",
-            "lose",
-            "pay",
-            "meet",
-            "include",
-            "continue",
-            "set",
-            "learn",
-            "change",
-            "lead",
-            "understand",
-            "watch",
-            "follow",
-            "stop",
-            "create",
-            "speak",
-            "read",
-            "allow",
-            "add",
-            "spend",
-            "grow",
-            "open",
-            "walk",
-            "win",
-            "offer",
-            "remember",
-            "love",
-            "consider",
-            "appear",
-            "buy",
-            "wait",
-            "serve",
-            "die",
-            "send",
-            "expect",
-            "build",
-            "stay",
-            "fall",
-            "cut",
-            "reach",
-            "kill",
-            "remain",
-            "suggest",
-            "raise",
-            "pass",
-            "sell",
-            "require",
-            "report",
-            "decide",
-            "pull",
-            "breaking",
-            "update",
-            "latest",
-            "news",
-            "today",
-        }
-
-        # Clean and tokenize
-        text = re.sub(r"[^\w\s]", " ", self.title.lower())
-        words = text.split()
-
-        # Filter and return meaningful keywords
-        keywords = [
-            word
-            for word in words
-            if word not in stop_words and len(word) > 2 and not word.isdigit()
-        ]
+        return extract_keywords(self.title)
 
         return keywords[:5]  # Top 5 keywords
 
@@ -541,7 +335,7 @@ class TrendCollector:
                 payload = json.load(f)
             if isinstance(payload, dict):
                 self.persistent_feed_cache = payload
-        except Exception as exc:
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
             logger.debug(f"Failed to load persistent feed cache: {exc}")
             self.persistent_feed_cache = {}
 
@@ -553,7 +347,7 @@ class TrendCollector:
             with open(self.feed_cache_file, "w", encoding="utf-8") as f:
                 json.dump(self.persistent_feed_cache, f)
             self._persistent_cache_dirty = False
-        except Exception as exc:
+        except (OSError, TypeError, ValueError) as exc:
             logger.debug(f"Failed to flush persistent feed cache: {exc}")
 
     def _resolve_domain_profile(self, url: str) -> Dict[str, Any]:
@@ -639,7 +433,7 @@ class TrendCollector:
                 return None
             try:
                 content = base64.b64decode(content_b64.encode("ascii"))
-            except Exception:
+            except (ValueError, base64.binascii.Error):
                 return None
 
         if not isinstance(content, (bytes, bytearray)):
@@ -728,7 +522,7 @@ class TrendCollector:
                     self._record_feed_success(scope)
                     self._cache_feed_response(scope, response, url)
                     return response
-            except Exception as exc:
+            except requests.RequestException as exc:
                 errors.append(str(exc))
 
             if attempt < attempts:
@@ -793,7 +587,7 @@ class TrendCollector:
                     return None
                 return img_url
 
-        except Exception as e:
+        except (requests.RequestException, ValueError, AttributeError) as e:
             logger.debug(f"Failed to scrape OG image for {url}: {e}")
 
         return None
@@ -825,7 +619,7 @@ class TrendCollector:
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
-            except Exception as exc:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as exc:
                 logger.warning(f"{source.name} sports RSS error: {exc}")
                 continue
 
@@ -859,7 +653,7 @@ class TrendCollector:
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
-            except Exception as exc:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as exc:
                 logger.warning(f"{source.name} entertainment RSS error: {exc}")
                 continue
 
@@ -897,7 +691,7 @@ class TrendCollector:
                 trends = collector()
                 self.trends.extend(trends)
                 logger.info(f"  Found {len(trends)} trends")
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"  Error from {name}: {e}")
                 continue
 
@@ -1044,7 +838,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
             logger.warning(f"Google Trends error: {e}")
 
         return trends
@@ -1094,7 +888,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1139,7 +933,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1179,7 +973,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1227,7 +1021,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1271,7 +1065,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1310,7 +1104,7 @@ class TrendCollector:
                     )
                     story_response.raise_for_status()
                     story = story_response.json()
-                except Exception:
+                except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError):
                     return None
 
                 title = (story or {}).get("title", "")
@@ -1347,7 +1141,7 @@ class TrendCollector:
             fetched.sort(key=lambda item: item[0])
             trends = [trend for _, trend in fetched[:limit]]
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
             logger.warning(f"Hacker News error: {e}")
 
         return trends
@@ -1384,7 +1178,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1450,7 +1244,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
             logger.warning(f"GitHub Trending error: {e}")
 
         if len(trends) >= max(3, limit // 2):
@@ -1497,7 +1291,7 @@ class TrendCollector:
             )
             response.raise_for_status()
             items = response.json().get("items", [])
-        except Exception as exc:
+        except (requests.RequestException, AttributeError, KeyError, ValueError) as exc:
             logger.warning(f"GitHub Trending API fallback failed: {exc}")
             return trends
 
@@ -1553,7 +1347,7 @@ class TrendCollector:
                 page_url,
                 source_key,
             )
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
             logger.warning(f"Wikipedia Current Events HTML scrape error: {e}")
 
         if len(trends) >= max(3, limit // 3):
@@ -1593,7 +1387,7 @@ class TrendCollector:
                         seen_titles.add(normalized)
                         if len(trends) >= limit:
                             break
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Wikipedia Current Events API fallback error: {e}")
 
         return trends
@@ -1700,7 +1494,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Lobsters error: {e}")
 
         return trends
@@ -1739,7 +1533,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Product Hunt error: {e}")
 
         return trends
@@ -1795,7 +1589,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Dev.to error: {e}")
 
         return trends
@@ -1834,7 +1628,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Slashdot error: {e}")
 
         return trends
@@ -1874,21 +1668,20 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Ars Features error: {e}")
 
         return trends
 
-    def _collect_cmmc(self) -> List[Trend]:
-        """Collect CMMC and federal compliance news from specialized RSS feeds.
+    @staticmethod
+    def _content_matches_cmmc_keywords(title: str, description: str) -> bool:
+        """Return True if title+description contains any CMMC keyword."""
+        haystack = (title + " " + description).lower()
+        return any(kw.lower() in haystack for kw in CMMC_KEYWORDS)
 
-        Filters content by CMMC-relevant keywords to ensure relevance.
-        Used for the standalone CMMC Watch page.
-        """
+    def _collect_cmmc_rss(self, rss_limit: int, keyword_scan_limit: int) -> List[Trend]:
+        """Collect from CMMC-focused RSS feeds, filtered by CMMC_KEYWORDS."""
         trends: List[Trend] = []
-        rss_limit = self._get_limit("cmmc_rss", 8)
-        keyword_scan_limit = max(20, rss_limit * 3)
-        reddit_limit = max(6, min(15, rss_limit * 2))
         feeds = self._collector_sources("cmmc_rss")
         for source in feeds:
             try:
@@ -1902,47 +1695,44 @@ class TrendCollector:
                 feed = feedparser.parse(response.content)
 
                 for entry in feed.entries[:keyword_scan_limit]:
-                    title = entry.get("title", "").strip()
+                    title = re.sub(r"\s+", " ", entry.get("title", "").strip())
                     description = entry.get("summary", "")
 
-                    # Clean up title
-                    title = re.sub(r"\s+", " ", title)
-
-                    # Only include English content
                     if not title or len(title) < 10 or not is_english_text(title):
                         continue
+                    if not self._content_matches_cmmc_keywords(title, description):
+                        continue
 
-                    # Check if content matches CMMC keywords
-                    content_lower = (title + " " + description).lower()
-                    is_cmmc_relevant = any(
-                        keyword.lower() in content_lower for keyword in CMMC_KEYWORDS
-                    )
+                    trends.append(Trend(
+                        title=title,
+                        source=source.source_key or source.key,
+                        url=entry.get("link"),
+                        description=self._clean_html(description),
+                        category="cmmc",
+                        score=1.6,  # Good quality federal news
+                        timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                        image_url=self._extract_image_from_entry(entry),
+                    ))
+                    if len(trends) >= rss_limit * max(1, len(feeds)):
+                        break
 
-                    if is_cmmc_relevant:
-                        trend = Trend(
-                            title=title,
-                            source=source.source_key or source.key,
-                            url=entry.get("link"),
-                            description=self._clean_html(description),
-                            category="cmmc",  # Explicit categorization
-                            score=1.6,  # Good quality federal news
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
-                            image_url=self._extract_image_from_entry(entry),
-                        )
-                        trends.append(trend)
-                        if len(trends) >= rss_limit * max(1, len(feeds)):
-                            break
-
-            except Exception as e:
+            except (requests.RequestException, ValueError, KeyError) as e:
                 logger.warning(f"CMMC {source.name} RSS error: {e}")
                 continue
 
             time.sleep(self.request_delay)
 
         logger.info(f"CMMC collector found {len(trends)} stories from RSS feeds")
+        return trends
 
+    def _collect_cmmc_reddit(self, reddit_limit: int) -> List[Trend]:
+        """Collect from CMMC-related subreddits.
+
+        Posts in r/CMMC and r/NISTControls are kept unconditionally;
+        posts elsewhere must match CMMC_KEYWORDS.
+        """
+        trends: List[Trend] = []
         cmmc_subreddits = self._collector_sources("cmmc_reddit")
-        reddit_count = 0
         for source in cmmc_subreddits:
             try:
                 response = self._fetch_source_feed(
@@ -1955,62 +1745,65 @@ class TrendCollector:
                 feed = feedparser.parse(response.content)
 
                 for entry in feed.entries[:reddit_limit]:
-                    title = entry.get("title", "").strip()
+                    title = re.sub(r"\s+", " ", entry.get("title", "").strip())
                     description = entry.get("summary", "")
-
-                    # Clean up title
-                    title = re.sub(r"\s+", " ", title)
 
                     if not title or len(title) < 10:
                         continue
 
-                    # For CMMC and NISTControls subreddits, include all posts
-                    # For others, apply keyword filter
-                    include_post = False
-                    if source.key in ["cmmc_reddit_cmmc", "cmmc_reddit_nistcontrols"]:
-                        include_post = True  # These are highly relevant by default
+                    relevant_subreddits = {"cmmc_reddit_cmmc", "cmmc_reddit_nistcontrols"}
+                    if source.key in relevant_subreddits:
+                        include_post = True
                     else:
-                        # Check if content matches CMMC keywords
-                        content_lower = (title + " " + description).lower()
-                        include_post = any(
-                            keyword.lower() in content_lower
-                            for keyword in CMMC_KEYWORDS
+                        include_post = self._content_matches_cmmc_keywords(
+                            title, description
                         )
 
-                    if include_post:
-                        trend = Trend(
-                            title=title,
-                            source=source.source_key or source.key,
-                            url=entry.get("link"),
-                            description=self._clean_html(description),
-                            category="cmmc",
-                            score=1.4,  # Reddit community content
-                            timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
-                            image_url=self._extract_image_from_entry(entry),
-                        )
-                        trends.append(trend)
-                        reddit_count += 1
+                    if not include_post:
+                        continue
 
-            except Exception as e:
+                    trends.append(Trend(
+                        title=title,
+                        source=source.source_key or source.key,
+                        url=entry.get("link"),
+                        description=self._clean_html(description),
+                        category="cmmc",
+                        score=1.4,  # Reddit community content
+                        timestamp=parse_feed_entry_timestamp(entry) or datetime.now(),
+                        image_url=self._extract_image_from_entry(entry),
+                    ))
+
+            except (requests.RequestException, ValueError, KeyError) as e:
                 logger.warning(f"CMMC Reddit {source.name} error: {e}")
                 continue
 
             time.sleep(self.request_delay)
 
-        logger.info(f"CMMC collector: {len(trends)} total ({reddit_count} from Reddit)")
+        return trends
 
-        # Collect from LinkedIn influencers (if configured)
-        linkedin_count = 0
+    def _collect_cmmc(self) -> List[Trend]:
+        """Coordinate CMMC collection across RSS, Reddit, and LinkedIn sources."""
+        rss_limit = self._get_limit("cmmc_rss", 8)
+        keyword_scan_limit = max(20, rss_limit * 3)
+        reddit_limit = max(6, min(15, rss_limit * 2))
+
+        rss_trends = self._collect_cmmc_rss(rss_limit, keyword_scan_limit)
+        reddit_trends = self._collect_cmmc_reddit(reddit_limit)
+        logger.info(
+            f"CMMC collector: {len(rss_trends) + len(reddit_trends)} total "
+            f"({len(reddit_trends)} from Reddit)"
+        )
+
+        linkedin_trends: List[Trend] = []
         if CMMC_LINKEDIN_PROFILES:
             linkedin_trends = self._collect_cmmc_linkedin()
-            trends.extend(linkedin_trends)
-            linkedin_count = len(linkedin_trends)
-            logger.info(f"CMMC LinkedIn: {linkedin_count} posts from influencers")
+            logger.info(f"CMMC LinkedIn: {len(linkedin_trends)} posts from influencers")
 
+        trends = rss_trends + reddit_trends + linkedin_trends
         logger.info(
             f"CMMC total: {len(trends)} "
-            f"(RSS: {len(trends) - reddit_count - linkedin_count}, "
-            f"Reddit: {reddit_count}, LinkedIn: {linkedin_count})"
+            f"(RSS: {len(rss_trends)}, "
+            f"Reddit: {len(reddit_trends)}, LinkedIn: {len(linkedin_trends)})"
         )
         return trends
 
@@ -2050,7 +1843,7 @@ class TrendCollector:
 
         except ImportError:
             logger.debug("LinkedIn scraping not available (apify-client not installed)")
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"CMMC LinkedIn collection error: {e}")
 
         return trends
@@ -2098,134 +1891,8 @@ class TrendCollector:
         return clean
 
     def _deduplicate(self) -> None:
-        """Cluster and deduplicate trends using token overlap + semantic similarity."""
-        if not self.trends:
-            return
-
-        stop_words = {
-            "the",
-            "a",
-            "an",
-            "and",
-            "or",
-            "to",
-            "of",
-            "in",
-            "for",
-            "on",
-            "with",
-            "from",
-            "after",
-            "before",
-            "about",
-            "update",
-            "latest",
-            "news",
-            "today",
-        }
-
-        normalized_titles: List[str] = []
-        token_sets: List[Set[str]] = []
-        inverted_index: Dict[str, List[int]] = {}
-
-        for idx, trend in enumerate(self.trends):
-            normalized = re.sub(r"[^\w\s]", " ", (trend.title or "").lower())
-            normalized = re.sub(r"\s+", " ", normalized).strip()
-            tokens = {
-                token
-                for token in normalized.split()
-                if len(token) >= 3 and not token.isdigit() and token not in stop_words
-            }
-            if not tokens:
-                tokens = {token for token in normalized.split() if token}
-
-            normalized_titles.append(normalized)
-            token_sets.append(tokens)
-
-            for token in tokens:
-                inverted_index.setdefault(token, []).append(idx)
-
-        clusters: List[List[int]] = []
-        assigned: Set[int] = set()
-
-        for index, trend in enumerate(self.trends):
-            if index in assigned:
-                continue
-            cluster = [index]
-            assigned.add(index)
-            tokens_i = token_sets[index]
-            normalized_i = normalized_titles[index]
-
-            candidate_indices: Set[int] = set()
-            for token in tokens_i:
-                for candidate_idx in inverted_index.get(token, []):
-                    if candidate_idx > index:
-                        candidate_indices.add(candidate_idx)
-
-            for candidate_idx in sorted(candidate_indices):
-                if candidate_idx in assigned:
-                    continue
-
-                tokens_j = token_sets[candidate_idx]
-                normalized_j = normalized_titles[candidate_idx]
-
-                if not tokens_i or not tokens_j:
-                    overlap_ratio = 0.0
-                    jaccard = 0.0
-                else:
-                    intersection = len(tokens_i & tokens_j)
-                    overlap_ratio = intersection / max(
-                        1, min(len(tokens_i), len(tokens_j))
-                    )
-                    jaccard = intersection / max(1, len(tokens_i | tokens_j))
-
-                semantic_ratio = SequenceMatcher(None, normalized_i, normalized_j).ratio()
-                token_semantic_ratio = SequenceMatcher(
-                    None,
-                    " ".join(sorted(tokens_i)),
-                    " ".join(sorted(tokens_j)),
-                ).ratio()
-
-                is_duplicate = (
-                    overlap_ratio >= DEDUP_SIMILARITY_THRESHOLD
-                    or jaccard >= max(0.55, DEDUP_SIMILARITY_THRESHOLD - 0.25)
-                    or semantic_ratio >= DEDUP_SEMANTIC_THRESHOLD
-                    or token_semantic_ratio >= DEDUP_SEMANTIC_THRESHOLD
-                )
-                if not is_duplicate:
-                    continue
-
-                cluster.append(candidate_idx)
-                assigned.add(candidate_idx)
-
-            clusters.append(cluster)
-
-        unique_trends: List[Trend] = []
-        for cluster in clusters:
-            if len(cluster) == 1:
-                unique_trends.append(self.trends[cluster[0]])
-                continue
-
-            def _quality(cluster_idx: int) -> Tuple[float, float]:
-                candidate = self.trends[cluster_idx]
-                quality = candidate.score * source_quality_multiplier(candidate.source)
-                quality *= 1.0 + min((candidate.source_diversity - 1) * 0.05, 0.25)
-                timestamp = candidate.timestamp.timestamp() if candidate.timestamp else 0.0
-                return quality, timestamp
-
-            canonical_idx = max(cluster, key=_quality)
-            canonical = self.trends[canonical_idx]
-            for cluster_idx in cluster:
-                if cluster_idx == canonical_idx:
-                    continue
-                canonical.register_corroboration(self.trends[cluster_idx])
-            unique_trends.append(canonical)
-
-        removed_count = len(self.trends) - len(unique_trends)
-        if removed_count > 0:
-            logger.info(f"Removed {removed_count} duplicate trends")
-
-        self.trends = unique_trends
+        """Cluster and deduplicate trends; mutates self.trends."""
+        self.trends = deduplicate_trends(self.trends)
 
     def _calculate_scores(self) -> None:
         """Recalculate trend scores based on various factors including global keyword frequency."""

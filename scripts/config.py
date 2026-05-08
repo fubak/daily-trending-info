@@ -191,6 +191,10 @@ MAX_RETRY_WAIT_SECONDS = (
     10  # Cap retry waits to prevent long delays (e.g., 360s from Groq)
 )
 
+# LLM client throttling (used by editorial_generator and enrich_content)
+LLM_MIN_CALL_INTERVAL = 3.0  # Seconds between successive LLM calls (~30 req/min)
+LLM_MAX_RETRY_WAIT = MAX_RETRY_WAIT_SECONDS
+
 # Rate limiting delays (seconds)
 DELAYS = {
     "between_sources": 0.5,
@@ -244,6 +248,17 @@ UNSPLASH_KEYS = get_api_keys("UNSPLASH_ACCESS_KEY")
 PIXABAY_KEYS = get_api_keys("PIXABAY_API_KEY")
 GROQ_KEYS = get_api_keys("GROQ_API_KEY")
 OPENROUTER_KEYS = get_api_keys("OPENROUTER_API_KEY")
+
+# OpenRouter rate-limit / credits introspection endpoint.
+OPENROUTER_KEY_INFO_URL = "https://openrouter.ai/api/v1/key"
+
+# Length caps for renderer-bound strings. Centralised so card layouts and
+# text excerpts stay consistent across pages.
+STRING_LIMITS = {
+    "title_max": 100,        # Story/article card titles
+    "summary_max": 200,      # Card summaries / RSS descriptions
+    "description_max": 500,  # Long-form excerpt (LinkedIn posts, Reddit bodies)
+}
 
 # ============================================================================
 # DEDUPLICATION

@@ -124,7 +124,7 @@ def validate_image_url(url: Optional[str]) -> Tuple[bool, Optional[str]]:
         # URL looks valid
         return True, url
 
-    except Exception as e:
+    except (requests.RequestException, ValueError, AttributeError) as e:
         logger.debug(f"URL validation error for {url}: {e}")
         return False, None
 
@@ -204,7 +204,7 @@ def get_image_quality_score(url: str) -> int:
         if any(ind in domain for ind in cdn_indicators):
             score += 10
 
-    except Exception:
+    except (KeyError, ValueError, TypeError, AttributeError):
         score = 30  # Default low score on error
 
     return max(0, min(100, score))

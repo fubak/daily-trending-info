@@ -125,7 +125,7 @@ def main():
     except AssertionError as e:
         print(f"\n❌ Validation failed: {e}")
         return 1
-    except Exception as e:
+    except (OSError, ValueError, KeyError, AttributeError) as e:
         print(f"\n❌ Unexpected error: {e}")
         import traceback
         traceback.print_exc()

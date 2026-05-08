@@ -25,17 +25,32 @@ Required in `.env` or GitHub Secrets:
 | Module | Purpose |
 |--------|---------|
 | `main.py` | Orchestrator, quality gates |
-| `collect_trends.py` | 15+ sources, deduplication |
+| `collect_trends.py` | 15+ source collectors |
+| `trend_deduplicator.py` | Token + semantic dedup clustering |
+| `keyword_extraction.py` | Stop-word filter for trend titles |
 | `fetch_images.py` | Pexels/Unsplash, 7-day cache |
 | `fixed_design.py` | Fixed deterministic design profile |
 | `build_website.py` | Single-file HTML/CSS/JS builder |
 | `enrich_content.py` | Word of Day, Grokipedia |
 | `editorial_generator.py` | 8-section articles |
+| `editorial_renderer.py` | Article + AMP HTML renderers |
+| `articles_index_renderer.py` | /articles/ index page renderer |
+| `topic_page_generator.py` | /tech/, /world/, etc. sub-pages |
+| `media_page_generator.py` | /media/ daily image+video page |
 | `cmmc_page_generator.py` | CMMC Watch standalone page |
 | `generate_rss.py` | RSS 2.0, content:encoded |
 | `sitemap_generator.py` | XML sitemap |
-| `config.py` | All limits, timeouts, constants |
 | `archive_manager.py` | 30-day snapshots |
+| `config.py` | All limits, timeouts, constants, STRING_LIMITS |
+| `llm_client.py` | OpenAI-compatible HTTP client (Groq/OpenRouter/OpenCode/Mistral) |
+| `rate_limiter.py` | Per-provider 429 / quota tracking |
+| `html_sanitizer.py` | Strips script/iframe/event handlers from LLM HTML |
+| `url_safety.py` | `safe_href` / `safe_image_src` scheme allowlists |
+| `design_tokens.py` | Color/font/mode validators (CSS injection defence) |
+| `pipeline_types.py` | TypedDict schemas (TrendDict, ImageDict, DesignTokens, MediaData) |
+| `json_utils.py` | Escape control chars in LLM-emitted JSON |
+| `date_utils.py` | Shared `format_long_date()` |
+| `shared_components.py` | Header/footer HTML + theme toggle script |
 
 **Data Flow:** `15+ Sources → trends.json → images.json → design.json → public/index.html` | Cache: `data/image_cache/` (7-day TTL)
 

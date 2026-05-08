@@ -16,7 +16,15 @@ import requests
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional
 
+from config import LLM_MIN_CALL_INTERVAL, LLM_MAX_RETRY_WAIT
 from json_utils import escape_control_chars_in_strings
+from llm_client import (
+    call_openai_compatible,
+    GROQ_SPEC,
+    OPENROUTER_SPEC,
+    OPENCODE_SPEC,
+    MISTRAL_SPEC,
+)
 
 try:
     from rate_limiter import (
@@ -159,9 +167,10 @@ class ContentEnricher:
     Grokipedia API for encyclopedia article fetching.
     """
 
-    # Rate limiting: minimum seconds between API calls to stay under 30 req/min
-    MIN_CALL_INTERVAL = 3.0
-    MAX_RETRY_WAIT = 10  # Cap retry waits to prevent long delays
+    # Rate limiting (sourced from config so editorial_generator and
+    # enrich_content stay in sync).
+    MIN_CALL_INTERVAL = LLM_MIN_CALL_INTERVAL
+    MAX_RETRY_WAIT = LLM_MAX_RETRY_WAIT
 
     def __init__(
         self,
@@ -347,8 +356,8 @@ class ContentEnricher:
                             # This is a quota exhaustion - mark provider as exhausted
                             mark_provider_exhausted("google", "daily quota exceeded")
                             return None
-                    except Exception:
-                        pass
+                    except (ValueError, KeyError) as parse_err:
+                        logger.debug(f"Could not parse 429 body for quota check: {parse_err}")
 
                     # Temporary rate limit - wait and retry
                     retry_after = response.headers.get("Retry-After", "10")
@@ -363,7 +372,7 @@ class ContentEnricher:
                     continue
                 logger.warning(f"Google AI failed: {e}")
                 return None
-            except Exception as e:
+            except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
                 logger.warning(f"Google AI failed: {e}")
                 return None
 
@@ -467,8 +476,8 @@ class ContentEnricher:
                             # This is a quota exhaustion - mark provider as exhausted
                             mark_provider_exhausted("google", "daily quota exceeded")
                             return None
-                    except Exception:
-                        pass
+                    except (ValueError, KeyError) as parse_err:
+                        logger.debug(f"Could not parse 429 body for quota check: {parse_err}")
 
                     # Temporary rate limit - wait and retry
                     retry_after = response.headers.get("Retry-After", "10")
@@ -483,7 +492,7 @@ class ContentEnricher:
                     continue
                 logger.warning(f"Google AI structured output failed: {e}")
                 return None
-            except Exception as e:
+            except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
                 logger.warning(f"Google AI structured output failed: {e}")
                 return None
 
@@ -493,257 +502,35 @@ class ContentEnricher:
     def _call_openrouter(
         self, prompt: str, max_tokens: int = 500, max_retries: int = 1
     ) -> Optional[str]:
-        """Call OpenRouter API with free models (primary)."""
-        if not self.openrouter_key:
-            logger.warning("No OpenRouter API key available")
-            return None
-
-        # Check rate limits before calling
-        rate_limiter = get_rate_limiter()
-        status = check_before_call("openrouter")
-
-        if not status.is_available:
-            logger.warning(f"OpenRouter not available: {status.error}")
-            return None
-
-        if status.wait_seconds > 0:
-            logger.info(
-                f"Waiting {status.wait_seconds:.1f}s for OpenRouter rate limit..."
-            )
-            time.sleep(status.wait_seconds)
-
-        # Free models to try in order of preference
-        free_models = [
-            "meta-llama/llama-3.3-70b-instruct:free",
-            "deepseek/deepseek-r1-0528:free",
-            "google/gemma-3-27b-it:free",
-        ]
-
-        for model in free_models:
-            for attempt in range(max_retries):
-                try:
-                    logger.info(
-                        f"Trying OpenRouter {model} (attempt {attempt + 1}/{max_retries})"
-                    )
-                    response = self.session.post(
-                        "https://openrouter.ai/api/v1/chat/completions",
-                        headers={
-                            "Authorization": f"Bearer {self.openrouter_key}",
-                            "Content-Type": "application/json",
-                            "HTTP-Referer": "https://dailytrending.info",
-                            "X-Title": "DailyTrending.info",
-                        },
-                        json={
-                            "model": model,
-                            "messages": [{"role": "user", "content": prompt}],
-                            "max_tokens": max_tokens,
-                            "temperature": 0.7,
-                        },
-                        timeout=60,
-                    )
-                    response.raise_for_status()
-
-                    # Update rate limiter from response headers
-                    rate_limiter.update_from_response_headers(
-                        "openrouter", dict(response.headers)
-                    )
-
-                    result = (
-                        response.json()
-                        .get("choices", [{}])[0]
-                        .get("message", {})
-                        .get("content")
-                    )
-                    if result:
-                        logger.info(f"OpenRouter success with {model}")
-                        return result
-                except requests.exceptions.HTTPError as e:
-                    if response.status_code == 429:
-                        # Parse retry-after header if available
-                        retry_after = response.headers.get("Retry-After", "10")
-                        try:
-                            wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
-                        except ValueError:
-                            wait_time = self.MAX_RETRY_WAIT
-                        logger.warning(
-                            f"OpenRouter {model} rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})"
-                        )
-                        time.sleep(wait_time)
-                        continue
-                    logger.warning(f"OpenRouter {model} failed: {e}")
-                    break  # Try next model
-                except Exception as e:
-                    logger.warning(f"OpenRouter {model} failed: {e}")
-                    break  # Try next model
-
-        logger.warning("All OpenRouter models failed")
-        return None
+        return call_openai_compatible(
+            OPENROUTER_SPEC, self.openrouter_key, prompt, max_tokens,
+            max_retries, self.session, self.MAX_RETRY_WAIT,
+        )
 
     def _call_groq_direct(
         self, prompt: str, max_tokens: int = 500, max_retries: int = 1
     ) -> Optional[str]:
-        """Call Groq API directly (fallback)."""
-        if not self.groq_key:
-            return None
-
-        # Check rate limits before calling
-        rate_limiter = get_rate_limiter()
-        status = check_before_call("groq")
-
-        if not status.is_available:
-            logger.warning(f"Groq not available: {status.error}")
-            return None
-
-        if status.wait_seconds > 0:
-            logger.info(f"Waiting {status.wait_seconds:.1f}s for Groq rate limit...")
-            time.sleep(status.wait_seconds)
-
-        # Proactive rate limiting
-        elapsed = time.time() - self._last_call_time
-        if elapsed < self.MIN_CALL_INTERVAL:
-            time.sleep(self.MIN_CALL_INTERVAL - elapsed)
-
-        for attempt in range(max_retries):
-            try:
-                self._last_call_time = time.time()
-                response = self.session.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {self.groq_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": "llama-3.3-70b-versatile",
-                        "messages": [{"role": "user", "content": prompt}],
-                        "max_tokens": max_tokens,
-                        "temperature": 0.7,
-                    },
-                    timeout=45,
-                )
-                response.raise_for_status()
-
-                # Update rate limiter from response headers
-                rate_limiter.update_from_response_headers(
-                    "groq", dict(response.headers)
-                )
-
-                return (
-                    response.json()
-                    .get("choices", [{}])[0]
-                    .get("message", {})
-                    .get("content")
-                )
-            except requests.exceptions.HTTPError as e:
-                if response.status_code == 429:
-                    # Parse retry-after header if available
-                    retry_after = response.headers.get("Retry-After", "10")
-                    try:
-                        wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
-                    except ValueError:
-                        wait_time = self.MAX_RETRY_WAIT
-                    logger.warning(
-                        f"Groq rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})"
-                    )
-                    time.sleep(wait_time)
-                    continue
-                logger.warning(f"Groq API error: {e}")
-                return None
-            except Exception as e:
-                logger.warning(f"Groq API error: {e}")
-                return None
-
-        logger.warning("Groq API: Max retries exceeded")
-        return None
+        timing = [self._last_call_time]
+        result = call_openai_compatible(
+            GROQ_SPEC, self.groq_key, prompt, max_tokens, max_retries,
+            self.session, self.MAX_RETRY_WAIT,
+            self.MIN_CALL_INTERVAL, timing,
+        )
+        self._last_call_time = timing[0]
+        return result
 
     def _call_opencode(
         self, prompt: str, max_tokens: int = 500, max_retries: int = 1
     ) -> Optional[str]:
-        """Call OpenCode API with free models (glm-4.7-free, minimax-m2.1-free)."""
         opencode_key = os.getenv("OPENCODE_API_KEY")
-        if not opencode_key:
-            return None
-
-        # Check rate limits before calling
-        rate_limiter = get_rate_limiter()
-        status = check_before_call("opencode")
-
-        if not status.is_available:
-            logger.warning(f"OpenCode not available: {status.error}")
-            return None
-
-        if status.wait_seconds > 0:
-            logger.info(
-                f"Waiting {status.wait_seconds:.1f}s for OpenCode rate limit..."
-            )
-            time.sleep(status.wait_seconds)
-
-        # Proactive rate limiting
-        elapsed = time.time() - self._last_call_time
-        if elapsed < self.MIN_CALL_INTERVAL:
-            time.sleep(self.MIN_CALL_INTERVAL - elapsed)
-
-        # Free models to try in order
-        free_models = ["glm-4.7-free", "minimax-m2.1-free"]
-
-        for model in free_models:
-            for attempt in range(max_retries):
-                try:
-                    self._last_call_time = time.time()
-                    logger.info(
-                        f"Trying OpenCode {model} (attempt {attempt + 1}/{max_retries})"
-                    )
-                    response = self.session.post(
-                        "https://opencode.ai/zen/v1/chat/completions",
-                        headers={
-                            "Authorization": f"Bearer {opencode_key}",
-                            "Content-Type": "application/json",
-                        },
-                        json={
-                            "model": model,
-                            "messages": [{"role": "user", "content": prompt}],
-                            "max_tokens": max_tokens,
-                            "temperature": 0.7,
-                        },
-                        timeout=60,
-                    )
-                    response.raise_for_status()
-
-                    # Update rate limiter from response headers
-                    rate_limiter.update_from_response_headers(
-                        "opencode", dict(response.headers)
-                    )
-                    rate_limiter._last_call_time["opencode"] = time.time()
-
-                    result = (
-                        response.json()
-                        .get("choices", [{}])[0]
-                        .get("message", {})
-                        .get("content")
-                    )
-                    if result:
-                        logger.info(f"OpenCode success with {model}")
-                        return result
-
-                except requests.exceptions.HTTPError as e:
-                    if response.status_code == 429:
-                        retry_after = response.headers.get("Retry-After", "10")
-                        try:
-                            wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
-                        except ValueError:
-                            wait_time = self.MAX_RETRY_WAIT
-                        logger.warning(
-                            f"OpenCode rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})"
-                        )
-                        time.sleep(wait_time)
-                        continue
-                    logger.warning(f"OpenCode API error with {model}: {e}")
-                    break  # Try next model
-                except Exception as e:
-                    logger.warning(f"OpenCode API error with {model}: {e}")
-                    break  # Try next model
-
-        logger.warning("All OpenCode models failed")
-        return None
+        timing = [self._last_call_time]
+        result = call_openai_compatible(
+            OPENCODE_SPEC, opencode_key, prompt, max_tokens, max_retries,
+            self.session, self.MAX_RETRY_WAIT,
+            self.MIN_CALL_INTERVAL, timing,
+        )
+        self._last_call_time = timing[0]
+        return result
 
     def _call_huggingface(
         self, prompt: str, max_tokens: int = 500, max_retries: int = 1
@@ -838,7 +625,7 @@ class ContentEnricher:
                         continue
                     logger.warning(f"Hugging Face API error with {model}: {e}")
                     break  # Try next model
-                except Exception as e:
+                except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
                     logger.warning(f"Hugging Face API error with {model}: {e}")
                     break  # Try next model
 
@@ -848,93 +635,15 @@ class ContentEnricher:
     def _call_mistral(
         self, prompt: str, max_tokens: int = 500, max_retries: int = 1
     ) -> Optional[str]:
-        """Call Mistral AI API - high quality free tier models."""
         mistral_key = os.getenv("MISTRAL_API_KEY")
-        if not mistral_key:
-            return None
-
-        # Check rate limits before calling
-        rate_limiter = get_rate_limiter()
-        status = check_before_call("mistral")
-
-        if not status.is_available:
-            logger.warning(f"Mistral not available: {status.error}")
-            return None
-
-        if status.wait_seconds > 0:
-            logger.info(f"Waiting {status.wait_seconds:.1f}s for Mistral rate limit...")
-            time.sleep(status.wait_seconds)
-
-        # Proactive rate limiting
-        elapsed = time.time() - self._last_call_time
-        if elapsed < self.MIN_CALL_INTERVAL:
-            time.sleep(self.MIN_CALL_INTERVAL - elapsed)
-
-        # Mistral free tier models
-        models = [
-            "mistral-small-latest",
-            "open-mistral-7b",
-        ]
-
-        for model in models:
-            for attempt in range(max_retries):
-                try:
-                    self._last_call_time = time.time()
-                    logger.info(
-                        f"Trying Mistral {model} (attempt {attempt + 1}/{max_retries})"
-                    )
-                    response = self.session.post(
-                        "https://api.mistral.ai/v1/chat/completions",
-                        headers={
-                            "Authorization": f"Bearer {mistral_key}",
-                            "Content-Type": "application/json",
-                        },
-                        json={
-                            "model": model,
-                            "messages": [{"role": "user", "content": prompt}],
-                            "max_tokens": max_tokens,
-                            "temperature": 0.7,
-                        },
-                        timeout=60,
-                    )
-                    response.raise_for_status()
-
-                    # Update rate limiter from response headers
-                    rate_limiter.update_from_response_headers(
-                        "mistral", dict(response.headers)
-                    )
-                    rate_limiter._last_call_time["mistral"] = time.time()
-
-                    result = (
-                        response.json()
-                        .get("choices", [{}])[0]
-                        .get("message", {})
-                        .get("content")
-                    )
-                    if result:
-                        logger.info(f"Mistral success with {model}")
-                        return result
-
-                except requests.exceptions.HTTPError as e:
-                    if response.status_code == 429:
-                        retry_after = response.headers.get("Retry-After", "10")
-                        try:
-                            wait_time = min(float(retry_after), self.MAX_RETRY_WAIT)
-                        except ValueError:
-                            wait_time = self.MAX_RETRY_WAIT
-                        logger.warning(
-                            f"Mistral rate limited, waiting {wait_time}s (attempt {attempt + 1}/{max_retries})"
-                        )
-                        time.sleep(wait_time)
-                        continue
-                    logger.warning(f"Mistral API error with {model}: {e}")
-                    break  # Try next model
-                except Exception as e:
-                    logger.warning(f"Mistral API error with {model}: {e}")
-                    break  # Try next model
-
-        logger.warning("All Mistral models failed")
-        return None
+        timing = [self._last_call_time]
+        result = call_openai_compatible(
+            MISTRAL_SPEC, mistral_key, prompt, max_tokens, max_retries,
+            self.session, self.MAX_RETRY_WAIT,
+            self.MIN_CALL_INTERVAL, timing,
+        )
+        self._last_call_time = timing[0]
+        return result
 
     def _repair_json(self, json_str: str) -> str:
         """Attempt to repair common JSON formatting issues from LLM output."""
@@ -988,7 +697,7 @@ class ContentEnricher:
                 try:
                     sanitized = escape_control_chars_in_strings(json_str)
                     return json.loads(sanitized)
-                except (json.JSONDecodeError, Exception):
+                except json.JSONDecodeError:
                     pass
 
                 # Try repair + escape combination
@@ -996,7 +705,7 @@ class ContentEnricher:
                     repaired = self._repair_json(json_str)
                     sanitized = escape_control_chars_in_strings(repaired)
                     return json.loads(sanitized)
-                except (json.JSONDecodeError, Exception):
+                except json.JSONDecodeError:
                     pass
 
                 # Last resort: strip all control chars except structural whitespace
@@ -1004,10 +713,10 @@ class ContentEnricher:
                     stripped = re.sub(r"[\x00-\x09\x0b\x0c\x0e-\x1f]", " ", json_str)
                     repaired = self._repair_json(stripped)
                     return json.loads(repaired)
-                except (json.JSONDecodeError, Exception):
+                except json.JSONDecodeError:
                     pass
 
-        except (json.JSONDecodeError, Exception) as e:
+        except (json.JSONDecodeError, ValueError) as e:
             logger.warning(f"JSON parse error: {e}")
 
         return None
