@@ -5,6 +5,7 @@ Improves reliability of article images in story cards.
 """
 
 import re
+import requests
 from urllib.parse import urlparse, urljoin
 from typing import Optional, Tuple
 import logging
@@ -13,36 +14,36 @@ logger = logging.getLogger(__name__)
 
 # Known problematic image domains that frequently fail or have CORS issues
 BLOCKED_DOMAINS = {
-    'pixel.quantserve.com',
-    'sb.scorecardresearch.com',
-    'b.scorecardresearch.com',
-    'secure-us.imrworldwide.com',
-    'pixel.wp.com',
-    'stats.wp.com',
-    'www.google-analytics.com',
-    'www.facebook.com',
-    's.yimg.com',  # Yahoo tracking
+    "pixel.quantserve.com",
+    "sb.scorecardresearch.com",
+    "b.scorecardresearch.com",
+    "secure-us.imrworldwide.com",
+    "pixel.wp.com",
+    "stats.wp.com",
+    "www.google-analytics.com",
+    "www.facebook.com",
+    "s.yimg.com",  # Yahoo tracking
 }
 
 # Domains known to have reliable, CORS-friendly images
 TRUSTED_DOMAINS = {
-    'i.imgur.com',
-    'upload.wikimedia.org',
-    'images.unsplash.com',
-    'images.pexels.com',
-    'cdn.pixabay.com',
-    'media.npr.org',
-    'ichef.bbci.co.uk',
-    'static01.nyt.com',
-    'static.independent.co.uk',
-    'i.guim.co.uk',
-    'cdn.cnn.com',
-    'www.reuters.com',
-    'assets.bwbx.io',
-    'github.com',
-    'avatars.githubusercontent.com',
-    'raw.githubusercontent.com',
-    'opengraph.githubassets.com',
+    "i.imgur.com",
+    "upload.wikimedia.org",
+    "images.unsplash.com",
+    "images.pexels.com",
+    "cdn.pixabay.com",
+    "media.npr.org",
+    "ichef.bbci.co.uk",
+    "static01.nyt.com",
+    "static.independent.co.uk",
+    "i.guim.co.uk",
+    "cdn.cnn.com",
+    "www.reuters.com",
+    "assets.bwbx.io",
+    "github.com",
+    "avatars.githubusercontent.com",
+    "raw.githubusercontent.com",
+    "opengraph.githubassets.com",
 }
 
 # Minimum dimensions to filter out tracking pixels
@@ -66,15 +67,15 @@ def validate_image_url(url: Optional[str]) -> Tuple[bool, Optional[str]]:
     url = url.strip()
 
     # Handle protocol-relative URLs
-    if url.startswith('//'):
-        url = 'https:' + url
+    if url.startswith("//"):
+        url = "https:" + url
 
     # Reject relative URLs without base
-    if url.startswith('/') and not url.startswith('//'):
+    if url.startswith("/") and not url.startswith("//"):
         return False, None
 
     # Must be HTTP or HTTPS
-    if not url.startswith(('http://', 'https://')):
+    if not url.startswith(("http://", "https://")):
         return False, None
 
     try:
@@ -93,9 +94,18 @@ def validate_image_url(url: Optional[str]) -> Tuple[bool, Optional[str]]:
         # Check for tracking pixel patterns in URL
         url_lower = url.lower()
         tracking_patterns = [
-            'pixel', 'tracking', 'beacon', '1x1', 'spacer',
-            'clear.gif', 'blank.gif', 'shim.gif', 't.gif',
-            'analytics', 'stat', 'count'
+            "pixel",
+            "tracking",
+            "beacon",
+            "1x1",
+            "spacer",
+            "clear.gif",
+            "blank.gif",
+            "shim.gif",
+            "t.gif",
+            "analytics",
+            "stat",
+            "count",
         ]
         if any(pattern in url_lower for pattern in tracking_patterns):
             logger.debug(f"Tracking pixel pattern detected: {url}")
@@ -103,7 +113,7 @@ def validate_image_url(url: Optional[str]) -> Tuple[bool, Optional[str]]:
 
         # Check file extension (if present)
         path_lower = parsed.path.lower()
-        valid_extensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg']
+        valid_extensions = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]
         has_extension = any(path_lower.endswith(ext) for ext in valid_extensions)
 
         # URLs without extensions may still be valid (CDN URLs often don't have extensions)
@@ -111,8 +121,15 @@ def validate_image_url(url: Optional[str]) -> Tuple[bool, Optional[str]]:
         if not has_extension:
             # Check if URL looks like a CDN or image service
             cdn_patterns = [
-                'cdn', 'images', 'img', 'media', 'static',
-                'uploads', 'assets', 'photo', 'picture'
+                "cdn",
+                "images",
+                "img",
+                "media",
+                "static",
+                "uploads",
+                "assets",
+                "photo",
+                "picture",
             ]
             if not any(pattern in url_lower for pattern in cdn_patterns):
                 # No extension and doesn't look like an image URL
@@ -146,11 +163,11 @@ def sanitize_image_url(url: str, base_url: Optional[str] = None) -> Optional[str
     url = url.strip()
 
     # Handle protocol-relative URLs
-    if url.startswith('//'):
-        url = 'https:' + url
+    if url.startswith("//"):
+        url = "https:" + url
 
     # Handle relative URLs
-    if base_url and not url.startswith(('http://', 'https://')):
+    if base_url and not url.startswith(("http://", "https://")):
         url = urljoin(base_url, url)
 
     # Validate the result
@@ -184,11 +201,11 @@ def get_image_quality_score(url: str) -> int:
             score += 30
 
         # Bonus for HTTPS
-        if parsed.scheme == 'https':
+        if parsed.scheme == "https":
             score += 10
 
         # Bonus for known good image extensions
-        if any(path.endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+        if any(path.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"]):
             score += 10
 
         # Penalty for query strings (often tracking or dynamic)
@@ -200,7 +217,7 @@ def get_image_quality_score(url: str) -> int:
             score -= 20
 
         # Bonus for CDN patterns
-        cdn_indicators = ['cdn', 'static', 'assets', 'media']
+        cdn_indicators = ["cdn", "static", "assets", "media"]
         if any(ind in domain for ind in cdn_indicators):
             score += 10
 
@@ -238,7 +255,7 @@ def select_best_image(image_urls: list) -> Optional[str]:
     return valid_images[0][0]
 
 
-def get_fallback_gradient_css(seed: str = '') -> str:
+def get_fallback_gradient_css(seed: str = "") -> str:
     """
     Generate a CSS gradient as fallback when no image is available.
 
@@ -249,18 +266,18 @@ def get_fallback_gradient_css(seed: str = '') -> str:
         CSS gradient string
     """
     gradients = [
-        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-        'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-        'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-        'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-        'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-        'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)',
-        'linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)',
-        'linear-gradient(135deg, #cd9cf2 0%, #f6f3ff 100%)',
-        'linear-gradient(135deg, #37ecba 0%, #72afd3 100%)',
-        'linear-gradient(135deg, #feada6 0%, #f5efef 100%)',
-        'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
+        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+        "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+        "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+        "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+        "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+        "linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)",
+        "linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)",
+        "linear-gradient(135deg, #cd9cf2 0%, #f6f3ff 100%)",
+        "linear-gradient(135deg, #37ecba 0%, #72afd3 100%)",
+        "linear-gradient(135deg, #feada6 0%, #f5efef 100%)",
+        "linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)",
     ]
 
     if seed:
@@ -268,6 +285,7 @@ def get_fallback_gradient_css(seed: str = '') -> str:
         index = sum(ord(c) for c in seed) % len(gradients)
     else:
         import random
+
         index = random.randint(0, len(gradients) - 1)
 
     return gradients[index]

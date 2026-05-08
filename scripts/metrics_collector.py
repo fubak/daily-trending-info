@@ -107,7 +107,9 @@ class MetricsCollector:
             proc = psutil.Process()
             rss_mb = proc.memory_info().rss / (1024 * 1024)
             self.resources[f"{label}_rss_mb"] = round(rss_mb, 2)
-        except Exception:  # noqa: BLE001 — psutil snapshots are best-effort; never propagate
+        except (
+            Exception
+        ):  # noqa: BLE001 — psutil snapshots are best-effort; never propagate
             # Resource snapshots are best-effort and should never fail pipeline.
             return
 
@@ -146,7 +148,7 @@ class MetricsCollector:
         output_path = self.metrics_dir / f"{date_str}.json"
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        existing: List[Dict[str, Any]] = []
+        existing: List[Any] = []
         if output_path.exists():
             try:
                 with open(output_path, "r", encoding="utf-8") as f:
@@ -162,7 +164,9 @@ class MetricsCollector:
 
         return output_path
 
-    def _normalize_value(self, value: Any) -> Union[dict, list, str, float, int, bool, None]:
+    def _normalize_value(
+        self, value: Any
+    ) -> Union[dict, list, str, float, int, bool, None]:
         """Convert non-JSON-native values recursively into serializable values."""
         if isinstance(value, datetime):
             return value.isoformat()

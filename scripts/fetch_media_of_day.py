@@ -8,6 +8,7 @@ Sources:
 - Bing Image of the Day - Beautiful landscape/nature photography (backup)
 """
 
+import json
 import os
 import re
 from datetime import datetime
@@ -123,7 +124,13 @@ class MediaOfDayFetcher:
                 source_url="https://apod.nasa.gov/apod/astropix.html",
             )
 
-        except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
+        except (
+            requests.RequestException,
+            json.JSONDecodeError,
+            KeyError,
+            ValueError,
+            AttributeError,
+        ) as e:
             logger.warning(f"NASA APOD fetch error: {e}")
             return None
 
@@ -169,7 +176,13 @@ class MediaOfDayFetcher:
                 source_url=img.get("copyrightlink", "https://www.bing.com"),
             )
 
-        except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
+        except (
+            requests.RequestException,
+            json.JSONDecodeError,
+            KeyError,
+            ValueError,
+            AttributeError,
+        ) as e:
             logger.warning(f"Bing Image fetch error: {e}")
             return None
 
@@ -258,7 +271,13 @@ class MediaOfDayFetcher:
                 source="vimeo_staff_picks",
             )
 
-        except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
+        except (
+            requests.RequestException,
+            json.JSONDecodeError,
+            KeyError,
+            ValueError,
+            AttributeError,
+        ) as e:
             logger.warning(f"Vimeo Staff Picks fetch error: {e}")
             return None
 

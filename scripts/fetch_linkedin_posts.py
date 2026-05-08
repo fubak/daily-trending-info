@@ -21,6 +21,7 @@ import time
 from datetime import datetime
 from typing import List, Dict, Optional
 from dataclasses import dataclass
+import requests
 
 from config import setup_logging
 
