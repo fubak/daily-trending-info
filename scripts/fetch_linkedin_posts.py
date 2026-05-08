@@ -139,6 +139,10 @@ def fetch_linkedin_posts(
         except (requests.RequestException, ValueError, KeyError, AttributeError) as e:
             logger.warning(f"Failed to fetch posts from {profile_url}: {e}")
             continue
+        except Exception as e:
+            # Catch billing errors, rate limits, and other Apify API errors
+            logger.warning(f"Apify error fetching {profile_url}: {e}")
+            continue
 
     logger.info(f"Total LinkedIn posts collected: {len(posts)}")
     return posts

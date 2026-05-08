@@ -1973,6 +1973,9 @@ class TrendCollector:
             TypeError,
         ) as e:
             logger.warning(f"CMMC LinkedIn collection error: {e}")
+        except Exception as e:
+            # Catch Apify billing/quota errors so LinkedIn failure doesn't abort pipeline
+            logger.warning(f"CMMC LinkedIn unavailable (skipping): {e}")
 
         return trends
 
