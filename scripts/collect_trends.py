@@ -163,7 +163,7 @@ def parse_feed_entry_timestamp(entry: Any) -> Optional[datetime]:
         if parsed_value:
             try:
                 return datetime(*parsed_value[:6])
-            except Exception:
+            except (ValueError, TypeError):
                 continue
 
     # Fallback to string fields
@@ -347,7 +347,7 @@ class TrendCollector:
             with open(self.feed_cache_file, "w", encoding="utf-8") as f:
                 json.dump(self.persistent_feed_cache, f)
             self._persistent_cache_dirty = False
-        except Exception as exc:
+        except (OSError, TypeError, ValueError) as exc:
             logger.debug(f"Failed to flush persistent feed cache: {exc}")
 
     def _resolve_domain_profile(self, url: str) -> Dict[str, Any]:
@@ -433,7 +433,7 @@ class TrendCollector:
                 return None
             try:
                 content = base64.b64decode(content_b64.encode("ascii"))
-            except Exception:
+            except (ValueError, base64.binascii.Error):
                 return None
 
         if not isinstance(content, (bytes, bytearray)):
@@ -522,7 +522,7 @@ class TrendCollector:
                     self._record_feed_success(scope)
                     self._cache_feed_response(scope, response, url)
                     return response
-            except Exception as exc:
+            except requests.RequestException as exc:
                 errors.append(str(exc))
 
             if attempt < attempts:
@@ -587,7 +587,7 @@ class TrendCollector:
                     return None
                 return img_url
 
-        except Exception as e:
+        except (requests.RequestException, ValueError, AttributeError) as e:
             logger.debug(f"Failed to scrape OG image for {url}: {e}")
 
         return None
@@ -619,7 +619,7 @@ class TrendCollector:
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
-            except Exception as exc:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as exc:
                 logger.warning(f"{source.name} sports RSS error: {exc}")
                 continue
 
@@ -653,7 +653,7 @@ class TrendCollector:
                             image_url=self._extract_image_from_entry(entry),
                         )
                         trends.append(trend)
-            except Exception as exc:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as exc:
                 logger.warning(f"{source.name} entertainment RSS error: {exc}")
                 continue
 
@@ -691,7 +691,7 @@ class TrendCollector:
                 trends = collector()
                 self.trends.extend(trends)
                 logger.info(f"  Found {len(trends)} trends")
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"  Error from {name}: {e}")
                 continue
 
@@ -838,7 +838,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
             logger.warning(f"Google Trends error: {e}")
 
         return trends
@@ -888,7 +888,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -933,7 +933,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -973,7 +973,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1021,7 +1021,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1065,7 +1065,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1104,7 +1104,7 @@ class TrendCollector:
                     )
                     story_response.raise_for_status()
                     story = story_response.json()
-                except Exception:
+                except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError):
                     return None
 
                 title = (story or {}).get("title", "")
@@ -1141,7 +1141,7 @@ class TrendCollector:
             fetched.sort(key=lambda item: item[0])
             trends = [trend for _, trend in fetched[:limit]]
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
             logger.warning(f"Hacker News error: {e}")
 
         return trends
@@ -1178,7 +1178,7 @@ class TrendCollector:
                         )
                         trends.append(trend)
 
-            except Exception as e:
+            except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"{source.name} RSS error: {e}")
                 continue
 
@@ -1244,7 +1244,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
             logger.warning(f"GitHub Trending error: {e}")
 
         if len(trends) >= max(3, limit // 2):
@@ -1291,7 +1291,7 @@ class TrendCollector:
             )
             response.raise_for_status()
             items = response.json().get("items", [])
-        except Exception as exc:
+        except (requests.RequestException, AttributeError, KeyError, ValueError) as exc:
             logger.warning(f"GitHub Trending API fallback failed: {exc}")
             return trends
 
@@ -1347,7 +1347,7 @@ class TrendCollector:
                 page_url,
                 source_key,
             )
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError) as e:
             logger.warning(f"Wikipedia Current Events HTML scrape error: {e}")
 
         if len(trends) >= max(3, limit // 3):
@@ -1387,7 +1387,7 @@ class TrendCollector:
                         seen_titles.add(normalized)
                         if len(trends) >= limit:
                             break
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Wikipedia Current Events API fallback error: {e}")
 
         return trends
@@ -1494,7 +1494,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Lobsters error: {e}")
 
         return trends
@@ -1533,7 +1533,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Product Hunt error: {e}")
 
         return trends
@@ -1589,7 +1589,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Dev.to error: {e}")
 
         return trends
@@ -1628,7 +1628,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Slashdot error: {e}")
 
         return trends
@@ -1668,7 +1668,7 @@ class TrendCollector:
                     )
                     trends.append(trend)
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Ars Features error: {e}")
 
         return trends
@@ -1843,7 +1843,7 @@ class TrendCollector:
 
         except ImportError:
             logger.debug("LinkedIn scraping not available (apify-client not installed)")
-        except Exception as e:
+        except (requests.RequestException, AttributeError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"CMMC LinkedIn collection error: {e}")
 
         return trends

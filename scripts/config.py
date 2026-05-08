@@ -252,6 +252,14 @@ OPENROUTER_KEYS = get_api_keys("OPENROUTER_API_KEY")
 # OpenRouter rate-limit / credits introspection endpoint.
 OPENROUTER_KEY_INFO_URL = "https://openrouter.ai/api/v1/key"
 
+# Length caps for renderer-bound strings. Centralised so card layouts and
+# text excerpts stay consistent across pages.
+STRING_LIMITS = {
+    "title_max": 100,        # Story/article card titles
+    "summary_max": 200,      # Card summaries / RSS descriptions
+    "description_max": 500,  # Long-form excerpt (LinkedIn posts, Reddit bodies)
+}
+
 # ============================================================================
 # DEDUPLICATION
 # ============================================================================

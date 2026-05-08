@@ -12,8 +12,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
+from config import STRING_LIMITS
 from image_utils import validate_image_url, get_image_quality_score
 from design_tokens import safe_color, safe_font, safe_mode
+from url_safety import safe_href, safe_image_src
 from shared_components import (
     build_header,
     build_footer,
@@ -410,22 +412,26 @@ def build_topic_page(
         )
 
     featured_story = trends[0] if trends else {}
-    featured_title = html_module.escape((featured_story.get("title") or "")[:100])
-    featured_url = html_module.escape(featured_story.get("url") or "#")
+    featured_title = html_module.escape(
+        (featured_story.get("title") or "")[: STRING_LIMITS["title_max"]]
+    )
+    featured_url = safe_href(featured_story.get("url"))
     featured_source_raw = featured_story.get("source_label")
     if not featured_source_raw:
         featured_source_raw = (featured_story.get("source") or "").replace("_", " ").title()
     featured_source = html_module.escape(featured_source_raw)
     featured_desc = html_module.escape(
-        (featured_story.get("summary") or featured_story.get("description") or "")[:200]
+        (featured_story.get("summary") or featured_story.get("description") or "")[
+            : STRING_LIMITS["summary_max"]
+        ]
     )
 
     placeholder_url = "/assets/nano-banana.png"
 
     cards: List[str] = []
     for t in trends[1:20]:
-        title = html_module.escape((t.get("title") or "")[:100])
-        url = html_module.escape(t.get("url") or "#")
+        title = html_module.escape((t.get("title") or "")[: STRING_LIMITS["title_max"]])
+        url = safe_href(t.get("url"))
         source_raw = t.get("source_label")
         if not source_raw:
             source_raw = (t.get("source") or "").replace("_", " ").title()

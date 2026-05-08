@@ -11,6 +11,8 @@ from typing import List, Dict, Optional
 from xml.etree import ElementTree as ET
 from xml.dom import minidom
 
+from url_safety import safe_href
+
 from config import (
     setup_logging,
     RSS_FEED_TITLE,
@@ -75,8 +77,10 @@ def _build_content_html(
 
     html_parts.append(f"<p><small>Source: {source_safe}</small></p>")
 
-    if url and url.startswith("http"):
-        url_attr = html.escape(url, quote=True)
+    # safe_href() rejects javascript:/data:/file: schemes (returns "#")
+    # and HTML-escapes the result; trusted http(s) links pass through.
+    url_attr = safe_href(url) if url else ""
+    if url_attr and url_attr != "#":
         html_parts.append(f'<p><a href="{url_attr}">Read full story →</a></p>')
 
     return "".join(html_parts)

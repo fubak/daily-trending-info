@@ -15,8 +15,10 @@ from typing import Any, Dict
 
 try:
     from design_tokens import safe_color, safe_font, safe_mode
+    from url_safety import safe_href, safe_image_src
 except ImportError:
     from scripts.design_tokens import safe_color, safe_font, safe_mode
+    from scripts.url_safety import safe_href, safe_image_src
 
 from shared_components import (
     build_header,
@@ -72,19 +74,23 @@ def build_media_page(media_data: Dict, design: Dict) -> str:
 
     image = media_data.get("image_of_day") or {}
     image_title = html_module.escape(_safe_str(image.get("title"), "Image of the Day"))
-    image_url = html_module.escape(_safe_str(image.get("url")))
-    image_hd_url = html_module.escape(_safe_str(image.get("url_hd")))
+    # URLs go through scheme allowlists, not just html.escape — html.escape
+    # alone lets javascript:/data:/file: URLs through unchanged.
+    image_url = safe_image_src(_safe_str(image.get("url")))
+    image_hd_url = safe_image_src(_safe_str(image.get("url_hd")))
     image_explanation = html_module.escape(_safe_str(image.get("explanation")))
     image_source = _safe_str(image.get("source"))
-    image_source_url = html_module.escape(_safe_str(image.get("source_url")))
+    image_source_url = safe_href(_safe_str(image.get("source_url")))
     image_copyright = html_module.escape(_safe_str(image.get("copyright")))
     image_date = _safe_str(image.get("date"))
 
     video = media_data.get("video_of_day") or {}
     video_title = html_module.escape(_safe_str(video.get("title"), "Video of the Day"))
     video_description = html_module.escape(_safe_str(video.get("description")))
-    video_embed_url = html_module.escape(_safe_str(video.get("embed_url")))
-    video_url = html_module.escape(_safe_str(video.get("video_url")))
+    # iframe src is the highest-impact case — must reject anything other
+    # than http(s).
+    video_embed_url = safe_image_src(_safe_str(video.get("embed_url")))
+    video_url = safe_href(_safe_str(video.get("video_url")))
     video_author = html_module.escape(_safe_str(video.get("author")))
 
     image_source_name = _SOURCE_NAMES.get(image_source, image_source)

@@ -30,21 +30,11 @@ except ImportError:
 
 logger = __import__("logging").getLogger("pipeline")
 
-_SAFE_URL_SCHEMES = {"http", "https", "mailto"}
-
-
-def _safe_href(url: str) -> str:
-    """Return an HTML-attribute-safe URL, blocking dangerous schemes."""
-    if not url:
-        return "#"
-    try:
-        from urllib.parse import urlparse
-        parsed = urlparse(url.strip())
-    except (ValueError, AttributeError):
-        return "#"
-    if parsed.scheme and parsed.scheme.lower() not in _SAFE_URL_SCHEMES:
-        return "#"
-    return html.escape(url, quote=True)
+# Re-export so callers that imported _safe_href from editorial_renderer keep working.
+try:
+    from url_safety import safe_href as _safe_href
+except ImportError:
+    from scripts.url_safety import safe_href as _safe_href
 
 
 def generate_article_html(
