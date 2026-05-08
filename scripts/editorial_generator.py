@@ -95,7 +95,10 @@ EDITORIAL_SCHEMA = {
     "required": ["title", "slug", "summary", "mood", "content", "key_themes"],
 }
 
-STORY_SUMMARIES_SCHEMA = {
+# Schema for the "Why This Matters" batch generation (one explanation per
+# story). Distinct from enrich_content.STORY_SUMMARIES_SCHEMA, which has a
+# different shape (`summaries` array of {title, summary, source}).
+WHY_THIS_MATTERS_SCHEMA = {
     "type": "object",
     "properties": {
         "stories": {
@@ -506,7 +509,7 @@ Respond with ONLY a valid JSON object:
         try:
             # Try structured output first (guaranteed valid JSON from Gemini)
             data = self._call_google_ai_structured(
-                prompt, STORY_SUMMARIES_SCHEMA, max_tokens=600
+                prompt, WHY_THIS_MATTERS_SCHEMA, max_tokens=600
             )
 
             # Fall back to regular LLM call + JSON parsing if structured output fails
