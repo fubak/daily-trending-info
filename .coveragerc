@@ -1,0 +1,17 @@
+# Coverage configuration for `pytest tests/ --cov=scripts`.
+# NOTE: current total coverage is ~39%, below the 80% project aspiration.
+# No fail_under gate is set so test runs don't fail on the existing gap;
+# raise coverage on the large under-tested modules (collect_trends,
+# editorial_generator, enrich_content) before introducing a hard floor.
+[run]
+source = scripts
+omit =
+    scripts/__init__.py
+
+[report]
+show_missing = True
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    raise NotImplementedError
