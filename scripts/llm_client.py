@@ -233,6 +233,15 @@ class LLMClientBase:
     DEFAULT_MAX_TOKENS = 500
     DEFAULT_TASK_COMPLEXITY = "simple"
 
+    # Instance attributes each subclass supplies in its own __init__. Declared
+    # here (without values) so the shared methods type-check. LLMClientBase is a
+    # mixin and is never instantiated directly.
+    session: requests.Session
+    groq_key: Optional[str]
+    openrouter_key: Optional[str]
+    google_key: Optional[str]
+    _last_call_time: float
+
     def _call_groq(
         self,
         prompt: str,
