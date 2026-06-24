@@ -40,5 +40,6 @@ jobs:
             echo "PR #$EXISTING_PR already exists"
           fi
 
-          # Merge immediately (squash) - use admin to bypass branch protection
-          gh pr merge "${{ github.ref_name }}" --squash --delete-branch --admin
+          # Merge (squash). No --admin: respect branch protection / required
+          # checks if any are configured, instead of bypassing them.
+          gh pr merge "${{ github.ref_name }}" --squash --delete-branch
