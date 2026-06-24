@@ -15,7 +15,7 @@ from typing import Dict, List, Set
 from config import STRING_LIMITS
 from image_utils import validate_image_url, get_image_quality_score
 from design_tokens import safe_color, safe_font, safe_mode
-from url_safety import safe_href, safe_image_src
+from url_safety import safe_href, safe_image_src, safe_css_url
 from pipeline_types import DesignTokens, ImageDict, TrendDict
 from shared_components import (
     build_header,
@@ -395,10 +395,11 @@ def build_topic_page(
     hero_image_url = ""
     hero_image_alt = ""
     if hero_image:
-        # safe_image_src enforces http(s)/relative and HTML-escapes the
-        # result so the URL can't break out of the CSS background-image()
-        # context or carry a javascript:/data: scheme.
-        hero_image_url = safe_image_src(
+        # This value is interpolated into a CSS url() inside a style attribute.
+        # safe_css_url enforces http(s) scheme and strips characters that could
+        # break out of url()/the attribute (HTML-entity escaping is unsafe here
+        # because the browser HTML-decodes the attribute before parsing CSS).
+        hero_image_url = safe_css_url(
             hero_image.get(
                 "url_large",
                 hero_image.get("url_medium", hero_image.get("url", "")),

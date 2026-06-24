@@ -62,22 +62,28 @@ def generate_articles_index_html(
         for m in moods
     )
 
-    # Escape article data for JSON embedding
-    # The data comes from our own metadata files (trusted), but we still escape for HTML safety
+    # Escape article data before embedding. Every string field is concatenated
+    # into innerHTML client-side (see the ARTICLES render loop below), so each is
+    # HTML-escaped here. This also keeps any field from breaking out of the
+    # <script> block that carries the JSON (a stray "</script>" in an unescaped
+    # field would otherwise terminate it). url is additionally quote-escaped
+    # because it lands inside an href="..." attribute.
+    def _esc(value: object) -> str:
+        return str(value).replace("<", "&lt;").replace(">", "&gt;")
+
+    def _esc_attr(value: object) -> str:
+        return _esc(value).replace('"', "&quot;")
+
     articles_json = json.dumps(
         [
             {
-                "title": a.get("title", "")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;"),
+                "title": _esc(a.get("title", "")),
                 "date": a.get("date", ""),
-                "url": a.get("url", ""),
-                "summary": (a.get("summary", "") or "")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;"),
-                "mood": a.get("mood", "informative"),
+                "url": _esc_attr(a.get("url", "")),
+                "summary": _esc(a.get("summary", "") or ""),
+                "mood": _esc(a.get("mood", "informative")),
                 "word_count": a.get("word_count", 0),
-                "keywords": a.get("keywords", []),
+                "keywords": [_esc(k) for k in a.get("keywords", [])],
             }
             for a in articles
         ]

@@ -21,7 +21,7 @@ from typing import List, Dict, Optional, Set
 
 from config import setup_logging, STRING_LIMITS
 from design_tokens import safe_color, safe_font
-from url_safety import safe_href, safe_image_src
+from url_safety import safe_href, safe_image_src, safe_css_url
 from pipeline_types import DesignTokens, ImageDict, TrendDict
 
 logger = setup_logging("cmmc_page_generator")
@@ -1057,7 +1057,7 @@ def build_cmmc_page(
     {build_cmmc_header(date_str)}
 
     <section class="cmmc-hero">
-        {"<div class='cmmc-hero-image' style='background-image: url(" + safe_image_src(hero_image_url) + ");'></div>" if hero_image_url else ""}
+        {"<div class='cmmc-hero-image' style='background-image: url(\"" + safe_css_url(hero_image_url) + "\");'></div>" if hero_image_url else ""}
         <div class="cmmc-hero-overlay"></div>
         <div class="cmmc-hero-content">
             <span class="cmmc-hero-badge">{featured_source or 'CMMC News'}</span>
