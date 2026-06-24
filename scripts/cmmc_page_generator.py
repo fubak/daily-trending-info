@@ -1026,6 +1026,17 @@ def build_cmmc_page(
         ),
     }
 
+    # Hero background div. Built here (not inline in the f-string below) because
+    # the CSS url("...") needs escaped double quotes, and a backslash is illegal
+    # inside an f-string expression on Python 3.11 (the CI runtime).
+    hero_image_div = ""
+    if hero_image_url:
+        hero_image_div = (
+            "<div class='cmmc-hero-image' style='background-image: url(\""
+            + safe_css_url(hero_image_url)
+            + "\");'></div>"
+        )
+
     # Build complete HTML
     html = f"""<!DOCTYPE html>
 <html lang="en" class="dark-mode">
@@ -1057,7 +1068,7 @@ def build_cmmc_page(
     {build_cmmc_header(date_str)}
 
     <section class="cmmc-hero">
-        {"<div class='cmmc-hero-image' style='background-image: url(\"" + safe_css_url(hero_image_url) + "\");'></div>" if hero_image_url else ""}
+        {hero_image_div}
         <div class="cmmc-hero-overlay"></div>
         <div class="cmmc-hero-content">
             <span class="cmmc-hero-badge">{featured_source or 'CMMC News'}</span>
