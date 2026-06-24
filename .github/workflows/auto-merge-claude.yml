@@ -22,19 +22,22 @@ jobs:
       - name: Create and merge PR
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          # Pass the (untrusted) branch name via env, not direct ${{ }}
+          # interpolation, to avoid shell command injection.
+          BRANCH: ${{ github.ref_name }}
         run: |
           # Check if PR already exists
-          EXISTING_PR=$(gh pr list --head "${{ github.ref_name }}" --base main --json number -q '.[0].number' 2>/dev/null || echo "")
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --base main --json number -q '.[0].number' 2>/dev/null || echo "")
 
           if [ -z "$EXISTING_PR" ]; then
             # Create new PR
             PR_URL=$(gh pr create \
               --base main \
-              --head "${{ github.ref_name }}" \
-              --title "Auto-merge: ${{ github.ref_name }}" \
+              --head "$BRANCH" \
+              --title "Auto-merge: $BRANCH" \
               --body "Automated PR from Claude Code session.
 
-              Triggered by push to \`${{ github.ref_name }}\`")
+              Triggered by push to \`$BRANCH\`")
             echo "Created PR: $PR_URL"
           else
             echo "PR #$EXISTING_PR already exists"
@@ -42,4 +45,4 @@ jobs:
 
           # Merge (squash). No --admin: respect branch protection / required
           # checks if any are configured, instead of bypassing them.
-          gh pr merge "${{ github.ref_name }}" --squash --delete-branch
+          gh pr merge "$BRANCH" --squash --delete-branch
