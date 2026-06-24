@@ -22,6 +22,7 @@ import json
 import argparse
 import re
 import time
+import tempfile
 
 import requests
 from datetime import datetime
@@ -66,6 +67,32 @@ from metrics_collector import MetricsCollector
 logger = setup_logging("pipeline")
 
 Record = Dict[str, Any]
+
+
+def _atomic_write_json(path: Path, data: Any, **dump_kwargs: Any) -> None:
+    """Write JSON atomically: dump to a temp file in the same directory, then
+    os.replace() it into place.
+
+    A direct ``open(path, "w")`` + ``json.dump`` truncates the destination
+    before writing, so a crash mid-write leaves a corrupt file that a later
+    pipeline run would read back (e.g. trends.json / design.json). os.replace is
+    atomic on POSIX, so readers only ever see the old file or the complete new
+    one.
+    """
+    tmp_fd, tmp_name = tempfile.mkstemp(
+        dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(tmp_fd, "w") as f:
+            json.dump(data, f, **dump_kwargs)
+        os.replace(tmp_name, path)
+    except BaseException:
+        # Never leave a stray temp file behind on failure.
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
 
 
 class Pipeline:
@@ -130,8 +157,7 @@ class Pipeline:
         design_data = (
             asdict(design) if hasattr(design, "__dataclass_fields__") else design
         )
-        with open(design_file, "w") as f:
-            json.dump(design_data, f, indent=2)
+        _atomic_write_json(design_file, design_data, indent=2)
 
     def _validate_environment(self) -> List[str]:
         """
@@ -1081,45 +1107,49 @@ class Pipeline:
 
         # Save trends
         try:
-            with open(self.data_dir / "trends.json", "w") as f:
-                trends_data = [
-                    asdict(t) if hasattr(t, "__dataclass_fields__") else t
-                    for t in self.trends
-                ]
-                json.dump(trends_data, f, indent=2, default=str)
+            trends_data = [
+                asdict(t) if hasattr(t, "__dataclass_fields__") else t
+                for t in self.trends
+            ]
+            _atomic_write_json(
+                self.data_dir / "trends.json", trends_data, indent=2, default=str
+            )
             saved_files.append("trends.json")
         except (IOError, OSError) as e:
             errors.append(f"trends.json: {e}")
 
         # Save images
         try:
-            with open(self.data_dir / "images.json", "w") as f:
-                images_data = [
-                    asdict(i) if hasattr(i, "__dataclass_fields__") else i
-                    for i in self.images
-                ]
-                json.dump(images_data, f, indent=2, default=str)
+            images_data = [
+                asdict(i) if hasattr(i, "__dataclass_fields__") else i
+                for i in self.images
+            ]
+            _atomic_write_json(
+                self.data_dir / "images.json", images_data, indent=2, default=str
+            )
             saved_files.append("images.json")
         except (IOError, OSError) as e:
             errors.append(f"images.json: {e}")
 
         # Save design
         try:
-            with open(self.data_dir / "design.json", "w") as f:
-                design_data = (
-                    asdict(self.design)
-                    if hasattr(self.design, "__dataclass_fields__")
-                    else self.design
-                )
-                json.dump(design_data, f, indent=2, default=str)
+            design_data = (
+                asdict(self.design)
+                if hasattr(self.design, "__dataclass_fields__")
+                else self.design
+            )
+            _atomic_write_json(
+                self.data_dir / "design.json", design_data, indent=2, default=str
+            )
             saved_files.append("design.json")
         except (IOError, OSError) as e:
             errors.append(f"design.json: {e}")
 
         # Save keywords
         try:
-            with open(self.data_dir / "keywords.json", "w") as f:
-                json.dump(self.keywords, f, indent=2, default=str)
+            _atomic_write_json(
+                self.data_dir / "keywords.json", self.keywords, indent=2, default=str
+            )
             saved_files.append("keywords.json")
         except (IOError, OSError) as e:
             errors.append(f"keywords.json: {e}")
@@ -1127,25 +1157,26 @@ class Pipeline:
         # Save enriched content
         if self.enriched_content:
             try:
-                with open(self.data_dir / "enriched.json", "w") as f:
-                    enriched_data = {
-                        "word_of_the_day": (
-                            asdict(self.enriched_content.word_of_the_day)
-                            if self.enriched_content.word_of_the_day
-                            else None
-                        ),
-                        "grokipedia_article": (
-                            asdict(self.enriched_content.grokipedia_article)
-                            if self.enriched_content.grokipedia_article
-                            else None
-                        ),
-                        "story_summaries": (
-                            [asdict(s) for s in self.enriched_content.story_summaries]
-                            if self.enriched_content.story_summaries
-                            else []
-                        ),
-                    }
-                    json.dump(enriched_data, f, indent=2, default=str)
+                enriched_data = {
+                    "word_of_the_day": (
+                        asdict(self.enriched_content.word_of_the_day)
+                        if self.enriched_content.word_of_the_day
+                        else None
+                    ),
+                    "grokipedia_article": (
+                        asdict(self.enriched_content.grokipedia_article)
+                        if self.enriched_content.grokipedia_article
+                        else None
+                    ),
+                    "story_summaries": (
+                        [asdict(s) for s in self.enriched_content.story_summaries]
+                        if self.enriched_content.story_summaries
+                        else []
+                    ),
+                }
+                _atomic_write_json(
+                    self.data_dir / "enriched.json", enriched_data, indent=2, default=str
+                )
                 saved_files.append("enriched.json")
             except (IOError, OSError) as e:
                 errors.append(f"enriched.json: {e}")
