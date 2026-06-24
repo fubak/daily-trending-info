@@ -57,8 +57,6 @@ Required in `.env` or GitHub Secrets:
 | `metrics_collector.py` | Persists per-run pipeline metrics + timings |
 | `fetch_media_of_day.py` | Fetches daily curated image + video |
 | `pwa_generator.py` | Generates PWA assets (manifest, service worker) |
-| `css_generator.py` | CSS generation for the website builder |
-| `js_generator.py` | JS generation for the website builder |
 | `image_utils.py` | Validates / sanitizes image URLs |
 | `logging_utils.py` | Structured contextual logging |
 | `source_health_check.py` | Daily source endpoint health checks (CI standalone) |
