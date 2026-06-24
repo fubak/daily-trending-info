@@ -162,3 +162,70 @@ class TestFallbackImageGenerator:
         css = FallbackImageGenerator.get_mesh_gradient_css()
 
         assert "radial-gradient" in css
+
+
+class TestProviderParsers:
+    """The provider-specific photo→Image mappers used by _search_provider.
+
+    Unsplash and Pixabay had no parse coverage before search_* was unified; the
+    field mappings differ per API and are easy to get subtly wrong.
+    """
+
+    def test_parse_unsplash_maps_nested_fields(self):
+        from fetch_images import _parse_unsplash
+
+        photo = {
+            "id": "abc123",
+            "urls": {"small": "s.jpg", "regular": "r.jpg", "full": "f.jpg", "raw": "raw.jpg"},
+            "user": {"name": "Ansel", "links": {"html": "https://unsplash.com/@ansel"}},
+            "alt_description": "a mountain",
+            "color": "#abcdef",
+            "width": 4000,
+            "height": 3000,
+        }
+        img = _parse_unsplash(photo, "fallback query")
+        assert img is not None
+        assert img.id == "unsplash_abc123"
+        assert img.source == "unsplash"
+        assert img.url_medium == "r.jpg"  # 'regular' is the medium size
+        assert img.photographer == "Ansel"
+        assert img.photographer_url == "https://unsplash.com/@ansel"
+        assert img.alt_text == "a mountain"
+
+    def test_parse_unsplash_falls_back_to_query_for_alt(self):
+        from fetch_images import _parse_unsplash
+
+        photo = {"id": "x", "urls": {}, "user": {}}
+        img = _parse_unsplash(photo, "sunset over water")
+        assert img.alt_text == "sunset over water"
+
+    def test_parse_pixabay_builds_attribution_url(self):
+        from fetch_images import _parse_pixabay
+
+        photo = {
+            "id": 77,
+            "previewURL": "p.jpg",
+            "webformatURL": "w.jpg",
+            "largeImageURL": "l.jpg",
+            "fullHDURL": "hd.jpg",
+            "user": "jane",
+            "user_id": 42,
+            "tags": "city, night",
+            "imageWidth": 1920,
+            "imageHeight": 1080,
+        }
+        img = _parse_pixabay(photo, "q")
+        assert img.id == "pixabay_77"
+        assert img.photographer_url == "https://pixabay.com/users/jane-42"
+        assert img.url_large == "l.jpg"
+        assert img.color is None  # Pixabay supplies no dominant color
+
+    def test_parsers_skip_text_heavy_images(self):
+        # is_text_heavy_image gates every provider; a text-heavy alt/tags must
+        # cause the mapper to return None so it's dropped from results.
+        from fetch_images import _parse_pexels, is_text_heavy_image
+
+        text_heavy = "infographic chart with quarterly sales data and statistics text"
+        assert is_text_heavy_image(text_heavy)  # precondition for the test
+        photo = {"id": 1, "src": {}, "alt": text_heavy}
+        assert _parse_pexels(photo, "q") is None
