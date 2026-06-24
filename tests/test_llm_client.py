@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from scripts.llm_client import (
     GROQ_SPEC,
     OPENROUTER_SPEC,
+    LLMClientBase,
     ProviderSpec,
     call_openai_compatible,
 )
@@ -293,3 +294,77 @@ class TestModelRotation:
         assert result is None
         # POST called exactly once per model (max_retries=1, break on 500).
         assert mock_session.post.call_count == len(OPENROUTER_SPEC.models)
+
+
+class _BareClient(LLMClientBase):
+    """Minimal subclass to exercise the shared JSON-parsing helpers, which
+    only depend on `self` (no session/keys needed)."""
+
+
+class TestLLMClientBaseJsonParsing:
+    """The JSON parse/repair logic was duplicated in both generators and is
+    now shared on LLMClientBase. These guard the unified behaviour."""
+
+    @pytest.fixture
+    def client(self):
+        return _BareClient()
+
+    def test_parses_clean_object(self, client):
+        assert client._parse_json_response('{"a": 1, "b": "x"}') == {"a": 1, "b": "x"}
+
+    def test_strips_markdown_json_fence(self, client):
+        # enrich stripped ```json fences; editorial's copy did not. Unification
+        # adopts the more robust behaviour for BOTH — this guards it.
+        fenced = '```json\n{"word": "ephemeral"}\n```'
+        assert client._parse_json_response(fenced) == {"word": "ephemeral"}
+
+    def test_extracts_object_from_surrounding_prose(self, client):
+        wrapped = 'Sure! Here is the JSON: {"ok": true} hope that helps.'
+        assert client._parse_json_response(wrapped) == {"ok": True}
+
+    def test_repairs_missing_comma_between_pairs(self, client):
+        # A common LLM defect: a newline instead of a comma between members.
+        broken = '{\n"a": "one"\n"b": "two"\n}'
+        assert client._parse_json_response(broken) == {"a": "one", "b": "two"}
+
+    def test_none_input_returns_none(self, client):
+        assert client._parse_json_response(None) is None
+
+    def test_empty_string_returns_none(self, client):
+        assert client._parse_json_response("") is None
+
+    def test_non_json_returns_none(self, client):
+        assert client._parse_json_response("no json object here at all") is None
+
+    def test_repair_output_is_loadable(self, client):
+        import json as _json
+
+        # Missing comma between two string members (the case _repair_json
+        # targets): newline where a comma belongs.
+        repaired = client._repair_json('{\n"a": "x"\n"b": "y"\n}')
+        assert _json.loads(repaired) == {"a": "x", "b": "y"}
+
+
+class TestLLMClientRoutingDefaults:
+    """Routing defaults differ by subclass ON PURPOSE: editorial wants
+    high-quality 'complex' routing, enrichment wants cheap 'simple' routing.
+    Both call sites pass max_tokens but rely on the default task_complexity, so
+    a regression here silently changes which providers editorial prefers."""
+
+    def test_editorial_defaults_to_complex(self):
+        from scripts.editorial_generator import EditorialGenerator
+
+        assert EditorialGenerator.DEFAULT_TASK_COMPLEXITY == "complex"
+        assert EditorialGenerator.DEFAULT_MAX_TOKENS == 800
+        # Inheritance checked by MRO class-name: the source imports `llm_client`
+        # bare while this test imports `scripts.llm_client`, so the two
+        # LLMClientBase objects aren't identical under issubclass — but the
+        # production process imports everything bare, so inheritance is real.
+        assert "LLMClientBase" in [c.__name__ for c in EditorialGenerator.__mro__]
+
+    def test_enrich_defaults_to_simple(self):
+        from scripts.enrich_content import ContentEnricher
+
+        assert ContentEnricher.DEFAULT_TASK_COMPLEXITY == "simple"
+        assert ContentEnricher.DEFAULT_MAX_TOKENS == 500
+        assert "LLMClientBase" in [c.__name__ for c in ContentEnricher.__mro__]
