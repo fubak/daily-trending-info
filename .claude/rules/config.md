@@ -17,6 +17,7 @@ Required in `.env` or GitHub Secrets:
 - `SITE_URL` / `SITE_NAME` - Canonical base URL + brand name (single source of truth; `RSS_FEED_LINK`/`RSS_FEED_TITLE` derive from them)
 
 ## GitHub Actions
+- `ci.yml` - PR + push to main: py_compile + pytest + mypy on Python 3.11 & 3.12 (required status checks on `main`). CI runs 3.11; local `.venv` is 3.12 — verify f-string syntax under 3.11 before merging.
 - `daily-regenerate.yml` - Daily 6AM EST
 - `auto-merge-claude.yml` - Auto PR merge for `claude/**` branches
 - `update-readme.yml` - Changelog updates

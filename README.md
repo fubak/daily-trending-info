@@ -184,6 +184,7 @@ pytest tests/test_design_system.py  # Single test file
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
+| `ci.yml` | PR, push to main, manual | Tests + type check + compile on Python 3.11 & 3.12 (required on `main`) |
 | `daily-regenerate.yml` | Daily 6 AM EST, push to main, manual | Main pipeline → deploy to GitHub Pages |
 | `auto-merge-claude.yml` | Push to `claude/**` branches | Auto PR creation + squash-merge |
 | `update-readme.yml` | Push to main | Changelog updates |

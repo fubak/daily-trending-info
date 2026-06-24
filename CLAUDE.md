@@ -135,12 +135,15 @@ Single deterministic design profile ("Signal Desk") | Fixed layout (`newspaper`)
 
 Fixtures: `tests/conftest.py` (sample_trends, sample_images, sample_design) | APIs mocked | Extensive coverage in `test_design_system.py` | Run from project root
 
+**CI gate (`ci.yml`):** every PR + push to `main` runs `py_compile` + `pytest` + `mypy` on a Python **3.11 / 3.12** matrix; `test (py3.11)` and `test (py3.12)` are **required status checks** on `main`. **Runtime gotcha:** `.venv` is 3.12 but the pipeline deploys on **3.11** — PEP 701 f-string features (backslashes / quote reuse) compile locally yet break CI. Verify with `uv run --python 3.11 --no-project -- python -m py_compile scripts/*.py`. Tests reading gitignored `data/` runtime files must skip when absent.
+
 ## GitHub Workflows
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
+| `ci.yml` | PR, push main, manual | `py_compile` + `pytest` + `mypy` on Python 3.11 & 3.12; required status checks on `main` |
 | `daily-regenerate.yml` | Daily 6AM EST, push main, manual | Main pipeline → deploy to Pages; opens issue on failure |
-| `auto-merge-claude.yml` | Push `claude/**` | Auto-creates PR and squash-merges with `--admin` |
+| `auto-merge-claude.yml` | Push `claude/**` | Auto-creates PR and squash-merges (no `--admin`; respects branch protection — now gated by the required CI checks) |
 | `update-readme.yml` | Push main | Changelog update |
 | `source-health.yml` | Daily 11:30 UTC, manual | Runs `source_health_check.py`, commits `data/source_health.json` |
 | `competitor-monitor.yml` | Weekly Mon 9 UTC, manual | Runs `competitor_monitor.py`, opens issue on high-priority alerts |
