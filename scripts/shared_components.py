@@ -4,7 +4,25 @@ Shared HTML components for consistent header/footer across all pages.
 
 import html
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional, Tuple
+
+
+def build_google_fonts_link(families: List[Tuple[str, str]]) -> str:
+    """Build the Google Fonts stylesheet <link> shared by every page's <head>.
+
+    Each renderer previously inlined this with its own font families and weight
+    specs. `families` is an ordered list of (font_name, weight_spec) tuples,
+    e.g. ``[("Newsreader", "600;700"), ("Inter", "400;500;600;700")]``. Spaces
+    in font names become '+' as the API requires. Output is byte-identical to
+    the hand-written links, so adopting it changes nothing on the page.
+    """
+    parts = "&".join(
+        f"family={name.replace(' ', '+')}:wght@{weights}" for name, weights in families
+    )
+    return (
+        f'<link href="https://fonts.googleapis.com/css2?{parts}'
+        f'&display=swap" rel="stylesheet">'
+    )
 
 
 def get_nav_links(active_page: str = "") -> str:

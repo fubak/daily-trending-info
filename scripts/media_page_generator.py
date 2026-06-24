@@ -25,6 +25,7 @@ except ImportError:
 from shared_components import (
     build_header,
     build_footer,
+    build_google_fonts_link,
     get_header_styles,
     get_footer_styles,
     get_theme_script,
@@ -261,7 +262,7 @@ def build_media_page(media_data: MediaData, design: DesignTokens) -> str:
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2196222970720414"
          crossorigin="anonymous"></script>
 
-    <link href="https://fonts.googleapis.com/css2?family={font_primary.replace(' ', '+')}:wght@400;500;600;700;800&family={font_secondary.replace(' ', '+')}:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {build_google_fonts_link([(font_primary, '400;500;600;700;800'), (font_secondary, '400;500;600;700')])}
     <style>
         :root {{
             --color-bg: {colors['bg']};

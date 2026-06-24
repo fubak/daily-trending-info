@@ -4,6 +4,7 @@ import pytest
 
 from scripts.shared_components import (
     build_footer,
+    build_google_fonts_link,
     build_header,
     get_footer_styles,
     get_header_styles,
@@ -135,3 +136,40 @@ class TestStyleAndScriptHelpers:
         result = get_theme_script()
         assert isinstance(result, str)
         assert "<script>" in result
+
+
+class TestBuildGoogleFontsLink:
+    """The font-link helper must reproduce, byte-for-byte, the links the
+    renderers previously inlined — otherwise adopting it would silently break
+    web-font loading on those pages."""
+
+    def test_articles_and_editorial_pattern(self):
+        # secondary-first, primary at 600;700
+        link = build_google_fonts_link(
+            [("Inter", "400;500;600;700"), ("Newsreader", "600;700")]
+        )
+        assert link == (
+            '<link href="https://fonts.googleapis.com/css2?'
+            "family=Inter:wght@400;500;600;700&family=Newsreader:wght@600;700"
+            '&display=swap" rel="stylesheet">'
+        )
+
+    def test_topic_and_media_pattern(self):
+        # primary-first, primary includes weight 800
+        link = build_google_fonts_link(
+            [("Newsreader", "400;500;600;700;800"), ("Inter", "400;500;600;700")]
+        )
+        assert link == (
+            '<link href="https://fonts.googleapis.com/css2?'
+            "family=Newsreader:wght@400;500;600;700;800"
+            "&family=Inter:wght@400;500;600;700"
+            '&display=swap" rel="stylesheet">'
+        )
+
+    def test_multiword_font_name_uses_plus(self):
+        # Spaces in font names must become '+' (Google Fonts API requirement).
+        link = build_google_fonts_link([("Space Grotesk", "400;500;600;700")])
+        assert "family=Space+Grotesk:wght@400;500;600;700" in link
+        # No raw space in the query/family portion (it would break the URL).
+        family_part = link.split("css2?")[1].split("&display")[0]
+        assert " " not in family_part

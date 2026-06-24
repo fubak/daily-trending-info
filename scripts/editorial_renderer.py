@@ -8,6 +8,7 @@ try:
     from shared_components import (
         build_header,
         build_footer,
+        build_google_fonts_link,
         get_header_styles,
         get_footer_styles,
         get_theme_script,
@@ -20,6 +21,7 @@ except ImportError:
     from scripts.shared_components import (
         build_header,
         build_footer,
+        build_google_fonts_link,
         get_header_styles,
         get_footer_styles,
         get_theme_script,
@@ -185,7 +187,7 @@ def generate_article_html(
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family={tokens['font_secondary'].replace(' ', '+')}:wght@400;500;600;700&family={tokens['font_primary'].replace(' ', '+')}:wght@600;700&display=swap" rel="stylesheet">
+{build_google_fonts_link([(tokens['font_secondary'], '400;500;600;700'), (tokens['font_primary'], '600;700')])}
 
 <style>
     :root {{
