@@ -15,6 +15,7 @@ import os
 import json
 import html
 import re
+import logging
 from datetime import datetime
 from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
@@ -28,6 +29,8 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from fetch_images import FallbackImageGenerator
 from source_registry import format_source_label
 
+
+logger = logging.getLogger("build_website")
 
 DEFAULT_LAYOUT = "newspaper"
 DEFAULT_HERO_STYLE = "glassmorphism"
@@ -506,8 +509,11 @@ class WebsiteBuilder:
                 ("name", "twitter:description"),
             ):
                 tag = soup.find("meta", attrs={attr: key})
-                if tag and tag.get("content"):
-                    description = tag.get("content", "").strip()
+                content = tag.get("content", "") if tag else ""
+                if isinstance(content, list):
+                    content = " ".join(content)
+                if content:
+                    description = content.strip()
                     break
         except (requests.RequestException, ValueError) as e:
             logger.debug(f"Failed to fetch description for {url}: {e}")
