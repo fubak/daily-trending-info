@@ -475,28 +475,3 @@ def save_sitemap(
     print(f"  Created {robots_path}")
 
     print(f"SEO assets saved to {public_dir}")
-
-
-def count_urls_in_sitemap(sitemap_path: Path) -> int:
-    """
-    Count the number of URLs in a sitemap.
-
-    Args:
-        sitemap_path: Path to sitemap.xml
-
-    Returns:
-        Number of URL entries
-    """
-    try:
-        tree = ET.parse(sitemap_path)
-        root = tree.getroot()
-        # Handle namespace
-        ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-        urls = root.findall(".//sm:url", ns)
-        if not urls:
-            # Try without namespace
-            urls = root.findall(".//url")
-        return len(urls)
-    except (OSError, ET.ParseError) as e:
-        logger.debug(f"Could not count sitemap URLs in {sitemap_path}: {e}")
-        return 0

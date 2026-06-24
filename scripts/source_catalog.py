@@ -415,14 +415,11 @@ COLLECTOR_SOURCES: List[SourceSpec] = [
 
 COLLECTOR_SOURCES_BY_GROUP: Dict[str, List[SourceSpec]] = {}
 SOURCE_BY_KEY: Dict[str, SourceSpec] = {}
-SOURCE_BY_SOURCE_KEY: Dict[str, SourceSpec] = {}
 
 for source in COLLECTOR_SOURCES:
     SOURCE_BY_KEY[source.key] = source
     if source.collector:
         COLLECTOR_SOURCES_BY_GROUP.setdefault(source.collector, []).append(source)
-    if source.source_key and source.source_key not in SOURCE_BY_SOURCE_KEY:
-        SOURCE_BY_SOURCE_KEY[source.source_key] = source
 
 
 def get_collector_sources(group: str) -> List[SourceSpec]:
@@ -437,7 +434,3 @@ def get_health_sources() -> List[SourceSpec]:
 
 def get_source_by_key(key: str) -> Optional[SourceSpec]:
     return SOURCE_BY_KEY.get(key)
-
-
-def get_source_by_source_key(source_key: str) -> Optional[SourceSpec]:
-    return SOURCE_BY_SOURCE_KEY.get(source_key)

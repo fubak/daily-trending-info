@@ -822,16 +822,3 @@ def get_openrouter_credits() -> OpenRouterCredits:
     """
     limiter = get_rate_limiter()
     return limiter.get_openrouter_credits()
-
-
-def log_rate_limit_status(include_credits: bool = True) -> None:
-    """
-    Log comprehensive rate limit status for all providers.
-
-    Useful for end-of-pipeline reporting.
-
-    Args:
-        include_credits: Include OpenRouter credit balance info
-    """
-    limiter = get_rate_limiter()
-    limiter.log_status(include_credits=include_credits)
