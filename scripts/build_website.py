@@ -28,6 +28,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from fetch_images import FallbackImageGenerator
 from source_registry import format_source_label
+from url_safety import safe_image_src, safe_css_url
 
 
 logger = logging.getLogger("build_website")
@@ -812,8 +813,13 @@ class WebsiteBuilder:
                 "url_medium"
             )
             if url:
-                hero_image_url = url
-                hero_bg_css = f"url('{url}') center center / cover no-repeat #0a0a0a"
+                # hero_image_url -> <link href> (Jinja autoescapes; scheme-check
+                # here). hero_bg_css -> raw `{{ ... | safe }}` CSS declaration, so
+                # the URL must be stripped of CSS-breaking characters.
+                hero_image_url = safe_image_src(url)
+                hero_bg_css = (
+                    f"url('{safe_css_url(url)}') center center / cover no-repeat #0a0a0a"
+                )
 
         # Prepare styles from design spec
         d = self.design

@@ -71,13 +71,24 @@ jobs:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           APIFY_API_KEY: ${{ secrets.APIFY_API_KEY }}
           APIFY_ACTOR_ID: ${{ secrets.APIFY_ACTOR_ID }}
+          # Passed via env (not inline ${{ }}) so the value can't be injected
+          # into the shell.
+          SKIP_ARCHIVE: ${{ github.event.inputs.skip_archive }}
         run: |
           cd scripts
-          if [ "${{ github.event.inputs.skip_archive }}" = "true" ]; then
-            python main.py --no-archive
-          else
-            python main.py
+          base_args=""
+          if [ "$SKIP_ARCHIVE" = "true" ]; then
+            base_args="--no-archive"
           fi
+          # Retry once on failure: a transient network blip during trend
+          # collection shouldn't lose the day's deploy. The retry skips
+          # archiving so a partial first attempt can't archive twice.
+          if python main.py $base_args; then
+            exit 0
+          fi
+          echo "::warning::Pipeline failed on first attempt; retrying in 60s..."
+          sleep 60
+          python main.py --no-archive
 
       - name: Cache build artifacts
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4

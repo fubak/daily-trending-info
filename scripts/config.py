@@ -310,14 +310,24 @@ ARCHIVE_KEEP_DAYS = 30
 ARCHIVE_SUBDIR = "archive"
 
 # ============================================================================
+# SITE IDENTITY
+# ============================================================================
+
+# Single source of truth for the site's canonical URL and brand name. Anything
+# that emits a canonical/og/sitemap/RSS URL or the brand name should reference
+# these rather than hardcoding the domain.
+SITE_URL = "https://dailytrending.info"  # Canonical base URL, no trailing slash
+SITE_NAME = "DailyTrending.info"  # Brand / display name
+
+# ============================================================================
 # RSS FEED SETTINGS
 # ============================================================================
 
-RSS_FEED_TITLE = "DailyTrending.info"
+RSS_FEED_TITLE = SITE_NAME
 RSS_FEED_DESCRIPTION = (
     "AI-curated tech, science, and world news aggregated daily from 15+ sources"
 )
-RSS_FEED_LINK = "https://dailytrending.info"
+RSS_FEED_LINK = SITE_URL
 RSS_FEED_MAX_ITEMS = 50
 
 # ============================================================================

@@ -19,6 +19,7 @@ from url_safety import safe_href
 from shared_components import (
     build_header,
     build_footer,
+    build_google_fonts_link,
     get_header_styles,
     get_footer_styles,
     get_theme_script,
@@ -207,7 +208,7 @@ class ArchiveManager:
     <meta name="twitter:card" content="summary_large_image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    {build_google_fonts_link([('Space Grotesk', '400;500;600;700'), ('Inter', '400;500')])}
     <style>
         :root {{
             --color-bg: #0a0a0a;

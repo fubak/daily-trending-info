@@ -15,12 +15,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 
+from config import SITE_URL, SITE_NAME
+
 logger = logging.getLogger("sitemap_generator")
 import xml.etree.ElementTree as ET
 
 
 def generate_sitemap(
-    base_url: str = "https://dailytrending.info",
+    base_url: str = SITE_URL,
     archive_dates: Optional[List[str]] = None,
     public_dir: Optional[Path] = None,
     extra_urls: Optional[List[str]] = None,
@@ -182,7 +184,7 @@ def generate_sitemap(
     return f'<?xml version="1.0" encoding="UTF-8"?>\n{xml_string}'
 
 
-def generate_robots_txt(base_url: str = "https://dailytrending.info") -> str:
+def generate_robots_txt(base_url: str = SITE_URL) -> str:
     """
     Generate robots.txt with sitemap reference.
 
@@ -192,7 +194,7 @@ def generate_robots_txt(base_url: str = "https://dailytrending.info") -> str:
     Returns:
         robots.txt content string
     """
-    return f"""# DailyTrending.info robots.txt
+    return f"""# {SITE_NAME} robots.txt
 # AI-Curated Tech & World News Aggregator
 
 # Allow all crawlers by default
@@ -271,7 +273,7 @@ Sitemap: {base_url}/sitemap.xml
 """
 
 
-def generate_sitemap_index(base_url: str = "https://dailytrending.info") -> str:
+def generate_sitemap_index(base_url: str = SITE_URL) -> str:
     """
     Generate a sitemap index pointing to the main sitemap and news sitemap.
 
@@ -297,7 +299,7 @@ def generate_sitemap_index(base_url: str = "https://dailytrending.info") -> str:
 
 
 def generate_news_sitemap(
-    base_url: str = "https://dailytrending.info",
+    base_url: str = SITE_URL,
     public_dir: Optional[Path] = None,
     trends: Optional[List[Dict]] = None,
 ) -> str:
@@ -327,7 +329,7 @@ def generate_news_sitemap(
     ET.SubElement(homepage, "loc").text = f"{base_url}/"
     news = ET.SubElement(homepage, "news:news")
     publication = ET.SubElement(news, "news:publication")
-    ET.SubElement(publication, "news:name").text = "DailyTrending.info"
+    ET.SubElement(publication, "news:name").text = SITE_NAME
     ET.SubElement(publication, "news:language").text = "en"
     ET.SubElement(news, "news:publication_date").text = f"{today_str}T06:00:00Z"
     ET.SubElement(news, "news:title").text = (
@@ -339,7 +341,7 @@ def generate_news_sitemap(
     ET.SubElement(cmmc, "loc").text = f"{base_url}/cmmc/"
     cmmc_news = ET.SubElement(cmmc, "news:news")
     cmmc_pub = ET.SubElement(cmmc_news, "news:publication")
-    ET.SubElement(cmmc_pub, "news:name").text = "DailyTrending.info"
+    ET.SubElement(cmmc_pub, "news:name").text = SITE_NAME
     ET.SubElement(cmmc_pub, "news:language").text = "en"
     ET.SubElement(cmmc_news, "news:publication_date").text = f"{today_str}T06:00:00Z"
     ET.SubElement(cmmc_news, "news:title").text = (
@@ -366,7 +368,7 @@ def generate_news_sitemap(
                 ET.SubElement(archive_url, "loc").text = f"{base_url}/archive/{date}/"
                 archive_news = ET.SubElement(archive_url, "news:news")
                 archive_pub = ET.SubElement(archive_news, "news:publication")
-                ET.SubElement(archive_pub, "news:name").text = "DailyTrending.info"
+                ET.SubElement(archive_pub, "news:name").text = SITE_NAME
                 ET.SubElement(archive_pub, "news:language").text = "en"
                 ET.SubElement(archive_news, "news:publication_date").text = (
                     f"{date}T06:00:00Z"
@@ -403,9 +405,7 @@ def generate_news_sitemap(
                         )
                         article_news = ET.SubElement(article_entry, "news:news")
                         article_pub = ET.SubElement(article_news, "news:publication")
-                        ET.SubElement(article_pub, "news:name").text = (
-                            "DailyTrending.info"
-                        )
+                        ET.SubElement(article_pub, "news:name").text = SITE_NAME
                         ET.SubElement(article_pub, "news:language").text = "en"
                         ET.SubElement(article_news, "news:publication_date").text = (
                             f"{article_date}T06:00:00Z"
@@ -427,7 +427,7 @@ def generate_news_sitemap(
 
 def save_sitemap(
     public_dir: Path,
-    base_url: str = "https://dailytrending.info",
+    base_url: str = SITE_URL,
     extra_urls: Optional[List[str]] = None,
 ):
     """
@@ -475,28 +475,3 @@ def save_sitemap(
     print(f"  Created {robots_path}")
 
     print(f"SEO assets saved to {public_dir}")
-
-
-def count_urls_in_sitemap(sitemap_path: Path) -> int:
-    """
-    Count the number of URLs in a sitemap.
-
-    Args:
-        sitemap_path: Path to sitemap.xml
-
-    Returns:
-        Number of URL entries
-    """
-    try:
-        tree = ET.parse(sitemap_path)
-        root = tree.getroot()
-        # Handle namespace
-        ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-        urls = root.findall(".//sm:url", ns)
-        if not urls:
-            # Try without namespace
-            urls = root.findall(".//url")
-        return len(urls)
-    except (OSError, ET.ParseError) as e:
-        logger.debug(f"Could not count sitemap URLs in {sitemap_path}: {e}")
-        return 0

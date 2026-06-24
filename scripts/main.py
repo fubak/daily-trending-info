@@ -22,6 +22,8 @@ import json
 import argparse
 import re
 import time
+import tempfile
+import traceback
 
 import requests
 from datetime import datetime
@@ -68,6 +70,32 @@ logger = setup_logging("pipeline")
 Record = Dict[str, Any]
 
 
+def _atomic_write_json(path: Path, data: Any, **dump_kwargs: Any) -> None:
+    """Write JSON atomically: dump to a temp file in the same directory, then
+    os.replace() it into place.
+
+    A direct ``open(path, "w")`` + ``json.dump`` truncates the destination
+    before writing, so a crash mid-write leaves a corrupt file that a later
+    pipeline run would read back (e.g. trends.json / design.json). os.replace is
+    atomic on POSIX, so readers only ever see the old file or the complete new
+    one.
+    """
+    tmp_fd, tmp_name = tempfile.mkstemp(
+        dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(tmp_fd, "w") as f:
+            json.dump(data, f, **dump_kwargs)
+        os.replace(tmp_name, path)
+    except BaseException:
+        # Never leave a stray temp file behind on failure.
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
+
+
 class Pipeline:
     """Orchestrates the complete website generation pipeline."""
 
@@ -90,6 +118,8 @@ class Pipeline:
         self.media_fetcher = MediaOfDayFetcher()
         self.metrics = MetricsCollector(self.data_dir / "metrics")
         self._run_started_at: Optional[float] = None
+        # Non-critical steps that failed but did not abort the run.
+        self._degraded_steps: List[str] = []
 
         # Pipeline data
         self.trends: List[Any] = []
@@ -104,9 +134,22 @@ class Pipeline:
         self.media_data: Optional[Record] = None
 
     def _run_step(
-        self, step_name: str, step_fn: Callable[[], None], *, enabled: bool = True
+        self,
+        step_name: str,
+        step_fn: Callable[[], None],
+        *,
+        enabled: bool = True,
+        critical: bool = True,
     ) -> None:
-        """Run a pipeline step and record timing/success metrics."""
+        """Run a pipeline step and record timing/success metrics.
+
+        Critical steps (the default — collect, design, build) re-raise on
+        failure, aborting the run. Non-critical steps produce auxiliary outputs
+        (editorial, topic pages, media, RSS, PWA, sitemap); a failure there is
+        logged and recorded but does NOT abort, so one broken sub-feature can't
+        block the core site deploy. Degraded steps are surfaced at the end of
+        the run (see `run()`).
+        """
         if not enabled:
             self.metrics.record_step(step_name, 0.0, skipped=True)
             return
@@ -114,12 +157,19 @@ class Pipeline:
         start = time.perf_counter()
         try:
             step_fn()
-        except Exception as exc:  # noqa: BLE001 — pipeline runner must record any step failure then re-raise
+        except Exception as exc:  # noqa: BLE001 — runner records any step failure
             duration_ms = (time.perf_counter() - start) * 1000
             self.metrics.record_step(
                 step_name, duration_ms, success=False, error=str(exc)
             )
-            raise
+            if critical:
+                raise
+            self._degraded_steps.append(step_name)
+            logger.error(
+                f"Non-critical step '{step_name}' failed; continuing deploy: {exc}"
+            )
+            traceback.print_exc()
+            return
 
         duration_ms = (time.perf_counter() - start) * 1000
         self.metrics.record_step(step_name, duration_ms, success=True)
@@ -130,8 +180,7 @@ class Pipeline:
         design_data = (
             asdict(design) if hasattr(design, "__dataclass_fields__") else design
         )
-        with open(design_file, "w") as f:
-            json.dump(design_data, f, indent=2)
+        _atomic_write_json(design_file, design_data, indent=2)
 
     def _validate_environment(self) -> List[str]:
         """
@@ -207,62 +256,109 @@ class Pipeline:
             # Step 4: Fetch images
             self._run_step("fetch_images", self._step_fetch_images)
 
-            # Step 5: Enrich content (Word of Day, Grokipedia, summaries)
-            self._run_step("enrich_content", self._step_enrich_content)
+            # Step 5: Enrich content (Word of Day, Grokipedia, summaries).
+            # Non-critical: build_website tolerates missing enriched content.
+            self._run_step(
+                "enrich_content", self._step_enrich_content, critical=False
+            )
 
             # Step 6: Apply fixed design
             self._run_step("apply_fixed_design", self._step_apply_fixed_design)
 
-            # Step 7: Generate editorial article and Why This Matters
+            # Step 7: Generate editorial article and Why This Matters.
+            # Non-critical: the site renders without an editorial article.
             self._run_step(
-                "generate_editorial", self._step_generate_editorial, enabled=not dry_run
+                "generate_editorial",
+                self._step_generate_editorial,
+                enabled=not dry_run,
+                critical=False,
             )
 
-            # Step 8: Build website
+            # Step 8: Build website (critical — produces the core index.html)
             self._run_step("build_website", self._step_build_website, enabled=not dry_run)
+
+            # --- Steps 9-16 are auxiliary outputs. The core site is already
+            # built above, so a failure here degrades one sub-feature rather
+            # than blocking the deploy (critical=False). ---
 
             # Step 9: Generate topic sub-pages
             self._run_step(
                 "generate_topic_pages",
                 self._step_generate_topic_pages,
                 enabled=not dry_run,
+                critical=False,
             )
 
             # Step 9b: Generate CMMC Watch page
             self._run_step(
-                "generate_cmmc_page", self._step_generate_cmmc_page, enabled=not dry_run
+                "generate_cmmc_page",
+                self._step_generate_cmmc_page,
+                enabled=not dry_run,
+                critical=False,
             )
 
             # Step 10: Fetch media of the day
-            self._run_step("fetch_media_of_day", self._step_fetch_media_of_day)
+            self._run_step(
+                "fetch_media_of_day", self._step_fetch_media_of_day, critical=False
+            )
 
             # Step 11: Generate media page
             self._run_step(
-                "generate_media_page", self._step_generate_media_page, enabled=not dry_run
+                "generate_media_page",
+                self._step_generate_media_page,
+                enabled=not dry_run,
+                critical=False,
             )
 
             # Step 12: Generate RSS feed
-            self._run_step("generate_rss", self._step_generate_rss, enabled=not dry_run)
+            self._run_step(
+                "generate_rss",
+                self._step_generate_rss,
+                enabled=not dry_run,
+                critical=False,
+            )
 
             # Step 13: Generate PWA assets
-            self._run_step("generate_pwa", self._step_generate_pwa, enabled=not dry_run)
+            self._run_step(
+                "generate_pwa",
+                self._step_generate_pwa,
+                enabled=not dry_run,
+                critical=False,
+            )
 
             # Step 14: Generate sitemap
             self._run_step(
-                "generate_sitemap", self._step_generate_sitemap, enabled=not dry_run
+                "generate_sitemap",
+                self._step_generate_sitemap,
+                enabled=not dry_run,
+                critical=False,
             )
 
             # Step 15: Cleanup old archives (not articles - those are permanent)
             self._run_step(
-                "cleanup_archives", self._step_cleanup, enabled=(archive and not dry_run)
+                "cleanup_archives",
+                self._step_cleanup,
+                enabled=(archive and not dry_run),
+                critical=False,
             )
 
             # Step 16: Save pipeline data
-            self._run_step("save_pipeline_data", self._save_data)
+            self._run_step(
+                "save_pipeline_data", self._save_data, critical=False
+            )
 
-            logger.info("=" * 60)
-            logger.info("PIPELINE COMPLETE")
-            logger.info("=" * 60)
+            self.metrics.set_counter("degraded_step_count", len(self._degraded_steps))
+            if self._degraded_steps:
+                logger.warning("=" * 60)
+                logger.warning(
+                    "PIPELINE COMPLETE WITH DEGRADED STEPS: "
+                    + ", ".join(self._degraded_steps)
+                )
+                logger.warning("=" * 60)
+            else:
+                logger.info("=" * 60)
+                logger.info("PIPELINE COMPLETE")
+                logger.info("=" * 60)
 
             if self._run_started_at is not None:
                 total_ms = (time.perf_counter() - self._run_started_at) * 1000
@@ -283,8 +379,6 @@ class Pipeline:
             logger.error("=" * 60)
             logger.error(f"PIPELINE FAILED: {e}")
             logger.error("=" * 60)
-            import traceback
-
             traceback.print_exc()
             if self._run_started_at is not None:
                 total_ms = (time.perf_counter() - self._run_started_at) * 1000
@@ -392,7 +486,12 @@ class Pipeline:
                 "Aborting to prevent deploying a broken site."
             )
 
-        # Quality gate 2: Ensure content freshness
+        # Quality gate 2: Content freshness. Soft by design — a slow news day
+        # should still deploy (stale content beats no update), so we warn and
+        # flag it in metrics rather than abort.
+        self.metrics.set_counter(
+            "low_freshness", int(freshness_ratio < MIN_FRESH_RATIO)
+        )
         if freshness_ratio < MIN_FRESH_RATIO:
             logger.warning(
                 f"Low freshness: Only {freshness_ratio:.0%} of trends are from past 24h. "
@@ -1081,45 +1180,49 @@ class Pipeline:
 
         # Save trends
         try:
-            with open(self.data_dir / "trends.json", "w") as f:
-                trends_data = [
-                    asdict(t) if hasattr(t, "__dataclass_fields__") else t
-                    for t in self.trends
-                ]
-                json.dump(trends_data, f, indent=2, default=str)
+            trends_data = [
+                asdict(t) if hasattr(t, "__dataclass_fields__") else t
+                for t in self.trends
+            ]
+            _atomic_write_json(
+                self.data_dir / "trends.json", trends_data, indent=2, default=str
+            )
             saved_files.append("trends.json")
         except (IOError, OSError) as e:
             errors.append(f"trends.json: {e}")
 
         # Save images
         try:
-            with open(self.data_dir / "images.json", "w") as f:
-                images_data = [
-                    asdict(i) if hasattr(i, "__dataclass_fields__") else i
-                    for i in self.images
-                ]
-                json.dump(images_data, f, indent=2, default=str)
+            images_data = [
+                asdict(i) if hasattr(i, "__dataclass_fields__") else i
+                for i in self.images
+            ]
+            _atomic_write_json(
+                self.data_dir / "images.json", images_data, indent=2, default=str
+            )
             saved_files.append("images.json")
         except (IOError, OSError) as e:
             errors.append(f"images.json: {e}")
 
         # Save design
         try:
-            with open(self.data_dir / "design.json", "w") as f:
-                design_data = (
-                    asdict(self.design)
-                    if hasattr(self.design, "__dataclass_fields__")
-                    else self.design
-                )
-                json.dump(design_data, f, indent=2, default=str)
+            design_data = (
+                asdict(self.design)
+                if hasattr(self.design, "__dataclass_fields__")
+                else self.design
+            )
+            _atomic_write_json(
+                self.data_dir / "design.json", design_data, indent=2, default=str
+            )
             saved_files.append("design.json")
         except (IOError, OSError) as e:
             errors.append(f"design.json: {e}")
 
         # Save keywords
         try:
-            with open(self.data_dir / "keywords.json", "w") as f:
-                json.dump(self.keywords, f, indent=2, default=str)
+            _atomic_write_json(
+                self.data_dir / "keywords.json", self.keywords, indent=2, default=str
+            )
             saved_files.append("keywords.json")
         except (IOError, OSError) as e:
             errors.append(f"keywords.json: {e}")
@@ -1127,25 +1230,26 @@ class Pipeline:
         # Save enriched content
         if self.enriched_content:
             try:
-                with open(self.data_dir / "enriched.json", "w") as f:
-                    enriched_data = {
-                        "word_of_the_day": (
-                            asdict(self.enriched_content.word_of_the_day)
-                            if self.enriched_content.word_of_the_day
-                            else None
-                        ),
-                        "grokipedia_article": (
-                            asdict(self.enriched_content.grokipedia_article)
-                            if self.enriched_content.grokipedia_article
-                            else None
-                        ),
-                        "story_summaries": (
-                            [asdict(s) for s in self.enriched_content.story_summaries]
-                            if self.enriched_content.story_summaries
-                            else []
-                        ),
-                    }
-                    json.dump(enriched_data, f, indent=2, default=str)
+                enriched_data = {
+                    "word_of_the_day": (
+                        asdict(self.enriched_content.word_of_the_day)
+                        if self.enriched_content.word_of_the_day
+                        else None
+                    ),
+                    "grokipedia_article": (
+                        asdict(self.enriched_content.grokipedia_article)
+                        if self.enriched_content.grokipedia_article
+                        else None
+                    ),
+                    "story_summaries": (
+                        [asdict(s) for s in self.enriched_content.story_summaries]
+                        if self.enriched_content.story_summaries
+                        else []
+                    ),
+                }
+                _atomic_write_json(
+                    self.data_dir / "enriched.json", enriched_data, indent=2, default=str
+                )
                 saved_files.append("enriched.json")
             except (IOError, OSError) as e:
                 errors.append(f"enriched.json: {e}")

@@ -2,7 +2,7 @@
 
 import pytest
 
-from scripts.url_safety import safe_href, safe_image_src
+from scripts.url_safety import safe_href, safe_image_src, safe_css_url
 
 
 class TestSafeHref:
@@ -102,6 +102,50 @@ class TestSafeImageSrc:
         # Defensive: still escape attribute-breakers even on http(s).
         result = safe_image_src('https://example.com/x.jpg"><script>')
         assert "<script>" not in result
+
+
+class TestSafeCssUrl:
+    """`safe_css_url()` must keep a URL trapped inside a quoted CSS url("...").
+
+    Unlike the HTML-attribute helpers, it cannot rely on entity escaping: a
+    style attribute is HTML-decoded before the CSS is parsed, so an escaped
+    quote would decode back into a real one. It therefore strips the
+    characters that could terminate url() or the attribute.
+    """
+
+    def test_clean_url_passes_through(self):
+        assert safe_css_url("https://images.example.com/x.jpg") == (
+            "https://images.example.com/x.jpg"
+        )
+
+    def test_bad_scheme_returns_empty(self):
+        assert safe_css_url("javascript:alert(1)") == ""
+
+    def test_empty_and_none_return_empty(self):
+        assert safe_css_url("") == ""
+        assert safe_css_url(None) == ""
+
+    @pytest.mark.parametrize("char", ['"', "'", "(", ")", " ", "\\", "<", ">"])
+    def test_breakout_characters_are_stripped(self, char):
+        # None of these may survive: each could close the url()/quote/attribute.
+        result = safe_css_url(f"https://x.com/a{char}b.jpg")
+        assert char not in result
+
+    def test_css_breakout_payload_cannot_escape_quoted_url(self):
+        # The defining property: after wrapping the result in url("<value>"),
+        # the payload must not contain any character able to close that
+        # construct. We assert the result has no closing quote/paren.
+        payload = 'https://x.com/a.jpg"); } body { display:none } a { x:url("'
+        result = safe_css_url(payload)
+        for breaker in ('"', "'", ")", "("):
+            assert breaker not in result
+
+    def test_double_quote_delimited_usage_is_safe(self):
+        # Mirror the actual call-site: url("{safe_css_url(x)}").
+        rendered = f'url("{safe_css_url(chr(34) + "https://x/y.jpg")}")'
+        # Exactly two double quotes (the delimiters we added) — the value
+        # contributed none.
+        assert rendered.count('"') == 2
 
 
 class TestRegressions:

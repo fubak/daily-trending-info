@@ -227,34 +227,6 @@ def get_image_quality_score(url: str) -> int:
     return max(0, min(100, score))
 
 
-def select_best_image(image_urls: list) -> Optional[str]:
-    """
-    Select the best image URL from a list based on quality scoring.
-
-    Args:
-        image_urls: List of potential image URLs
-
-    Returns:
-        Best image URL or None if no valid images
-    """
-    if not image_urls:
-        return None
-
-    valid_images = []
-    for url in image_urls:
-        is_valid, sanitized = validate_image_url(url)
-        if is_valid and sanitized:
-            score = get_image_quality_score(sanitized)
-            valid_images.append((sanitized, score))
-
-    if not valid_images:
-        return None
-
-    # Sort by score descending and return best
-    valid_images.sort(key=lambda x: x[1], reverse=True)
-    return valid_images[0][0]
-
-
 def get_fallback_gradient_css(seed: str = "") -> str:
     """
     Generate a CSS gradient as fallback when no image is available.

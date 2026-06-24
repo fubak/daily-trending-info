@@ -103,6 +103,31 @@ class TestRunStep:
         assert called == []
         pipeline.metrics.record_step.assert_called_with("skipped", 0.0, skipped=True)
 
+    def test_noncritical_step_failure_does_not_abort(self, pipeline):
+        # The whole point of critical=False: an auxiliary step (e.g. RSS) can
+        # blow up without taking down the core deploy. If this ever re-raises,
+        # a transient sub-feature failure would block the daily site update.
+        def bad():
+            raise RuntimeError("rss exploded")
+
+        # Must NOT raise.
+        pipeline._run_step("generate_rss", bad, critical=False)
+
+        # ...but the failure must be recorded and surfaced, not swallowed.
+        assert "generate_rss" in pipeline._degraded_steps
+        calls = pipeline.metrics.record_step.call_args_list
+        assert any(c.kwargs.get("success") is False for c in calls)
+
+    def test_critical_step_failure_still_aborts(self, pipeline):
+        # Default criticality is preserved: build/collect failures must abort
+        # so we never deploy a broken core site.
+        def bad():
+            raise RuntimeError("build broke")
+
+        with pytest.raises(RuntimeError, match="build broke"):
+            pipeline._run_step("build_website", bad)
+        assert "build_website" not in pipeline._degraded_steps
+
 
 class TestQualityGate:
     def test_aborts_when_too_few_trends(self, pipeline):

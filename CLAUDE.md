@@ -42,23 +42,21 @@ Required in `.env` or GitHub Secrets:
 | `sitemap_generator.py` | XML sitemap |
 | `archive_manager.py` | 30-day snapshots |
 | `config.py` | All limits, timeouts, constants, STRING_LIMITS |
-| `llm_client.py` | OpenAI-compatible HTTP client (Groq/OpenRouter/OpenCode/Mistral) |
+| `llm_client.py` | OpenAI-compatible HTTP client (Groq/OpenRouter/OpenCode/Mistral) + `LLMClientBase` (shared provider routing, Google AI/HuggingFace callers, JSON repair/parse) inherited by `EditorialGenerator` and `ContentEnricher` |
 | `rate_limiter.py` | Per-provider 429 / quota tracking |
 | `html_sanitizer.py` | Strips script/iframe/event handlers from LLM HTML |
-| `url_safety.py` | `safe_href` / `safe_image_src` scheme allowlists |
+| `url_safety.py` | `safe_href` / `safe_image_src` scheme allowlists; `safe_css_url` for CSS `url()` contexts |
 | `design_tokens.py` | Color/font/mode validators (CSS injection defence) |
 | `pipeline_types.py` | TypedDict schemas (TrendDict, ImageDict, DesignTokens, MediaData) |
 | `json_utils.py` | Escape control chars in LLM-emitted JSON |
 | `date_utils.py` | Shared `format_long_date()` |
-| `shared_components.py` | Header/footer HTML + theme toggle script |
+| `shared_components.py` | Header/footer HTML + theme toggle script + `build_google_fonts_link` (shared Google Fonts `<link>` builder) |
 | `source_catalog.py` | Canonical source list shared by collectors + health checks |
 | `source_registry.py` | Source metadata for ranking + label formatting |
 | `keyword_tracker.py` | Tracks keyword frequency over time |
 | `metrics_collector.py` | Persists per-run pipeline metrics + timings |
 | `fetch_media_of_day.py` | Fetches daily curated image + video |
 | `pwa_generator.py` | Generates PWA assets (manifest, service worker) |
-| `css_generator.py` | CSS generation for the website builder |
-| `js_generator.py` | JS generation for the website builder |
 | `image_utils.py` | Validates / sanitizes image URLs |
 | `logging_utils.py` | Structured contextual logging |
 | `source_health_check.py` | Daily source endpoint health checks (CI standalone) |
@@ -71,7 +69,9 @@ Required in `.env` or GitHub Secrets:
 
 ## Quality Gates
 
-`_step_collect_trends()`: **MIN_TRENDS = 5** (abort if <5) | **MIN_FRESH_RATIO = 0.5** (warn if <50% fresh in 24h)
+`_step_collect_trends()`: **MIN_TRENDS = 5** (abort if <5) | **MIN_FRESH_RATIO = 0.5** (warn if <50% fresh in 24h, flagged via `low_freshness` metric)
+
+**Step criticality (`_run_step(..., critical=)`):** collect/design/build are critical (abort run). Auxiliary steps (enrich, editorial, topic/cmmc/media pages, RSS, PWA, sitemap, cleanup, save) are `critical=False` — they log + record the failure and continue so one broken sub-feature can't block the deploy. Degraded steps are surfaced at end of run + counted in the `degraded_step_count` metric. Pipeline JSON writes are atomic (tempfile + `os.replace`).
 
 ## Design System
 
@@ -155,3 +155,5 @@ Fixtures: `tests/conftest.py` (sample_trends, sample_images, sample_design) | AP
 ## Config (`config.py`)
 
 `LIMITS` (per-source fetch) | `TIMEOUTS` (HTTP by operation) | `DELAYS` (rate limiting) | `IMAGE_CACHE_MAX_AGE_DAYS = 7` | `ARCHIVE_KEEP_DAYS = 30` | `DEDUP_SIMILARITY_THRESHOLD = 0.8`
+
+**Site identity (single source of truth):** `SITE_URL` (canonical base URL) and `SITE_NAME` (brand). `RSS_FEED_LINK`/`RSS_FEED_TITLE` derive from them. Use these instead of hardcoding the domain.

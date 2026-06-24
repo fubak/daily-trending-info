@@ -11,22 +11,30 @@ SCRIPTS_DIR = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 
-def test_fixed_design_has_single_seed_and_layout():
-    """Fixed design contract should remain deterministic."""
-    from fixed_design import FIXED_DESIGN_BASE
+def test_build_fixed_design_emits_deterministic_profile_regardless_of_input():
+    """The determinism contract: build_fixed_design must always emit the fixed
+    Signal Desk seed/layout/hero, no matter the trends/keywords. Asserting on
+    the BUILDER OUTPUT (not the FIXED_DESIGN_BASE constant) catches a builder
+    that fails to carry the fixed profile through — a constant-equals-itself
+    check would not."""
+    from fixed_design import build_fixed_design
 
-    assert FIXED_DESIGN_BASE["design_seed"] == "fixed-v1"
-    assert FIXED_DESIGN_BASE["layout_style"] == "newspaper"
-    assert FIXED_DESIGN_BASE["hero_style"] == "glassmorphism"
+    for trends, keywords in (([], []), ([{"title": "Anything"}], ["ai", "x"])):
+        design = build_fixed_design(trends, keywords)
+        assert design["design_seed"] == "fixed-v1"
+        assert design["layout_style"] == "newspaper"
+        assert design["hero_style"] == "glassmorphism"
 
 
-def test_fixed_design_uses_expected_typography_and_mode():
-    """Typography and base mode should stay stable."""
-    from fixed_design import FIXED_DESIGN_BASE
+def test_build_fixed_design_carries_typography_and_dark_mode_into_output():
+    """Typography/mode must survive into the built design (the deepcopy+merge),
+    not just exist on the base constant."""
+    from fixed_design import build_fixed_design
 
-    assert FIXED_DESIGN_BASE["font_primary"] == "Newsreader"
-    assert FIXED_DESIGN_BASE["font_secondary"] == "Inter"
-    assert FIXED_DESIGN_BASE["is_dark_mode"] is True
+    design = build_fixed_design([{"title": "Lead"}], ["ai"])
+    assert design["font_primary"] == "Newsreader"
+    assert design["font_secondary"] == "Inter"
+    assert design["is_dark_mode"] is True
 
 
 def test_build_fixed_design_sets_dynamic_headline_and_subheadline():
@@ -65,14 +73,23 @@ def test_data_design_matches_fixed_profile():
     assert data_design["font_secondary"] == "Inter"
 
 
-def test_builder_defaults_are_deterministic():
-    """Builder defaults should not include random style fallback."""
-    build_source = (SCRIPTS_DIR / "build_website.py").read_text()
+def test_builder_falls_back_to_fixed_profile_when_design_omits_style():
+    """Behavioural replacement for a test that used to grep build_website.py
+    source text. A builder handed a design with no layout/hero must fall back
+    to the fixed newspaper/glassmorphism profile — exercising the real default
+    logic so a regression (e.g. a random-style fallback) actually fails."""
+    from build_website import (
+        WebsiteBuilder,
+        BuildContext,
+        DEFAULT_LAYOUT,
+        DEFAULT_HERO_STYLE,
+    )
 
-    assert "DEFAULT_LAYOUT = \"newspaper\"" in build_source
-    assert "DEFAULT_HERO_STYLE = \"glassmorphism\"" in build_source
-    assert "self.layout = layout_style or DEFAULT_LAYOUT" in build_source
-    assert "self.hero_style = hero_style or DEFAULT_HERO_STYLE" in build_source
+    ctx = BuildContext(trends=[], images=[], design={}, keywords=[])
+    builder = WebsiteBuilder(ctx)
+
+    assert builder.layout == DEFAULT_LAYOUT == "newspaper"
+    assert builder.hero_style == DEFAULT_HERO_STYLE == "glassmorphism"
 
 
 def test_theme_css_contains_light_and_dark_modes():

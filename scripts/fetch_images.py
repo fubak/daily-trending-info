@@ -14,7 +14,7 @@ import tempfile
 import re
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Tuple
+from typing import Any, Callable, List, Dict, Optional, Tuple
 from dataclasses import dataclass, asdict, field
 from urllib.parse import quote_plus
 
@@ -401,6 +401,143 @@ class ImageCache:
         }
 
 
+@dataclass
+class _ImageProviderSpec:
+    """Descriptor for one image-search provider.
+
+    Lets `search_pexels`/`search_unsplash`/`search_pixabay` share a single
+    request → 429-rotate → parse code path while keeping the provider-specific
+    bits (auth style, params, response shape, field mapping) small and local.
+    """
+
+    label: str  # human/log name; also the _request_with_retry service_name
+    endpoint: str
+    rotator_attr: str  # ImageFetcher attribute holding this provider's KeyRotator
+    results_key: str  # JSON key holding the result list
+    build_request: Callable[[str, str, int], Tuple[Dict[str, str], Dict[str, Any]]]
+    parse: Callable[[Dict[str, Any], str], Optional[Image]]
+
+
+def _pexels_request(key: str, query: str, per_page: int):
+    return (
+        {"Authorization": key},
+        {"query": query, "per_page": per_page, "orientation": "landscape"},
+    )
+
+
+def _parse_pexels(photo: Dict[str, Any], query: str) -> Optional[Image]:
+    src = photo.get("src", {})
+    alt_text = photo.get("alt", query)
+    if is_text_heavy_image(alt_text):
+        logger.debug(f"Filtering text-heavy image: {alt_text[:50]}")
+        return None
+    return Image(
+        id=f"pexels_{photo['id']}",
+        url_small=src.get("small", src.get("medium", "")),
+        url_medium=src.get("medium", src.get("large", "")),
+        url_large=src.get("large", src.get("large2x", "")),
+        url_original=src.get("original", src.get("large2x", "")),
+        photographer=photo.get("photographer", "Unknown"),
+        photographer_url=photo.get("photographer_url", "https://pexels.com"),
+        source="pexels",
+        alt_text=alt_text,
+        color=photo.get("avg_color"),
+        width=photo.get("width", 0),
+        height=photo.get("height", 0),
+    )
+
+
+def _unsplash_request(key: str, query: str, per_page: int):
+    return (
+        {"Authorization": f"Client-ID {key}"},
+        {
+            "query": query,
+            "per_page": per_page,
+            "orientation": "landscape",
+            "content_filter": "high",
+        },
+    )
+
+
+def _parse_unsplash(photo: Dict[str, Any], query: str) -> Optional[Image]:
+    urls = photo.get("urls", {})
+    user = photo.get("user", {})
+    alt_text = photo.get("alt_description") or photo.get("description") or query
+    if is_text_heavy_image(alt_text):
+        logger.debug(f"Filtering text-heavy image: {alt_text[:50]}")
+        return None
+    return Image(
+        id=f"unsplash_{photo['id']}",
+        url_small=urls.get("small", urls.get("regular", "")),
+        url_medium=urls.get("regular", urls.get("full", "")),
+        url_large=urls.get("full", urls.get("raw", "")),
+        url_original=urls.get("raw", urls.get("full", "")),
+        photographer=user.get("name", "Unknown"),
+        photographer_url=user.get("links", {}).get("html", "https://unsplash.com"),
+        source="unsplash",
+        alt_text=alt_text,
+        color=photo.get("color"),
+        width=photo.get("width", 0),
+        height=photo.get("height", 0),
+    )
+
+
+def _pixabay_request(key: str, query: str, per_page: int):
+    # Pixabay authenticates via a query param, not a header.
+    return (
+        {},
+        {
+            "key": key,
+            "q": query,
+            "image_type": "photo",
+            "orientation": "horizontal",
+            "per_page": per_page,
+            "safesearch": "true",
+            "min_width": 1200,
+            "min_height": 800,
+            "editors_choice": "true",
+        },
+    )
+
+
+def _parse_pixabay(photo: Dict[str, Any], query: str) -> Optional[Image]:
+    tags = photo.get("tags", query)
+    if is_text_heavy_image(tags):
+        logger.debug(f"Filtering text-heavy image: {tags[:50]}")
+        return None
+    return Image(
+        id=f"pixabay_{photo['id']}",
+        url_small=photo.get("previewURL", photo.get("webformatURL", "")),
+        url_medium=photo.get("webformatURL", photo.get("largeImageURL", "")),
+        url_large=photo.get("largeImageURL", photo.get("fullHDURL", "")),
+        url_original=photo.get("fullHDURL", photo.get("largeImageURL", "")),
+        photographer=photo.get("user", "Unknown"),
+        photographer_url=(
+            f"https://pixabay.com/users/"
+            f"{photo.get('user', '')}-{photo.get('user_id', '')}"
+        ),
+        source="pixabay",
+        alt_text=tags,
+        color=None,  # Pixabay doesn't provide dominant color
+        width=photo.get("imageWidth", 0),
+        height=photo.get("imageHeight", 0),
+    )
+
+
+_PEXELS_SPEC = _ImageProviderSpec(
+    "Pexels", "https://api.pexels.com/v1/search", "_pexels_rotator", "photos",
+    _pexels_request, _parse_pexels,
+)
+_UNSPLASH_SPEC = _ImageProviderSpec(
+    "Unsplash", "https://api.unsplash.com/search/photos", "_unsplash_rotator",
+    "results", _unsplash_request, _parse_unsplash,
+)
+_PIXABAY_SPEC = _ImageProviderSpec(
+    "Pixabay", "https://pixabay.com/api/", "_pixabay_rotator", "hits",
+    _pixabay_request, _parse_pixabay,
+)
+
+
 class ImageFetcher:
     """Fetches and manages images from multiple sources."""
 
@@ -608,154 +745,60 @@ class ImageFetcher:
 
         return None
 
-    def search_pexels(self, query: str, per_page: int = 5) -> List[Image]:
-        """Search for images on Pexels with retry logic and key rotation."""
-        current_key = self._pexels_rotator.get_current_key()
+    def _search_provider(
+        self, spec: _ImageProviderSpec, query: str, per_page: int = 5
+    ) -> List[Image]:
+        """Shared search path: key check → request → 429-rotate → parse.
+
+        Provider differences (auth, params, response shape, field mapping) live
+        in `spec.build_request` / `spec.parse`.
+        """
+        rotator = getattr(self, spec.rotator_attr)
+        current_key = rotator.get_current_key()
         if not current_key:
-            logger.debug("Pexels API key not configured or all keys exhausted")
+            logger.debug(f"{spec.label} API key not configured or all keys exhausted")
             return []
 
-        images = []
-        headers = {"Authorization": current_key}
-        params = {"query": query, "per_page": per_page, "orientation": "landscape"}
-
+        headers, params = spec.build_request(current_key, query, per_page)
         response = self._request_with_retry(
-            "https://api.pexels.com/v1/search",
-            headers=headers,
-            params=params,
-            service_name="Pexels",
+            spec.endpoint, headers=headers, params=params, service_name=spec.label
         )
 
-        # Handle rate limit by trying next key
+        # Handle rate limit by rotating to the next key and retrying once.
         if response and response.status_code == 429:
-            self._pexels_rotator.mark_exhausted()
-            next_key = self._pexels_rotator.rotate()
+            rotator.mark_exhausted()
+            next_key = rotator.rotate()
             if next_key:
-                # Retry with new key
-                headers = {"Authorization": next_key}
+                headers, params = spec.build_request(next_key, query, per_page)
                 response = self._request_with_retry(
-                    "https://api.pexels.com/v1/search",
+                    spec.endpoint,
                     headers=headers,
                     params=params,
-                    service_name="Pexels",
+                    service_name=spec.label,
                 )
 
         if not response:
             return []
 
+        images: List[Image] = []
         try:
             data = response.json()
-
-            for photo in data.get("photos", []):
-                src = photo.get("src", {})
-
-                alt_text = photo.get("alt", query)
-
-                # Filter out text-heavy images
-                if is_text_heavy_image(alt_text):
-                    logger.debug(f"Filtering text-heavy image: {alt_text[:50]}")
-                    continue
-
-                image = Image(
-                    id=f"pexels_{photo['id']}",
-                    url_small=src.get("small", src.get("medium", "")),
-                    url_medium=src.get("medium", src.get("large", "")),
-                    url_large=src.get("large", src.get("large2x", "")),
-                    url_original=src.get("original", src.get("large2x", "")),
-                    photographer=photo.get("photographer", "Unknown"),
-                    photographer_url=photo.get(
-                        "photographer_url", "https://pexels.com"
-                    ),
-                    source="pexels",
-                    alt_text=alt_text,
-                    color=photo.get("avg_color"),
-                    width=photo.get("width", 0),
-                    height=photo.get("height", 0),
-                )
-                images.append(image)
-
+            for photo in data.get(spec.results_key, []):
+                image = spec.parse(photo, query)
+                if image is not None:
+                    images.append(image)
         except (KeyError, ValueError, AttributeError, TypeError) as e:
-            logger.error(f"Pexels parse error: {e}")
+            logger.error(f"{spec.label} parse error: {e}")
 
         return images
+
+    def search_pexels(self, query: str, per_page: int = 5) -> List[Image]:
+        """Search for images on Pexels with retry logic and key rotation."""
+        return self._search_provider(_PEXELS_SPEC, query, per_page)
 
     def search_unsplash(self, query: str, per_page: int = 5) -> List[Image]:
         """Search for images on Unsplash with retry logic and key rotation."""
-        current_key = self._unsplash_rotator.get_current_key()
-        if not current_key:
-            logger.debug("Unsplash API key not configured or all keys exhausted")
-            return []
-
-        images = []
-        headers = {"Authorization": f"Client-ID {current_key}"}
-        params = {
-            "query": query,
-            "per_page": per_page,
-            "orientation": "landscape",
-            "content_filter": "high",  # Filter for more curated, high-quality images
-        }
-
-        response = self._request_with_retry(
-            "https://api.unsplash.com/search/photos",
-            headers=headers,
-            params=params,
-            service_name="Unsplash",
-        )
-
-        # Handle rate limit by trying next key
-        if response and response.status_code == 429:
-            self._unsplash_rotator.mark_exhausted()
-            next_key = self._unsplash_rotator.rotate()
-            if next_key:
-                headers = {"Authorization": f"Client-ID {next_key}"}
-                response = self._request_with_retry(
-                    "https://api.unsplash.com/search/photos",
-                    headers=headers,
-                    params=params,
-                    service_name="Unsplash",
-                )
-
-        if not response:
-            return []
-
-        try:
-            data = response.json()
-
-            for photo in data.get("results", []):
-                urls = photo.get("urls", {})
-                user = photo.get("user", {})
-
-                alt_text = (
-                    photo.get("alt_description") or photo.get("description") or query
-                )
-
-                # Filter out text-heavy images
-                if is_text_heavy_image(alt_text):
-                    logger.debug(f"Filtering text-heavy image: {alt_text[:50]}")
-                    continue
-
-                image = Image(
-                    id=f"unsplash_{photo['id']}",
-                    url_small=urls.get("small", urls.get("regular", "")),
-                    url_medium=urls.get("regular", urls.get("full", "")),
-                    url_large=urls.get("full", urls.get("raw", "")),
-                    url_original=urls.get("raw", urls.get("full", "")),
-                    photographer=user.get("name", "Unknown"),
-                    photographer_url=user.get("links", {}).get(
-                        "html", "https://unsplash.com"
-                    ),
-                    source="unsplash",
-                    alt_text=alt_text,
-                    color=photo.get("color"),
-                    width=photo.get("width", 0),
-                    height=photo.get("height", 0),
-                )
-                images.append(image)
-
-        except (KeyError, ValueError, AttributeError, TypeError) as e:
-            logger.error(f"Unsplash parse error: {e}")
-
-        return images
+        return self._search_provider(_UNSPLASH_SPEC, query, per_page)
 
     def search_pixabay(self, query: str, per_page: int = 5) -> List[Image]:
         """Search for images on Pixabay with retry logic and key rotation.
@@ -763,83 +806,7 @@ class ImageFetcher:
         Pixabay offers CC0 licensed images with no attribution required.
         Free tier: 100 requests per minute.
         """
-        current_key = self._pixabay_rotator.get_current_key()
-        if not current_key:
-            logger.debug("Pixabay API key not configured or all keys exhausted")
-            return []
-
-        images = []
-        # Pixabay uses query params for auth, not headers
-        headers: Dict[str, str] = {}
-        params = {
-            "key": current_key,
-            "q": query,
-            "image_type": "photo",
-            "orientation": "horizontal",
-            "per_page": per_page,
-            "safesearch": "true",
-            "min_width": 1200,  # Ensure high-quality images
-            "min_height": 800,
-            "editors_choice": "true",  # Prefer editor-curated images (falls back if none)
-        }
-
-        response = self._request_with_retry(
-            "https://pixabay.com/api/",
-            headers=headers,
-            params=params,
-            service_name="Pixabay",
-        )
-
-        # Handle rate limit by trying next key
-        if response and response.status_code == 429:
-            self._pixabay_rotator.mark_exhausted()
-            next_key = self._pixabay_rotator.rotate()
-            if next_key:
-                params["key"] = next_key
-                response = self._request_with_retry(
-                    "https://pixabay.com/api/",
-                    headers=headers,
-                    params=params,
-                    service_name="Pixabay",
-                )
-
-        if not response:
-            return []
-
-        try:
-            data = response.json()
-
-            for photo in data.get("hits", []):
-                tags = photo.get("tags", query)
-
-                # Filter out text-heavy images
-                if is_text_heavy_image(tags):
-                    logger.debug(f"Filtering text-heavy image: {tags[:50]}")
-                    continue
-
-                # Pixabay provides different size URLs
-                image = Image(
-                    id=f"pixabay_{photo['id']}",
-                    url_small=photo.get("previewURL", photo.get("webformatURL", "")),
-                    url_medium=photo.get(
-                        "webformatURL", photo.get("largeImageURL", "")
-                    ),
-                    url_large=photo.get("largeImageURL", photo.get("fullHDURL", "")),
-                    url_original=photo.get("fullHDURL", photo.get("largeImageURL", "")),
-                    photographer=photo.get("user", "Unknown"),
-                    photographer_url=f"https://pixabay.com/users/{photo.get('user', '')}-{photo.get('user_id', '')}",
-                    source="pixabay",
-                    alt_text=tags,
-                    color=None,  # Pixabay doesn't provide dominant color
-                    width=photo.get("imageWidth", 0),
-                    height=photo.get("imageHeight", 0),
-                )
-                images.append(image)
-
-        except (KeyError, ValueError, AttributeError, TypeError) as e:
-            logger.error(f"Pixabay parse error: {e}")
-
-        return images
+        return self._search_provider(_PIXABAY_SPEC, query, per_page)
 
     def get_lorem_picsum_images(self, count: int = 5) -> List[Image]:
         """Get random stock-like images from Lorem Picsum as last resort fallback.

@@ -20,7 +20,12 @@
 
 ## Quality Gates
 - MIN_TRENDS = 5 (abort if fewer)
-- MIN_FRESH_RATIO = 0.5 (warn if <50% fresh in 24h)
+- MIN_FRESH_RATIO = 0.5 (warn if <50% fresh in 24h; flagged via `low_freshness` metric)
+
+## Step Criticality
+- Critical steps (collect, design, build) abort the run on failure.
+- Auxiliary steps (enrich, editorial, topic/cmmc/media pages, RSS, PWA, sitemap, cleanup, save) are non-critical: a failure is logged + recorded and the deploy continues. Degraded steps surface at end of run + in the `degraded_step_count` metric.
+- Pipeline JSON writes are atomic (tempfile + `os.replace`).
 
 ## Data Flow
 ```
