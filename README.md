@@ -89,12 +89,13 @@ All settings persist in localStorage:
 
 ## Architecture
 
-### Pipeline (14 Steps)
+### Pipeline (16 Steps)
 ```
-Archive → Collect → Images → Enrich → Load Yesterday →
-Fixed Design → Editorial → Topics → Build HTML → RSS →
-PWA → Sitemap → Cleanup → Save
+Archive → Load Yesterday → Collect → Images → Enrich →
+Fixed Design → Editorial → Build HTML → Topic Pages → CMMC Watch →
+Media Fetch → Media Page → RSS → PWA → Sitemap → Cleanup
 ```
+(Pipeline data is persisted after the final step.)
 
 ### Key Modules
 | Module | Purpose |
@@ -183,9 +184,12 @@ pytest tests/test_design_system.py  # Single test file
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `daily-regenerate.yml` | Daily 6 AM EST, push to main, manual | Main pipeline |
-| `auto-merge-claude.yml` | Push to `claude/**` branches | Auto PR merge |
+| `daily-regenerate.yml` | Daily 6 AM EST, push to main, manual | Main pipeline → deploy to GitHub Pages |
+| `auto-merge-claude.yml` | Push to `claude/**` branches | Auto PR creation + squash-merge |
 | `update-readme.yml` | Push to main | Changelog updates |
+| `source-health.yml` | Daily | Source endpoint health checks |
+| `competitor-monitor.yml` | Weekly (Mon) | Competitor & algorithm monitoring |
+| `lighthouse-audit.yml` | After daily regeneration | Lighthouse performance/SEO audit |
 
 ## Quality Gates
 

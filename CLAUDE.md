@@ -51,6 +51,19 @@ Required in `.env` or GitHub Secrets:
 | `json_utils.py` | Escape control chars in LLM-emitted JSON |
 | `date_utils.py` | Shared `format_long_date()` |
 | `shared_components.py` | Header/footer HTML + theme toggle script |
+| `source_catalog.py` | Canonical source list shared by collectors + health checks |
+| `source_registry.py` | Source metadata for ranking + label formatting |
+| `keyword_tracker.py` | Tracks keyword frequency over time |
+| `metrics_collector.py` | Persists per-run pipeline metrics + timings |
+| `fetch_media_of_day.py` | Fetches daily curated image + video |
+| `pwa_generator.py` | Generates PWA assets (manifest, service worker) |
+| `css_generator.py` | CSS generation for the website builder |
+| `js_generator.py` | JS generation for the website builder |
+| `image_utils.py` | Validates / sanitizes image URLs |
+| `logging_utils.py` | Structured contextual logging |
+| `source_health_check.py` | Daily source endpoint health checks (CI standalone) |
+| `competitor_monitor.py` | Weekly competitor/algorithm monitor (CI standalone) |
+| `fetch_linkedin_posts.py` | LinkedIn scraper for CMMC influencers (Apify, optional) |
 
 **Data Flow:** `15+ Sources → trends.json → images.json → design.json → public/index.html` | Cache: `data/image_cache/` (7-day TTL)
 
@@ -126,9 +139,12 @@ Fixtures: `tests/conftest.py` (sample_trends, sample_images, sample_design) | AP
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `daily-regenerate.yml` | Daily 6AM EST, push main, manual | Main pipeline |
-| `auto-merge-claude.yml` | Push `claude/**` | Auto PR merge |
+| `daily-regenerate.yml` | Daily 6AM EST, push main, manual | Main pipeline → deploy to Pages; opens issue on failure |
+| `auto-merge-claude.yml` | Push `claude/**` | Auto-creates PR and squash-merges with `--admin` |
 | `update-readme.yml` | Push main | Changelog update |
+| `source-health.yml` | Daily 11:30 UTC, manual | Runs `source_health_check.py`, commits `data/source_health.json` |
+| `competitor-monitor.yml` | Weekly Mon 9 UTC, manual | Runs `competitor_monitor.py`, opens issue on high-priority alerts |
+| `lighthouse-audit.yml` | After daily regen, manual | Lighthouse CI; SEO assertion hard-fails below 0.9 |
 
 ## Critical Patterns
 
