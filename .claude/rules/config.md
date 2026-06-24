@@ -14,6 +14,7 @@ Required in `.env` or GitHub Secrets:
 - `IMAGE_CACHE_MAX_AGE_DAYS = 7`
 - `ARCHIVE_KEEP_DAYS = 30`
 - `DEDUP_SIMILARITY_THRESHOLD = 0.8`
+- `SITE_URL` / `SITE_NAME` - Canonical base URL + brand name (single source of truth; `RSS_FEED_LINK`/`RSS_FEED_TITLE` derive from them)
 
 ## GitHub Actions
 - `daily-regenerate.yml` - Daily 6AM EST

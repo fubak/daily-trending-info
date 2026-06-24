@@ -342,11 +342,12 @@ def run(self):
 ```
 
 ### 2. **Factory Pattern**
-Multiple AI providers with common interface:
+Multiple AI providers with a common interface, shared via `LLMClientBase`
+(`llm_client.py`), which `EditorialGenerator` and `ContentEnricher` inherit:
 ```python
-def _call_groq_api() -> Optional[str]
-def _call_openrouter_api() -> Optional[str]
-def _call_google_api() -> Optional[str]
+def _call_groq(...) -> Optional[str]
+def _call_openrouter(...) -> Optional[str]
+def _call_google_ai(...) -> Optional[str]
 ```
 
 ### 3. **Strategy Pattern**
