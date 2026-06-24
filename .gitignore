@@ -31,7 +31,32 @@ pip-delete-this-directory.txt
 ehthumbs.db
 Thumbs.db
 
-# Build artifacts (keep public/ for GitHub Pages)
+# Build artifacts
+# public/ is the GitHub Pages output dir. Pipeline-generated files are NOT
+# tracked (regenerated every run; deployed via the Pages artifact). Static,
+# hand-authored assets (ads.txt, llms.txt, verification tokens, og/twitter
+# images, icons/, assets/) stay tracked because the pipeline does not produce them.
+public/index.html
+public/offline.html
+public/feed.xml
+public/manifest.json
+public/sw.js
+public/robots.txt
+public/sitemap.xml
+public/sitemap_main.xml
+public/sitemap_news.xml
+public/articles/
+public/tech/
+public/world/
+public/science/
+public/politics/
+public/finance/
+public/business/
+public/sports/
+public/media/
+public/cmmc/
+public/archive/
+
 # data/ contains runtime state regenerated on each pipeline run
 data/
 !data/.gitkeep
