@@ -21,7 +21,7 @@ from typing import Dict, List, Optional
 
 import requests
 
-from config import LLM_MIN_CALL_INTERVAL, LLM_MAX_RETRY_WAIT
+from config import LLM_MIN_CALL_INTERVAL, LLM_MAX_RETRY_WAIT, SITE_URL, SITE_NAME
 from json_utils import escape_control_chars_in_strings
 
 try:
@@ -71,8 +71,8 @@ OPENROUTER_SPEC = ProviderSpec(
         "google/gemma-3-27b-it:free",
     ],
     extra_headers={
-        "HTTP-Referer": "https://dailytrending.info",
-        "X-Title": "DailyTrending.info",
+        "HTTP-Referer": SITE_URL,
+        "X-Title": SITE_NAME,
     },
 )
 
