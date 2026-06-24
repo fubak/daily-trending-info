@@ -43,6 +43,8 @@ jobs:
             echo "PR #$EXISTING_PR already exists"
           fi
 
-          # Merge (squash). No --admin: respect branch protection / required
-          # checks if any are configured, instead of bypassing them.
-          gh pr merge "$BRANCH" --squash --delete-branch
+          # Enable auto-merge (squash). --auto queues the merge and lets it
+          # complete only once the required CI checks (test (py3.11/3.12)) pass,
+          # instead of merging immediately and racing the checks. No --admin:
+          # required checks actually gate the merge.
+          gh pr merge "$BRANCH" --auto --squash --delete-branch
