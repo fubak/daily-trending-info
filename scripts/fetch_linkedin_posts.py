@@ -2,7 +2,7 @@
 """
 LinkedIn Post Scraper - Fetches posts from key CMMC influencers via Apify.
 
-Uses the scraper-engine/linkedin-post-scraper actor on Apify to pull
+Uses the johnvc/linkedin-posts-api actor on Apify to pull
 recent posts from specified LinkedIn profiles.
 
 Free tier limits (Apify):
@@ -28,7 +28,7 @@ from config import setup_logging
 logger = setup_logging("linkedin_scraper")
 
 # Default actor ID - can be overridden via environment variable
-DEFAULT_APIFY_ACTOR = "scraper-engine/linkedin-post-scraper"
+DEFAULT_APIFY_ACTOR = "johnvc/linkedin-posts-api"
 
 # Conservative limits to stay within Apify free tier
 MAX_PROFILES = 10  # Maximum profiles to scrape per run
@@ -91,7 +91,9 @@ def fetch_linkedin_posts(
     if not client:
         return []
 
-    actor_id = os.getenv("APIFY_ACTOR_ID", DEFAULT_APIFY_ACTOR)
+    # daily-regenerate.yml passes APIFY_ACTOR_ID from a secret, and an unset
+    # secret arrives as an empty string, so treat "" as "use the default".
+    actor_id = os.getenv("APIFY_ACTOR_ID") or DEFAULT_APIFY_ACTOR
 
     # Respect free tier limits
     profiles_to_scrape = profile_urls[:MAX_PROFILES]
@@ -106,13 +108,10 @@ def fetch_linkedin_posts(
         try:
             logger.info(f"Fetching posts from: {profile_url}")
 
-            # Prepare input for the scraper
-            # Note: Input format may vary by actor - this is a common pattern
+            # Prepare input for the scraper (johnvc/linkedin-posts-api input names)
             run_input = {
                 "profileUrls": [profile_url],
-                "maxPosts": max_posts_per_profile,
-                "scrapeComments": False,  # Save credits
-                "scrapeReactions": False,  # Save credits
+                "maxPostsPerProfile": max_posts_per_profile,
             }
 
             # Run the actor and wait for completion
@@ -127,6 +126,13 @@ def fetch_linkedin_posts(
             )
 
             for item in dataset_items:
+                # The actor reports a failed profile as a row, not an exception
+                if item.get("result_type") == "error":
+                    logger.warning(
+                        f"  Apify error row for {profile_url}: "
+                        f"{item.get('error_message', 'unknown error')}"
+                    )
+                    continue
                 post = _parse_linkedin_item(item)
                 if post:
                     posts.append(post)
@@ -178,6 +184,7 @@ def _parse_linkedin_item(item: Dict) -> Optional[LinkedInPost]:
 
         author_title = (
             item.get("authorTitle")
+            or item.get("authorHeadline")
             or item.get("author", {}).get("title")
             or item.get("profileTitle")
             or ""
@@ -194,12 +201,21 @@ def _parse_linkedin_item(item: Dict) -> Optional[LinkedInPost]:
 
         # Extract timestamp
         timestamp = None
-        ts_raw = item.get("timestamp") or item.get("postedAt") or item.get("date")
+        ts_raw = (
+            item.get("timestamp")
+            or item.get("postedAt")
+            or item.get("datePosted")
+            or item.get("date")
+        )
         if ts_raw:
             try:
                 if isinstance(ts_raw, str):
                     # Try ISO format first
                     timestamp = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+                    if timestamp.tzinfo is not None:
+                        # "...Z" parses as timezone-aware; _calculate_post_score
+                        # subtracts it from naive datetime.now(), so drop the tz
+                        timestamp = timestamp.astimezone().replace(tzinfo=None)
                 elif isinstance(ts_raw, (int, float)):
                     timestamp = datetime.fromtimestamp(ts_raw / 1000)  # ms to seconds
             except (ValueError, TypeError, OSError):
